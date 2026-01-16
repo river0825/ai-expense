@@ -1,0 +1,568 @@
+package http
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"errors"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+	"time"
+
+	"github.com/riverlin/aiexpense/internal/domain"
+	"github.com/riverlin/aiexpense/internal/usecase"
+)
+
+var errTestNotFound = errors.New("not found")
+
+// Test repositories for API integration tests
+type TestExpenseRepository struct {
+	expenses map[string]*domain.Expense
+}
+
+func (r *TestExpenseRepository) Create(ctx context.Context, expense *domain.Expense) error {
+	r.expenses[expense.ID] = expense
+	return nil
+}
+
+func (r *TestExpenseRepository) GetByID(ctx context.Context, id string) (*domain.Expense, error) {
+	if exp, ok := r.expenses[id]; ok {
+		return exp, nil
+	}
+	return nil, errTestNotFound
+}
+
+func (r *TestExpenseRepository) GetByUserID(ctx context.Context, userID string) ([]*domain.Expense, error) {
+	var result []*domain.Expense
+	for _, exp := range r.expenses {
+		if exp.UserID == userID {
+			result = append(result, exp)
+		}
+	}
+	return result, nil
+}
+
+func (r *TestExpenseRepository) GetByUserIDAndDateRange(ctx context.Context, userID string, from, to time.Time) ([]*domain.Expense, error) {
+	var result []*domain.Expense
+	for _, exp := range r.expenses {
+		if exp.UserID == userID && !exp.ExpenseDate.Before(from) && !exp.ExpenseDate.After(to) {
+			result = append(result, exp)
+		}
+	}
+	return result, nil
+}
+
+func (r *TestExpenseRepository) GetByUserIDAndCategory(ctx context.Context, userID, categoryID string) ([]*domain.Expense, error) {
+	var result []*domain.Expense
+	for _, exp := range r.expenses {
+		if exp.UserID == userID && exp.CategoryID != nil && *exp.CategoryID == categoryID {
+			result = append(result, exp)
+		}
+	}
+	return result, nil
+}
+
+func (r *TestExpenseRepository) Update(ctx context.Context, expense *domain.Expense) error {
+	r.expenses[expense.ID] = expense
+	return nil
+}
+
+func (r *TestExpenseRepository) Delete(ctx context.Context, id string) error {
+	delete(r.expenses, id)
+	return nil
+}
+
+type TestUserRepository struct {
+	users map[string]*domain.User
+}
+
+func (r *TestUserRepository) Create(ctx context.Context, user *domain.User) error {
+	r.users[user.UserID] = user
+	return nil
+}
+
+func (r *TestUserRepository) GetByID(ctx context.Context, userID string) (*domain.User, error) {
+	if user, ok := r.users[userID]; ok {
+		return user, nil
+	}
+	return nil, errTestNotFound
+}
+
+func (r *TestUserRepository) Exists(ctx context.Context, userID string) (bool, error) {
+	_, ok := r.users[userID]
+	return ok, nil
+}
+
+type TestCategoryRepository struct {
+	categories map[string]*domain.Category
+}
+
+func (r *TestCategoryRepository) Create(ctx context.Context, category *domain.Category) error {
+	r.categories[category.ID] = category
+	return nil
+}
+
+func (r *TestCategoryRepository) GetByID(ctx context.Context, id string) (*domain.Category, error) {
+	if cat, ok := r.categories[id]; ok {
+		return cat, nil
+	}
+	return nil, errTestNotFound
+}
+
+func (r *TestCategoryRepository) GetByUserID(ctx context.Context, userID string) ([]*domain.Category, error) {
+	var result []*domain.Category
+	for _, cat := range r.categories {
+		if cat.UserID == userID {
+			result = append(result, cat)
+		}
+	}
+	return result, nil
+}
+
+func (r *TestCategoryRepository) GetByUserIDAndName(ctx context.Context, userID, name string) (*domain.Category, error) {
+	for _, cat := range r.categories {
+		if cat.UserID == userID && cat.Name == name {
+			return cat, nil
+		}
+	}
+	return nil, errTestNotFound
+}
+
+func (r *TestCategoryRepository) Update(ctx context.Context, category *domain.Category) error {
+	r.categories[category.ID] = category
+	return nil
+}
+
+func (r *TestCategoryRepository) Delete(ctx context.Context, id string) error {
+	delete(r.categories, id)
+	return nil
+}
+
+func (r *TestCategoryRepository) CreateKeyword(ctx context.Context, keyword *domain.CategoryKeyword) error {
+	return nil
+}
+
+func (r *TestCategoryRepository) GetKeywordsByCategory(ctx context.Context, categoryID string) ([]*domain.CategoryKeyword, error) {
+	return []*domain.CategoryKeyword{}, nil
+}
+
+func (r *TestCategoryRepository) DeleteKeyword(ctx context.Context, id string) error {
+	return nil
+}
+
+// Test AI Service
+type TestAIService struct{}
+
+func (s *TestAIService) ParseExpense(ctx context.Context, text string, userID string) ([]*domain.ParsedExpense, error) {
+	return []*domain.ParsedExpense{
+		{
+			Amount:      20.0,
+			Description: "Test expense",
+		},
+	}, nil
+}
+
+func (s *TestAIService) SuggestCategory(ctx context.Context, description string) (string, error) {
+	return "food", nil
+}
+
+// Test Metrics Repository
+type TestMetricsRepository struct{}
+
+func (r *TestMetricsRepository) GetDailyActiveUsers(ctx context.Context, from, to time.Time) ([]*domain.DailyMetrics, error) {
+	return []*domain.DailyMetrics{}, nil
+}
+
+func (r *TestMetricsRepository) GetExpensesSummary(ctx context.Context, from, to time.Time) ([]*domain.DailyMetrics, error) {
+	return []*domain.DailyMetrics{}, nil
+}
+
+func (r *TestMetricsRepository) GetCategoryTrends(ctx context.Context, userID string, from, to time.Time) ([]*domain.CategoryMetrics, error) {
+	return []*domain.CategoryMetrics{}, nil
+}
+
+func (r *TestMetricsRepository) GetGrowthMetrics(ctx context.Context, days int) (map[string]interface{}, error) {
+	return make(map[string]interface{}), nil
+}
+
+func (r *TestMetricsRepository) GetNewUsersPerDay(ctx context.Context, from, to time.Time) ([]*domain.DailyMetrics, error) {
+	return []*domain.DailyMetrics{}, nil
+}
+
+// TestAPIAutoSignupFlow tests complete auto-signup flow
+func TestAPIAutoSignupFlow(t *testing.T) {
+	userRepo := &TestUserRepository{users: make(map[string]*domain.User)}
+	categoryRepo := &TestCategoryRepository{categories: make(map[string]*domain.Category)}
+
+	handler := &Handler{
+		autoSignupUC: usecase.NewAutoSignupUseCase(userRepo, categoryRepo),
+	}
+
+	// Create request body
+	bodyMap := map[string]interface{}{
+		"user_id":        "test_api_user",
+		"messenger_type": "line",
+	}
+	bodyBytes, _ := json.Marshal(bodyMap)
+
+	req := httptest.NewRequest("POST", "/api/users/auto-signup", bytes.NewReader(bodyBytes))
+	req.Header.Set("Content-Type", "application/json")
+
+	w := httptest.NewRecorder()
+	handler.AutoSignup(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("Expected %d, got %d", http.StatusOK, w.Code)
+	}
+
+	// Verify user was created
+	exists, _ := userRepo.Exists(context.Background(), "test_api_user")
+	if !exists {
+		t.Error("Expected user to be created")
+	}
+}
+
+// TestAPIAutoSignup tests user auto-signup flow
+func TestAPIAutoSignup(t *testing.T) {
+	userRepo := &TestUserRepository{users: make(map[string]*domain.User)}
+	categoryRepo := &TestCategoryRepository{categories: make(map[string]*domain.Category)}
+
+	handler := &Handler{
+		autoSignupUC: usecase.NewAutoSignupUseCase(userRepo, categoryRepo),
+	}
+
+	bodyMap := map[string]string{
+		"user_id":        "test_user_1",
+		"messenger_type": "line",
+	}
+	bodyBytes, _ := json.Marshal(bodyMap)
+
+	req := httptest.NewRequest("POST", "/api/users/auto-signup", bytes.NewReader(bodyBytes))
+	req.Header.Set("Content-Type", "application/json")
+
+	w := httptest.NewRecorder()
+	handler.AutoSignup(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("Expected %d, got %d", http.StatusOK, w.Code)
+	}
+
+	// Verify user was created
+	exists, _ := userRepo.Exists(context.Background(), "test_user_1")
+	if !exists {
+		t.Error("Expected user to be created")
+	}
+
+	// Verify default categories created
+	categories, _ := categoryRepo.GetByUserID(context.Background(), "test_user_1")
+	if len(categories) < 1 {
+		t.Error("Expected default categories to be created")
+	}
+}
+
+// TestAPIParseExpenses tests expense parsing
+func TestAPIParseExpenses(t *testing.T) {
+	userRepo := &TestUserRepository{users: make(map[string]*domain.User)}
+	categoryRepo := &TestCategoryRepository{categories: make(map[string]*domain.Category)}
+	aiService := &TestAIService{}
+
+	handler := &Handler{
+		autoSignupUC:        usecase.NewAutoSignupUseCase(userRepo, categoryRepo),
+		parseConversationUC: usecase.NewParseConversationUseCase(aiService),
+	}
+
+	bodyMap := map[string]string{
+		"user_id": "test_user_1",
+		"text":    "早餐$20午餐$30",
+	}
+	bodyBytes, _ := json.Marshal(bodyMap)
+
+	req := httptest.NewRequest("POST", "/api/expenses/parse", bytes.NewReader(bodyBytes))
+	req.Header.Set("Content-Type", "application/json")
+
+	w := httptest.NewRecorder()
+	handler.ParseExpenses(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("Expected %d, got %d", http.StatusOK, w.Code)
+	}
+}
+
+// TestAPICreateExpense tests expense creation
+func TestAPICreateExpense(t *testing.T) {
+	userRepo := &TestUserRepository{users: make(map[string]*domain.User)}
+	categoryRepo := &TestCategoryRepository{categories: make(map[string]*domain.Category)}
+	expenseRepo := &TestExpenseRepository{expenses: make(map[string]*domain.Expense)}
+	aiService := &TestAIService{}
+
+	// Create user first
+	userRepo.Create(context.Background(), &domain.User{
+		UserID:        "test_user_1",
+		MessengerType: "line",
+		CreatedAt:     time.Now(),
+	})
+
+	handler := &Handler{
+		autoSignupUC:        usecase.NewAutoSignupUseCase(userRepo, categoryRepo),
+		createExpenseUC:     usecase.NewCreateExpenseUseCase(expenseRepo, categoryRepo, aiService),
+		parseConversationUC: usecase.NewParseConversationUseCase(aiService),
+	}
+
+	bodyMap := map[string]interface{}{
+		"user_id":     "test_user_1",
+		"description": "Lunch",
+		"amount":      25.50,
+	}
+	bodyBytes, _ := json.Marshal(bodyMap)
+
+	req := httptest.NewRequest("POST", "/api/expenses", bytes.NewReader(bodyBytes))
+	req.Header.Set("Content-Type", "application/json")
+
+	w := httptest.NewRecorder()
+	handler.CreateExpense(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("Expected %d, got %d", http.StatusOK, w.Code)
+	}
+
+	// Verify expense was created
+	expenses, _ := expenseRepo.GetByUserID(context.Background(), "test_user_1")
+	if len(expenses) < 1 {
+		t.Error("Expected expense to be created")
+	}
+}
+
+// TestAPIGetExpenses tests expense retrieval
+func TestAPIGetExpenses(t *testing.T) {
+	userRepo := &TestUserRepository{users: make(map[string]*domain.User)}
+	categoryRepo := &TestCategoryRepository{categories: make(map[string]*domain.Category)}
+	expenseRepo := &TestExpenseRepository{expenses: make(map[string]*domain.Expense)}
+	aiService := &TestAIService{}
+
+	// Create test data
+	userRepo.Create(context.Background(), &domain.User{
+		UserID:        "test_user_1",
+		MessengerType: "line",
+		CreatedAt:     time.Now(),
+	})
+
+	expenseRepo.Create(context.Background(), &domain.Expense{
+		ID:          "exp_001",
+		UserID:      "test_user_1",
+		Description: "Test expense",
+		Amount:      20.0,
+		ExpenseDate: time.Now(),
+		CreatedAt:   time.Now(),
+	})
+
+	handler := &Handler{
+		autoSignupUC:    usecase.NewAutoSignupUseCase(userRepo, categoryRepo),
+		getExpensesUC:   usecase.NewGetExpensesUseCase(expenseRepo, categoryRepo),
+		createExpenseUC: usecase.NewCreateExpenseUseCase(expenseRepo, categoryRepo, aiService),
+	}
+
+	req := httptest.NewRequest("GET", "/api/expenses?user_id=test_user_1", nil)
+	req.Header.Set("Content-Type", "application/json")
+
+	w := httptest.NewRecorder()
+	handler.GetExpenses(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("Expected %d, got %d", http.StatusOK, w.Code)
+	}
+
+	// Verify expenses were returned
+	expenses, _ := expenseRepo.GetByUserID(context.Background(), "test_user_1")
+	if len(expenses) < 1 {
+		t.Error("Expected at least one expense to be retrieved")
+	}
+}
+
+// TestAPIMissingRequired tests error handling for missing required fields
+func TestAPIMissingRequired(t *testing.T) {
+	handler := &Handler{
+		autoSignupUC: usecase.NewAutoSignupUseCase(
+			&TestUserRepository{users: make(map[string]*domain.User)},
+			&TestCategoryRepository{categories: make(map[string]*domain.Category)},
+		),
+	}
+
+	// Missing user_id
+	bodyMap := map[string]string{
+		"messenger_type": "line",
+	}
+	bodyBytes, _ := json.Marshal(bodyMap)
+
+	req := httptest.NewRequest("POST", "/api/users/auto-signup", bytes.NewReader(bodyBytes))
+	req.Header.Set("Content-Type", "application/json")
+
+	w := httptest.NewRecorder()
+	handler.AutoSignup(w, req)
+
+	// Should fail due to missing user_id
+	if w.Code == http.StatusOK {
+		t.Error("Expected error status for missing required field")
+	}
+}
+
+// TestAPINotFound tests non-existent user handling
+func TestAPINotFound(t *testing.T) {
+	userRepo := &TestUserRepository{users: make(map[string]*domain.User)}
+	categoryRepo := &TestCategoryRepository{categories: make(map[string]*domain.Category)}
+	expenseRepo := &TestExpenseRepository{expenses: make(map[string]*domain.Expense)}
+
+	handler := &Handler{
+		autoSignupUC:  usecase.NewAutoSignupUseCase(userRepo, categoryRepo),
+		getExpensesUC: usecase.NewGetExpensesUseCase(expenseRepo, categoryRepo),
+	}
+
+	// Try to get expenses for non-existent user
+	req := httptest.NewRequest("GET", "/api/expenses?user_id=nonexistent_user", nil)
+	req.Header.Set("Content-Type", "application/json")
+
+	w := httptest.NewRecorder()
+	handler.GetExpenses(w, req)
+
+	// Should succeed but return empty expenses
+	if w.Code != http.StatusOK {
+		t.Errorf("Expected %d, got %d", http.StatusOK, w.Code)
+	}
+}
+
+// TestAPICategoryManagement tests category operations
+func TestAPICategoryManagement(t *testing.T) {
+	userRepo := &TestUserRepository{users: make(map[string]*domain.User)}
+	categoryRepo := &TestCategoryRepository{categories: make(map[string]*domain.Category)}
+
+	// Create user first
+	userRepo.Create(context.Background(), &domain.User{
+		UserID:        "test_user_1",
+		MessengerType: "line",
+		CreatedAt:     time.Now(),
+	})
+
+	handler := &Handler{
+		manageCategoryUC: usecase.NewManageCategoryUseCase(categoryRepo),
+		autoSignupUC:     usecase.NewAutoSignupUseCase(userRepo, categoryRepo),
+	}
+
+	// Create category
+	bodyMap := map[string]interface{}{
+		"user_id": "test_user_1",
+		"name":    "Custom Category",
+	}
+	bodyBytes, _ := json.Marshal(bodyMap)
+
+	req := httptest.NewRequest("POST", "/api/categories", bytes.NewReader(bodyBytes))
+	req.Header.Set("Content-Type", "application/json")
+
+	w := httptest.NewRecorder()
+	handler.CreateCategory(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("Expected %d, got %d", http.StatusOK, w.Code)
+	}
+
+	// Verify category was created
+	categories, _ := categoryRepo.GetByUserID(context.Background(), "test_user_1")
+	if len(categories) < 1 {
+		t.Error("Expected category to be created")
+	}
+}
+
+// TestAPIMultipleExpenses tests creating multiple expenses
+func TestAPIMultipleExpenses(t *testing.T) {
+	userRepo := &TestUserRepository{users: make(map[string]*domain.User)}
+	categoryRepo := &TestCategoryRepository{categories: make(map[string]*domain.Category)}
+	expenseRepo := &TestExpenseRepository{expenses: make(map[string]*domain.Expense)}
+	aiService := &TestAIService{}
+
+	userRepo.Create(context.Background(), &domain.User{
+		UserID:        "test_user_1",
+		MessengerType: "line",
+		CreatedAt:     time.Now(),
+	})
+
+	handler := &Handler{
+		autoSignupUC:    usecase.NewAutoSignupUseCase(userRepo, categoryRepo),
+		createExpenseUC: usecase.NewCreateExpenseUseCase(expenseRepo, categoryRepo, aiService),
+	}
+
+	// Create first expense
+	bodyMap1 := map[string]interface{}{
+		"user_id":     "test_user_1",
+		"description": "Breakfast",
+		"amount":      15.0,
+	}
+	bodyBytes1, _ := json.Marshal(bodyMap1)
+	req1 := httptest.NewRequest("POST", "/api/expenses", bytes.NewReader(bodyBytes1))
+	req1.Header.Set("Content-Type", "application/json")
+	w1 := httptest.NewRecorder()
+	handler.CreateExpense(w1, req1)
+	if w1.Code != http.StatusOK {
+		t.Errorf("First expense: expected %d, got %d", http.StatusOK, w1.Code)
+	}
+
+	// Create second expense
+	bodyMap2 := map[string]interface{}{
+		"user_id":     "test_user_1",
+		"description": "Lunch",
+		"amount":      25.0,
+	}
+	bodyBytes2, _ := json.Marshal(bodyMap2)
+	req2 := httptest.NewRequest("POST", "/api/expenses", bytes.NewReader(bodyBytes2))
+	req2.Header.Set("Content-Type", "application/json")
+	w2 := httptest.NewRecorder()
+	handler.CreateExpense(w2, req2)
+	if w2.Code != http.StatusOK {
+		t.Errorf("Second expense: expected %d, got %d", http.StatusOK, w2.Code)
+	}
+
+	// Verify both expenses created
+	expenses, _ := expenseRepo.GetByUserID(context.Background(), "test_user_1")
+	if len(expenses) < 2 {
+		t.Errorf("Expected 2 expenses, got %d", len(expenses))
+	}
+}
+
+// TestAPIConcurrentRequests tests concurrent request handling
+func TestAPIConcurrentRequests(t *testing.T) {
+	userRepo := &TestUserRepository{users: make(map[string]*domain.User)}
+	categoryRepo := &TestCategoryRepository{categories: make(map[string]*domain.Category)}
+
+	handler := &Handler{
+		autoSignupUC: usecase.NewAutoSignupUseCase(userRepo, categoryRepo),
+	}
+
+	// Simulate concurrent signup requests
+	done := make(chan bool, 3)
+
+	for i := 1; i <= 3; i++ {
+		go func(index int) {
+			userID := "concurrent_user_" + string(rune('0'+byte(index)))
+			bodyMap := map[string]string{
+				"user_id":        userID,
+				"messenger_type": "line",
+			}
+			bodyBytes, _ := json.Marshal(bodyMap)
+
+			req := httptest.NewRequest("POST", "/api/users/auto-signup", bytes.NewReader(bodyBytes))
+			req.Header.Set("Content-Type", "application/json")
+
+			w := httptest.NewRecorder()
+			handler.AutoSignup(w, req)
+
+			if w.Code != http.StatusOK {
+				t.Errorf("Concurrent signup %d: expected %d, got %d", index, http.StatusOK, w.Code)
+			}
+
+			done <- true
+		}(i)
+	}
+
+	// Wait for all goroutines
+	for i := 0; i < 3; i++ {
+		<-done
+	}
+}
