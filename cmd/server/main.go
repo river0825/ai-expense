@@ -1,10 +1,11 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 
+	httpAdapter "github.com/riverlin/aiexpense/internal/adapter/http"
+	"github.com/riverlin/aiexpense/internal/adapter/messenger/line"
 	"github.com/riverlin/aiexpense/internal/adapter/repository/sqlite"
 	"github.com/riverlin/aiexpense/internal/ai"
 	"github.com/riverlin/aiexpense/internal/config"
@@ -43,38 +44,49 @@ func main() {
 	createExpenseUseCase := usecase.NewCreateExpenseUseCase(expenseRepo, categoryRepo, aiService)
 	getExpensesUseCase := usecase.NewGetExpensesUseCase(expenseRepo, categoryRepo)
 
+	// Initialize HTTP handler
+	handler := httpAdapter.NewHandler(
+		autoSignupUseCase,
+		parseConversationUseCase,
+		createExpenseUseCase,
+		getExpensesUseCase,
+		userRepo,
+		categoryRepo,
+		expenseRepo,
+		metricsRepo,
+		cfg.AdminAPIKey,
+	)
+
+	// Initialize LINE client
+	lineClient, err := line.NewClient(cfg.LineChannelToken)
+	if err != nil {
+		log.Fatalf("Failed to initialize LINE client: %v", err)
+	}
+
+	// Initialize LINE use case
+	lineUseCase := line.NewLineUseCase(
+		autoSignupUseCase,
+		parseConversationUseCase,
+		createExpenseUseCase,
+		lineClient,
+	)
+
+	// Initialize LINE webhook handler
+	lineHandler := line.NewHandler(cfg.LineChannelID, lineUseCase)
+
 	// Initialize HTTP server
 	mux := http.NewServeMux()
+	httpAdapter.RegisterRoutes(mux, handler)
 
-	// Health check endpoint
-	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprintf(w, `{"status":"ok"}`)
-	})
+	// Add LINE webhook endpoint
+	mux.HandleFunc("POST /webhook/line", lineHandler.HandleWebhook)
 
-	// TODO: Add HTTP handlers for:
-	// - POST /api/users/auto-signup
-	// - POST /api/expenses
-	// - GET /api/expenses
-	// - POST /api/expenses/parse
-	// - GET /api/categories
-	// - POST /api/categories
-	// - GET /api/reports/summary
-	// - GET /api/reports/breakdown
-	// - GET /api/metrics/dau
-	// - GET /api/metrics/expenses-summary
-	// - GET /api/metrics/category-trends
-	// - GET /api/metrics/growth
-
-	// TODO: Add LINE webhook endpoint
-	// POST /webhook/line
-
-	// Log use case initialization for debugging
-	_ = autoSignupUseCase
-	_ = parseConversationUseCase
-	_ = createExpenseUseCase
-	_ = getExpensesUseCase
-	_ = metricsRepo
+	// TODO: Add more use cases and handlers:
+	// - UpdateExpenseUseCase
+	// - DeleteExpenseUseCase
+	// - ManageCategoryUseCase
+	// - GenerateReportUseCase
+	// - MetricsAggregatorUseCase
 
 	// Start server
 	addr := ":" + cfg.ServerPort
