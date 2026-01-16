@@ -70,11 +70,11 @@ type ExpensesSummaryRequest struct {
 
 // ExpensesSummaryResponse represents expense summary metrics
 type ExpensesSummaryResponse struct {
-	Data                  []*domain.DailyMetrics `json:"data"`
-	TotalExpenses         float64                `json:"total_expenses"`
-	AverageDailyExpenses  float64                `json:"average_daily_expenses"`
-	TotalTransactions     int                    `json:"total_transactions"`
-	AverageTransactionSize float64               `json:"average_transaction_size"`
+	Data                   []*domain.DailyMetrics `json:"data"`
+	TotalExpenses          float64                `json:"total_expenses"`
+	AverageDailyExpenses   float64                `json:"average_daily_expenses"`
+	TotalTransactions      int                    `json:"total_transactions"`
+	AverageTransactionSize float64                `json:"average_transaction_size"`
 }
 
 // GetExpensesSummary retrieves expense summary metrics

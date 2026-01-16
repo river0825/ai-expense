@@ -4,33 +4,7 @@ import (
 	"context"
 	"testing"
 	"time"
-
-	"github.com/riverlin/aiexpense/internal/domain"
 )
-
-// MockAIService is a mock implementation for testing
-type MockAIService struct {
-	shouldFail bool
-}
-
-func (m *MockAIService) ParseExpense(ctx context.Context, text string, userID string) ([]*domain.ParsedExpense, error) {
-	if m.shouldFail {
-		return nil, nil // Falls back to regex
-	}
-
-	// Mock parsing
-	return []*domain.ParsedExpense{
-		{
-			Description: "early_breakfast",
-			Amount:      20,
-			Date:        time.Now(),
-		},
-	}, nil
-}
-
-func (m *MockAIService) SuggestCategory(ctx context.Context, description string) (string, error) {
-	return "Food", nil
-}
 
 func TestParseConversationWithAI(t *testing.T) {
 	aiService := &MockAIService{shouldFail: false}

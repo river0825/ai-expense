@@ -167,11 +167,11 @@ func (r *MetricsRepository) GetGrowthMetrics(ctx context.Context, days int) (map
 	}
 
 	return map[string]interface{}{
-		"total_users":         totalUsers,
-		"new_users_today":     newUsersToday,
-		"new_users_this_week": newUsersWeek,
+		"total_users":          totalUsers,
+		"new_users_today":      newUsersToday,
+		"new_users_this_week":  newUsersWeek,
 		"new_users_this_month": newUsersMonth,
-		"total_expenses":      totalExpenses,
+		"total_expenses":       totalExpenses,
 	}, nil
 }
 

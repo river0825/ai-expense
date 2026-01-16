@@ -44,12 +44,12 @@ type GetByCategoryRequest struct {
 
 // ExpenseDTO represents an expense in responses
 type ExpenseDTO struct {
-	ID          string
-	Description string
-	Amount      float64
-	CategoryID  *string
+	ID           string
+	Description  string
+	Amount       float64
+	CategoryID   *string
 	CategoryName *string
-	Date        time.Time
+	Date         time.Time
 }
 
 // GetAllResponse represents the response for getting all expenses

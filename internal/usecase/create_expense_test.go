@@ -8,66 +8,6 @@ import (
 	"github.com/riverlin/aiexpense/internal/domain"
 )
 
-// MockExpenseRepository is a mock implementation for testing
-type MockExpenseRepository struct {
-	expenses map[string]*domain.Expense
-}
-
-func NewMockExpenseRepository() *MockExpenseRepository {
-	return &MockExpenseRepository{
-		expenses: make(map[string]*domain.Expense),
-	}
-}
-
-func (m *MockExpenseRepository) Create(ctx context.Context, expense *domain.Expense) error {
-	m.expenses[expense.ID] = expense
-	return nil
-}
-
-func (m *MockExpenseRepository) GetByID(ctx context.Context, id string) (*domain.Expense, error) {
-	return m.expenses[id], nil
-}
-
-func (m *MockExpenseRepository) GetByUserID(ctx context.Context, userID string) ([]*domain.Expense, error) {
-	var result []*domain.Expense
-	for _, exp := range m.expenses {
-		if exp.UserID == userID {
-			result = append(result, exp)
-		}
-	}
-	return result, nil
-}
-
-func (m *MockExpenseRepository) GetByUserIDAndDateRange(ctx context.Context, userID string, from, to time.Time) ([]*domain.Expense, error) {
-	var result []*domain.Expense
-	for _, exp := range m.expenses {
-		if exp.UserID == userID && exp.ExpenseDate.After(from) && exp.ExpenseDate.Before(to) {
-			result = append(result, exp)
-		}
-	}
-	return result, nil
-}
-
-func (m *MockExpenseRepository) GetByUserIDAndCategory(ctx context.Context, userID, categoryID string) ([]*domain.Expense, error) {
-	var result []*domain.Expense
-	for _, exp := range m.expenses {
-		if exp.UserID == userID && exp.CategoryID != nil && *exp.CategoryID == categoryID {
-			result = append(result, exp)
-		}
-	}
-	return result, nil
-}
-
-func (m *MockExpenseRepository) Update(ctx context.Context, expense *domain.Expense) error {
-	m.expenses[expense.ID] = expense
-	return nil
-}
-
-func (m *MockExpenseRepository) Delete(ctx context.Context, id string) error {
-	delete(m.expenses, id)
-	return nil
-}
-
 func TestCreateExpenseSuccess(t *testing.T) {
 	expenseRepo := NewMockExpenseRepository()
 	categoryRepo := NewMockCategoryRepository()

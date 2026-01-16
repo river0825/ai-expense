@@ -83,13 +83,11 @@ func (u *TelegramUseCase) HandleMessage(ctx context.Context, userID string, chat
 // sendMessage sends a message via Telegram
 func (u *TelegramUseCase) sendMessage(ctx context.Context, chatID int64, text string) error {
 	if u.client == nil {
-		// Mock sending for testing
-		log.Printf("[Telegram] Reply to chat %d: %s", chatID, text)
+		// No client configured, just log
+		log.Printf("[Telegram] Reply to chat %d: %s (client not configured)", chatID, text)
 		return nil
 	}
 
-	// TODO: Implement actual Telegram API call
-	// return u.client.SendMessage(ctx, chatID, text)
-	log.Printf("[Telegram] Reply to chat %d: %s", chatID, text)
-	return nil
+	// Send actual message via Telegram API
+	return u.client.SendMessage(ctx, chatID, text)
 }

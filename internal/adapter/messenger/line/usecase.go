@@ -83,13 +83,11 @@ func (u *LineUseCase) HandleMessage(ctx context.Context, userID, text, replyToke
 // sendMessage sends a message via LINE
 func (u *LineUseCase) sendMessage(ctx context.Context, replyToken, text string) error {
 	if u.client == nil {
-		// Mock sending for testing
-		log.Printf("[LINE] Reply to %s: %s", replyToken, text)
+		// No client configured, just log
+		log.Printf("[LINE] Reply to %s: %s (client not configured)", replyToken, text)
 		return nil
 	}
 
-	// TODO: Implement actual LINE API call
-	// return u.client.SendMessage(ctx, replyToken, text)
-	log.Printf("[LINE] Reply to %s: %s", replyToken, text)
-	return nil
+	// Send actual message via LINE Messaging API
+	return u.client.SendMessage(ctx, replyToken, text)
 }

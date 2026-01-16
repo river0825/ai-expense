@@ -5,8 +5,12 @@ import (
 	"net/http"
 
 	httpAdapter "github.com/riverlin/aiexpense/internal/adapter/http"
+	"github.com/riverlin/aiexpense/internal/adapter/messenger/discord"
 	"github.com/riverlin/aiexpense/internal/adapter/messenger/line"
+	"github.com/riverlin/aiexpense/internal/adapter/messenger/slack"
+	"github.com/riverlin/aiexpense/internal/adapter/messenger/teams"
 	"github.com/riverlin/aiexpense/internal/adapter/messenger/telegram"
+	"github.com/riverlin/aiexpense/internal/adapter/messenger/whatsapp"
 	"github.com/riverlin/aiexpense/internal/adapter/repository/sqlite"
 	"github.com/riverlin/aiexpense/internal/ai"
 	"github.com/riverlin/aiexpense/internal/config"
@@ -44,7 +48,17 @@ func main() {
 	parseConversationUseCase := usecase.NewParseConversationUseCase(aiService)
 	createExpenseUseCase := usecase.NewCreateExpenseUseCase(expenseRepo, categoryRepo, aiService)
 	getExpensesUseCase := usecase.NewGetExpensesUseCase(expenseRepo, categoryRepo)
+	updateExpenseUseCase := usecase.NewUpdateExpenseUseCase(expenseRepo, categoryRepo)
+	deleteExpenseUseCase := usecase.NewDeleteExpenseUseCase(expenseRepo)
+	manageCategoryUseCase := usecase.NewManageCategoryUseCase(categoryRepo)
+	generateReportUseCase := usecase.NewGenerateReportUseCase(expenseRepo, categoryRepo, metricsRepo)
+	budgetManagementUseCase := usecase.NewBudgetManagementUseCase(categoryRepo, expenseRepo)
+	dataExportUseCase := usecase.NewDataExportUseCase(expenseRepo, categoryRepo)
 	metricsUseCase := usecase.NewMetricsUseCase(metricsRepo)
+	recurringExpenseUseCase := usecase.NewRecurringExpenseUseCase(expenseRepo, categoryRepo)
+	notificationUseCase := usecase.NewNotificationUseCase()
+	searchExpenseUseCase := usecase.NewSearchExpenseUseCase(expenseRepo, categoryRepo)
+	archiveUseCase := usecase.NewArchiveUseCase(expenseRepo)
 
 	// Initialize HTTP handler
 	handler := httpAdapter.NewHandler(
@@ -52,6 +66,16 @@ func main() {
 		parseConversationUseCase,
 		createExpenseUseCase,
 		getExpensesUseCase,
+		updateExpenseUseCase,
+		deleteExpenseUseCase,
+		manageCategoryUseCase,
+		generateReportUseCase,
+		budgetManagementUseCase,
+		dataExportUseCase,
+		recurringExpenseUseCase,
+		notificationUseCase,
+		searchExpenseUseCase,
+		archiveUseCase,
 		metricsUseCase,
 		userRepo,
 		categoryRepo,
@@ -97,6 +121,87 @@ func main() {
 		telegramHandler = telegram.NewHandler(cfg.TelegramBotToken, telegramUseCase)
 	}
 
+	// Initialize Discord client (optional)
+	var discordHandler *discord.Handler
+	if cfg.DiscordBotToken != "" {
+		discordClient, err := discord.NewClient(cfg.DiscordBotToken)
+		if err != nil {
+			log.Fatalf("Failed to initialize Discord client: %v", err)
+		}
+
+		// Initialize Discord use case
+		discordUseCase := discord.NewDiscordUseCase(
+			autoSignupUseCase,
+			parseConversationUseCase,
+			createExpenseUseCase,
+			discordClient,
+		)
+
+		// Initialize Discord webhook handler
+		discordHandler = discord.NewHandler(cfg.DiscordBotToken, discordUseCase)
+	}
+
+	// Initialize WhatsApp client (optional)
+	var whatsappHandler *whatsapp.Handler
+	if cfg.WhatsAppPhoneNumberID != "" && cfg.WhatsAppAccessToken != "" {
+		whatsappClient, err := whatsapp.NewClient(cfg.WhatsAppPhoneNumberID, cfg.WhatsAppAccessToken)
+		if err != nil {
+			log.Fatalf("Failed to initialize WhatsApp client: %v", err)
+		}
+
+		// Initialize WhatsApp use case
+		whatsappUseCase := whatsapp.NewWhatsAppUseCase(
+			autoSignupUseCase,
+			parseConversationUseCase,
+			createExpenseUseCase,
+			whatsappClient,
+		)
+
+		// Initialize WhatsApp webhook handler with app secret
+		appSecret := "" // In production, this would be the app secret from Meta
+		whatsappHandler = whatsapp.NewHandler(appSecret, cfg.WhatsAppPhoneNumberID, whatsappUseCase)
+	}
+
+	// Initialize Slack client (optional)
+	var slackHandler *slack.Handler
+	if cfg.SlackBotToken != "" {
+		slackClient, err := slack.NewClient(cfg.SlackBotToken)
+		if err != nil {
+			log.Fatalf("Failed to initialize Slack client: %v", err)
+		}
+
+		// Initialize Slack use case
+		slackUseCase := slack.NewSlackUseCase(
+			autoSignupUseCase,
+			parseConversationUseCase,
+			createExpenseUseCase,
+			slackClient,
+		)
+
+		// Initialize Slack webhook handler
+		slackHandler = slack.NewHandler(cfg.SlackSigningSecret, slackUseCase)
+	}
+
+	// Initialize Microsoft Teams client (optional)
+	var teamsHandler *teams.Handler
+	if cfg.TeamsAppID != "" && cfg.TeamsAppPassword != "" {
+		teamsClient, err := teams.NewClient(cfg.TeamsAppID, cfg.TeamsAppPassword)
+		if err != nil {
+			log.Fatalf("Failed to initialize Teams client: %v", err)
+		}
+
+		// Initialize Teams use case
+		teamsUseCase := teams.NewTeamsUseCase(
+			autoSignupUseCase,
+			parseConversationUseCase,
+			createExpenseUseCase,
+			teamsClient,
+		)
+
+		// Initialize Teams webhook handler
+		teamsHandler = teams.NewHandler(cfg.TeamsAppID, cfg.TeamsAppPassword, teamsUseCase)
+	}
+
 	// Initialize HTTP server
 	mux := http.NewServeMux()
 	httpAdapter.RegisterRoutes(mux, handler)
@@ -108,6 +213,31 @@ func main() {
 	if telegramHandler != nil {
 		mux.HandleFunc("POST /webhook/telegram", telegramHandler.HandleWebhook)
 		log.Printf("Telegram webhook enabled at /webhook/telegram")
+	}
+
+	// Add Discord webhook endpoint (if configured)
+	if discordHandler != nil {
+		mux.HandleFunc("POST /webhook/discord", discordHandler.HandleWebhook)
+		log.Printf("Discord webhook enabled at /webhook/discord")
+	}
+
+	// Add WhatsApp webhook endpoint (if configured)
+	if whatsappHandler != nil {
+		mux.HandleFunc("GET /webhook/whatsapp", whatsappHandler.HandleWebhook)
+		mux.HandleFunc("POST /webhook/whatsapp", whatsappHandler.HandleWebhook)
+		log.Printf("WhatsApp webhook enabled at /webhook/whatsapp")
+	}
+
+	// Add Slack webhook endpoint (if configured)
+	if slackHandler != nil {
+		mux.HandleFunc("POST /webhook/slack", slackHandler.HandleWebhook)
+		log.Printf("Slack webhook enabled at /webhook/slack")
+	}
+
+	// Add Microsoft Teams webhook endpoint (if configured)
+	if teamsHandler != nil {
+		mux.HandleFunc("POST /webhook/teams", teamsHandler.HandleWebhook)
+		log.Printf("Microsoft Teams webhook enabled at /webhook/teams")
 	}
 
 	// TODO: Add more use cases and handlers:
