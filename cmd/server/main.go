@@ -117,10 +117,31 @@ func main() {
 	// - GenerateReportUseCase
 	// - MetricsAggregatorUseCase
 
+	// Wrap mux with CORS middleware for dashboard
+	corsHandler := withCORS(mux)
+
 	// Start server
 	addr := ":" + cfg.ServerPort
 	log.Printf("Starting server on %s", addr)
-	if err := http.ListenAndServe(addr, mux); err != nil {
+	if err := http.ListenAndServe(addr, corsHandler); err != nil {
 		log.Fatalf("Server failed: %v", err)
 	}
+}
+
+// withCORS wraps HTTP handler with CORS headers
+func withCORS(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-API-Key")
+		w.Header().Set("Access-Control-Max-Age", "3600")
+
+		// Handle OPTIONS requests
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
 }
