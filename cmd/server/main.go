@@ -43,6 +43,7 @@ func main() {
 	parseConversationUseCase := usecase.NewParseConversationUseCase(aiService)
 	createExpenseUseCase := usecase.NewCreateExpenseUseCase(expenseRepo, categoryRepo, aiService)
 	getExpensesUseCase := usecase.NewGetExpensesUseCase(expenseRepo, categoryRepo)
+	metricsUseCase := usecase.NewMetricsUseCase(metricsRepo)
 
 	// Initialize HTTP handler
 	handler := httpAdapter.NewHandler(
@@ -50,6 +51,7 @@ func main() {
 		parseConversationUseCase,
 		createExpenseUseCase,
 		getExpensesUseCase,
+		metricsUseCase,
 		userRepo,
 		categoryRepo,
 		expenseRepo,

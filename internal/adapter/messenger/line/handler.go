@@ -10,8 +10,6 @@ import (
 	"log"
 	"net/http"
 	"strings"
-
-	"github.com/riverlin/aiexpense/internal/usecase"
 )
 
 // Handler handles LINE bot webhook events

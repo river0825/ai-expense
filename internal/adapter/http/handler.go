@@ -1,13 +1,10 @@
 package http
 
 import (
-	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"time"
 
-	"github.com/riverlin/aiexpense/internal/ai"
 	"github.com/riverlin/aiexpense/internal/domain"
 	"github.com/riverlin/aiexpense/internal/usecase"
 )
@@ -18,6 +15,7 @@ type Handler struct {
 	parseConversationUC  *usecase.ParseConversationUseCase
 	createExpenseUC      *usecase.CreateExpenseUseCase
 	getExpensesUC        *usecase.GetExpensesUseCase
+	metricsUC            *usecase.MetricsUseCase
 	userRepo             domain.UserRepository
 	categoryRepo         domain.CategoryRepository
 	expenseRepo          domain.ExpenseRepository
@@ -31,6 +29,7 @@ func NewHandler(
 	parseConversationUC *usecase.ParseConversationUseCase,
 	createExpenseUC *usecase.CreateExpenseUseCase,
 	getExpensesUC *usecase.GetExpensesUseCase,
+	metricsUC *usecase.MetricsUseCase,
 	userRepo domain.UserRepository,
 	categoryRepo domain.CategoryRepository,
 	expenseRepo domain.ExpenseRepository,
@@ -42,6 +41,7 @@ func NewHandler(
 		parseConversationUC: parseConversationUC,
 		createExpenseUC:     createExpenseUC,
 		getExpensesUC:       getExpensesUC,
+		metricsUC:           metricsUC,
 		userRepo:            userRepo,
 		categoryRepo:        categoryRepo,
 		expenseRepo:         expenseRepo,
@@ -216,17 +216,13 @@ func (h *Handler) GetMetricsDAU(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 
-	// Get last 30 days
-	to := time.Now()
-	from := to.AddDate(0, 0, -30)
-
-	metrics, err := h.metricsRepo.GetDailyActiveUsers(ctx, from, to)
+	resp, err := h.metricsUC.GetDailyActiveUsers(ctx, &usecase.DailyActiveUsersRequest{Days: 30})
 	if err != nil {
 		h.WriteJSON(w, http.StatusInternalServerError, &Response{Status: "error", Error: err.Error()})
 		return
 	}
 
-	h.WriteJSON(w, http.StatusOK, &Response{Status: "success", Data: metrics})
+	h.WriteJSON(w, http.StatusOK, &Response{Status: "success", Data: resp})
 }
 
 // GetMetricsExpenses retrieves expense summary
@@ -238,16 +234,13 @@ func (h *Handler) GetMetricsExpenses(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 
-	to := time.Now()
-	from := to.AddDate(0, 0, -30)
-
-	metrics, err := h.metricsRepo.GetExpensesSummary(ctx, from, to)
+	resp, err := h.metricsUC.GetExpensesSummary(ctx, &usecase.ExpensesSummaryRequest{Days: 30})
 	if err != nil {
 		h.WriteJSON(w, http.StatusInternalServerError, &Response{Status: "error", Error: err.Error()})
 		return
 	}
 
-	h.WriteJSON(w, http.StatusOK, &Response{Status: "success", Data: metrics})
+	h.WriteJSON(w, http.StatusOK, &Response{Status: "success", Data: resp})
 }
 
 // GetMetricsGrowth retrieves growth metrics
@@ -259,13 +252,13 @@ func (h *Handler) GetMetricsGrowth(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 
-	metrics, err := h.metricsRepo.GetGrowthMetrics(ctx, 30)
+	resp, err := h.metricsUC.GetGrowthMetrics(ctx, &usecase.GrowthMetricsRequest{Days: 30})
 	if err != nil {
 		h.WriteJSON(w, http.StatusInternalServerError, &Response{Status: "error", Error: err.Error()})
 		return
 	}
 
-	h.WriteJSON(w, http.StatusOK, &Response{Status: "success", Data: metrics})
+	h.WriteJSON(w, http.StatusOK, &Response{Status: "success", Data: resp})
 }
 
 // authenticateAdmin checks if request has valid admin API key

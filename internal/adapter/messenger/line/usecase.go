@@ -3,7 +3,6 @@ package line
 import (
 	"context"
 	"log"
-	"time"
 
 	"github.com/riverlin/aiexpense/internal/usecase"
 )
