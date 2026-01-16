@@ -13,6 +13,9 @@ type Config struct {
 	LineChannelToken string
 	LineChannelID    string
 
+	// Telegram Bot
+	TelegramBotToken string
+
 	// Gemini AI
 	GeminiAPIKey string
 	AIProvider   string // "gemini", "claude", "openai"
@@ -29,6 +32,7 @@ func Load() (*Config, error) {
 		DatabasePath:     getEnv("DATABASE_PATH", "./aiexpense.db"),
 		LineChannelToken: getEnv("LINE_CHANNEL_TOKEN", ""),
 		LineChannelID:    getEnv("LINE_CHANNEL_ID", ""),
+		TelegramBotToken: getEnv("TELEGRAM_BOT_TOKEN", ""),
 		GeminiAPIKey:     getEnv("GEMINI_API_KEY", ""),
 		AIProvider:       getEnv("AI_PROVIDER", "gemini"),
 		ServerPort:       getEnv("SERVER_PORT", "8080"),
