@@ -48,3 +48,242 @@ Users want a frictionless way to track expenses through natural conversation, wi
 - **Messenger Adapters:** Clean Architecture enables adding Telegram, Discord, Slack without modifying core code
 - **Single Binary:** Go compilation produces one executable; SQLite requires no external database server
 - **Extensible:** Keyword-based category suggestion can be upgraded to ML later without breaking API contracts
+
+## Gherkin Specifications (TDD/BDD)
+
+### Feature: User Auto-Signup
+```gherkin
+Scenario 1: First-time user signup
+[ ] WHEN user sends first message to bot
+[ ] THEN system creates user record with messenger type
+[ ] AND initializes default expense categories
+
+Scenario 2: Existing user message
+[-] WHEN existing user sends message
+[ ] THEN system recognizes user and processes request
+[ ] AND does NOT create duplicate user record
+
+Scenario 3: Multiple messenger platforms
+[ ] WHEN different messenger platforms connect
+[ ] THEN system handles each platform independently
+[ ] AND maintains separate user records per messenger
+```
+
+### Feature: Expense Management
+```gherkin
+Scenario 1: Create expense from natural language
+[x] WHEN user sends natural language expense description
+[x] THEN system parses text to extract amount and description
+[x] AND suggests appropriate category using AI
+[x] AND stores expense with date, amount, category
+
+Scenario 2: List expenses by date range
+[-] WHEN user requests expenses for date range
+[-] THEN system returns matching expense records
+[-] AND groups by category or date as requested
+
+Scenario 3: Update expense
+[ ] WHEN user modifies existing expense
+[ ] THEN system updates record and recalculates metrics
+[ ] AND maintains audit trail of changes
+
+Scenario 4: Delete expense
+[x] WHEN user deletes own expense
+[x] THEN system removes from database
+[x] AND recalculates user metrics
+```
+
+### Feature: AI-Powered Category Suggestion
+```gherkin
+Scenario 1: Suggest category from description
+[-] WHEN AI service receives expense description
+[-] THEN system suggests best matching category
+[-] AND provides confidence score and alternatives
+
+Scenario 2: Learn from corrections
+[ ] WHEN user corrects category suggestion
+[ ] THEN system learns from feedback for future suggestions
+[ ] AND improves recommendation accuracy
+```
+
+### Feature: Business Metrics Dashboard
+```gherkin
+Scenario 1: Daily Active Users (DAU)
+[ ] WHEN admin queries DAU metrics
+[ ] THEN system returns count of unique users per day
+[ ] AND shows trend over time
+
+Scenario 2: Expense Summary
+[ ] WHEN user requests expense summary
+[ ] THEN system returns total spent, by category, by time period
+[ ] AND provides comparison with previous periods
+
+Scenario 3: Category Trends
+[ ] WHEN admin views category analytics
+[ ] THEN system shows spending by category over time
+[ ] AND identifies top spending categories
+```
+
+## DDD Domain Model
+
+### Aggregate: User
+```
+Entity: User
+  - user_id (Value Object: UserID)
+  - messenger_type (Value Object: MessengerType)
+  - created_at (Value Object: Timestamp)
+
+Repository: UserRepository
+  - Create(User) -> error
+  - GetByID(UserID) -> User
+  - Exists(UserID) -> bool
+```
+
+### Aggregate: Expense
+```
+Entity: Expense
+  - id (Value Object: ExpenseID)
+  - user_id (Value Object: UserID)
+  - amount (Value Object: Money)
+  - description (Value Object: ExpenseDescription)
+  - category_id (Value Object: CategoryID)
+  - expense_date (Value Object: Date)
+  - created_at (Value Object: Timestamp)
+
+Domain Events:
+  - ExpenseCreated(ExpenseID, UserID, Amount)
+  - ExpenseUpdated(ExpenseID, Changes)
+  - ExpenseDeleted(ExpenseID)
+
+Repository: ExpenseRepository
+  - Create(Expense) -> error
+  - GetByID(ExpenseID) -> Expense
+  - GetByUserID(UserID) -> []Expense
+  - GetByUserIDAndDateRange(UserID, DateRange) -> []Expense
+  - Update(Expense) -> error
+  - Delete(ExpenseID) -> error
+```
+
+### Aggregate: Category
+```
+Entity: Category
+  - id (Value Object: CategoryID)
+  - user_id (Value Object: UserID)
+  - name (Value Object: CategoryName)
+  - is_default (bool)
+
+Value Object: CategoryKeyword
+  - keyword (string)
+  - priority (int)
+
+Repository: CategoryRepository
+  - Create(Category) -> error
+  - GetByID(CategoryID) -> Category
+  - GetByUserID(UserID) -> []Category
+  - GetByUserIDAndName(UserID, CategoryName) -> Category
+  - CreateKeyword(CategoryKeyword) -> error
+  - GetKeywordsByCategory(CategoryID) -> []CategoryKeyword
+```
+
+### Service: AIService (Domain Service)
+```
+Interface: AIService
+  - ParseExpense(text, userID) -> []ParsedExpense
+  - SuggestCategory(description, userID) -> CategorySuggestion
+
+Value Objects:
+  - ParsedExpense: Amount, Description, Date
+  - CategorySuggestion: CategoryID, Confidence, Alternatives
+```
+
+## UseCase Design
+
+### UseCase 1: AutoSignupUseCase
+```
+Input: UserID, MessengerType
+Process:
+  1. Check if user exists (UserRepository.Exists)
+  2. If not exists:
+     a. Create user record
+     b. Initialize default categories
+     c. Return newly created User
+  3. If exists:
+     a. Return existing User (idempotent)
+Output: User
+Errors: DatabaseError, ValidationError
+```
+
+### UseCase 2: CreateExpenseUseCase
+```
+Input: UserID, ExpenseText, Date (optional)
+Process:
+  1. Parse natural language text (AIService.ParseExpense)
+  2. For each parsed expense:
+     a. Suggest category (AIService.SuggestCategory)
+     b. Create Expense entity
+     c. Persist to repository (ExpenseRepository.Create)
+     d. Emit ExpenseCreated domain event
+  3. Return created Expense records
+Output: []Expense
+Errors: ParseError, AIServiceError, ValidationError, DatabaseError
+```
+
+### UseCase 3: GetExpensesUseCase
+```
+Input: UserID, DateRange (optional), CategoryID (optional)
+Process:
+  1. Build query filter from inputs
+  2. Fetch from repository (ExpenseRepository.GetByUserIDAndDateRange)
+  3. Apply category filter if specified
+  4. Return sorted by date (descending)
+Output: []Expense
+Errors: ValidationError, DatabaseError
+```
+
+### UseCase 4: SuggestCategoryUseCase
+```
+Input: ExpenseDescription, UserID
+Process:
+  1. Call AI service (AIService.SuggestCategory)
+  2. Validate suggestion against user's categories
+  3. Return suggestion with confidence
+Output: CategorySuggestion
+Errors: AIServiceError, ValidationError
+```
+
+## Repository Interfaces (Initial In-Memory Implementation)
+
+All repositories use In-Memory maps before database integration:
+
+### UserRepository Interface
+```go
+interface UserRepository {
+  Create(ctx, user *User) error
+  GetByID(ctx, userID string) (*User, error)
+  Exists(ctx, userID string) (bool, error)
+}
+```
+
+### ExpenseRepository Interface
+```go
+interface ExpenseRepository {
+  Create(ctx, expense *Expense) error
+  GetByID(ctx, id string) (*Expense, error)
+  GetByUserID(ctx, userID string) ([]*Expense, error)
+  GetByUserIDAndDateRange(ctx, userID string, from, to time.Time) ([]*Expense, error)
+  Update(ctx, expense *Expense) error
+  Delete(ctx, id string) error
+}
+```
+
+### CategoryRepository Interface
+```go
+interface CategoryRepository {
+  Create(ctx, category *Category) error
+  GetByID(ctx, id string) (*Category, error)
+  GetByUserID(ctx, userID string) ([]*Category, error)
+  GetByUserIDAndName(ctx, userID, name string) (*Category, error)
+  CreateKeyword(ctx, keyword *CategoryKeyword) error
+  GetKeywordsByCategory(ctx, categoryID string) ([]*CategoryKeyword, error)
+}
+```

@@ -1,16 +1,16 @@
-# Implementation Tasks
+# Implementation Tasks (TDD/BDD/DDD)
 
 ## Phase 0: Project Setup
-- [ ] 0.1 Initialize Go module and set up project structure (cmd/, internal/, migrations/)
-- [ ] 0.2 Add dependencies: go-sqlite3, chi (or net/http), line-bot-sdk, google-generative-ai
-- [ ] 0.3 Create SQLite database and run migrations (users, expenses, categories, category_keywords, metrics tables)
-- [ ] 0.4 Set up configuration management (env variables for LINE token, Gemini API key, database path)
+- [x] 0.1 Initialize Go module and set up project structure (cmd/, internal/, migrations/)
+- [x] 0.2 Add dependencies: go-sqlite3, chi (or net/http), line-bot-sdk, google-generative-ai
+- [x] 0.3 Create SQLite database and run migrations (users, expenses, categories, category_keywords, metrics tables)
+- [x] 0.4 Set up configuration management (env variables for LINE token, Gemini API key, database path)
 
-## Phase 1: Domain Layer (Entities & Interfaces)
-- [ ] 1.1 Define domain models (Expense, Category, User structs)
-- [ ] 1.2 Define repository interfaces (ExpenseRepository, CategoryRepository, UserRepository)
-- [ ] 1.3 Define service interfaces (MessengerService, ConversationParser, AIService, MetricsService)
-- [ ] 1.4 Set up dependency injection container (wire or manual)
+## Phase 1: Domain Layer (DDD - Entities & Interfaces)
+- [x] 1.1 Define domain models (Expense, Category, User structs with value objects)
+- [x] 1.2 Define repository interfaces (ExpenseRepository, CategoryRepository, UserRepository)
+- [x] 1.3 Define service interfaces (MessengerService, ConversationParser, AIService, MetricsService)
+- [x] 1.4 Set up dependency injection container (wire or manual)
 
 ## Phase 2: Repository Layer (SQLite Implementation)
 - [ ] 2.1 Implement UserRepository (SQLite): Create, Read, check existence
