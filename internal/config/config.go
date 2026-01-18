@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"strings"
 )
 
 type Config struct {
@@ -40,6 +41,9 @@ type Config struct {
 
 	// Admin API Key for metrics
 	AdminAPIKey string
+
+	// Enabled Messengers
+	EnabledMessengers []string
 }
 
 func Load() (*Config, error) {
@@ -61,15 +65,37 @@ func Load() (*Config, error) {
 		AdminAPIKey:           getEnv("ADMIN_API_KEY", ""),
 	}
 
+	// Parse enabled messengers
+	enabledMessengersEnv := getEnv("ENABLED_MESSENGERS", "")
+	if enabledMessengersEnv == "" {
+		cfg.EnabledMessengers = []string{"terminal"}
+	} else {
+		cfg.EnabledMessengers = strings.Split(enabledMessengersEnv, ",")
+		// Trim spaces
+		for i, m := range cfg.EnabledMessengers {
+			cfg.EnabledMessengers[i] = strings.TrimSpace(m)
+		}
+	}
+
 	// Validate required fields
-	if cfg.LineChannelToken == "" {
-		return nil, fmt.Errorf("LINE_CHANNEL_TOKEN is required")
+	if cfg.IsMessengerEnabled("line") && cfg.LineChannelToken == "" {
+		return nil, fmt.Errorf("LINE_CHANNEL_TOKEN is required when line messenger is enabled")
 	}
 	if cfg.GeminiAPIKey == "" && cfg.AIProvider == "gemini" {
 		return nil, fmt.Errorf("GEMINI_API_KEY is required when using gemini AI provider")
 	}
 
 	return cfg, nil
+}
+
+// IsMessengerEnabled checks if a specific messenger is enabled
+func (c *Config) IsMessengerEnabled(name string) bool {
+	for _, m := range c.EnabledMessengers {
+		if m == name {
+			return true
+		}
+	}
+	return false
 }
 
 func getEnv(key, defaultVal string) string {

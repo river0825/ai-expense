@@ -26,8 +26,8 @@ func NewParseConversationUseCase(aiService ai.Service) *ParseConversationUseCase
 func (u *ParseConversationUseCase) Execute(ctx context.Context, text string, userID string) ([]*domain.ParsedExpense, error) {
 	// Call AI service to parse expenses
 	expenses, err := u.aiService.ParseExpense(ctx, text, userID)
-	if err != nil {
-		// Fallback to regex parsing if AI fails
+	if err != nil || len(expenses) == 0 {
+		// Fallback to regex parsing if AI fails or returns no expenses
 		expenses = u.parseWithRegex(text)
 	}
 

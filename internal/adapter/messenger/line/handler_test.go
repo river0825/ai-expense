@@ -448,6 +448,10 @@ func setupMockAIService() domain.AIService {
 type mockAIService struct{}
 
 func (m *mockAIService) ParseExpense(ctx context.Context, text string, userID string) ([]*domain.ParsedExpense, error) {
+	// Return nil for empty text to test graceful handling
+	if text == "" {
+		return nil, nil
+	}
 	// Simple mock that returns a basic expense
 	return []*domain.ParsedExpense{
 		{

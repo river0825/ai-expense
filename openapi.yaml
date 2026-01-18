@@ -1,0 +1,1058 @@
+openapi: 3.0.0
+info:
+  title: AIExpense API
+  description: |
+    Conversational Expense Tracking System API
+
+    A REST API for managing expenses through natural language conversation with support for:
+    - Automatic user signup via messenger platforms
+    - AI-powered expense parsing and category suggestion
+    - Comprehensive expense management (CRUD operations)
+    - Category management with keyword matching
+    - Business metrics dashboard
+    - Report generation
+    - Budget management
+    - Data export and archiving
+    - Notifications and recurring expenses
+  version: 1.0.0
+  contact:
+    name: AIExpense Team
+    url: https://github.com/riverlin/aiexpense
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+  - url: https://api.aiexpense.app
+    description: Production server
+
+tags:
+  - name: Users
+    description: User management and auto-signup
+  - name: Expenses
+    description: Expense management (CRUD operations)
+  - name: Categories
+    description: Category management
+  - name: Metrics
+    description: Business metrics and analytics
+  - name: Reports
+    description: Report generation and export
+  - name: Budget
+    description: Budget management
+  - name: Recurring
+    description: Recurring expense management
+  - name: Notifications
+    description: Notification management
+  - name: Archive
+    description: Archive management
+  - name: Health
+    description: Health and monitoring endpoints
+
+paths:
+  /api/users/auto-signup:
+    post:
+      tags:
+        - Users
+      summary: Auto-signup user
+      description: Automatically register a new user or retrieve existing user
+      operationId: autoSignup
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AutoSignupRequest'
+      responses:
+        '200':
+          description: User signed up successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Missing required fields
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/expenses/parse:
+    post:
+      tags:
+        - Expenses
+      summary: Parse natural language expense
+      description: Parse natural language text to extract expenses using AI
+      operationId: parseExpenses
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ParseRequest'
+      responses:
+        '200':
+          description: Expenses parsed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ParsedExpense'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/expenses:
+    post:
+      tags:
+        - Expenses
+      summary: Create expense
+      description: Create a new expense record
+      operationId: createExpense
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateExpenseRequest'
+      responses:
+        '201':
+          description: Expense created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    get:
+      tags:
+        - Expenses
+      summary: List expenses
+      description: Retrieve expenses with optional filtering
+      operationId: getExpenses
+      parameters:
+        - name: user_id
+          in: query
+          description: User ID
+          required: true
+          schema:
+            type: string
+        - name: from
+          in: query
+          description: Start date (ISO 8601)
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          description: End date (ISO 8601)
+          schema:
+            type: string
+            format: date-time
+        - name: category_id
+          in: query
+          description: Filter by category ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Expenses retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Expense'
+
+  /api/expenses/{expense_id}:
+    put:
+      tags:
+        - Expenses
+      summary: Update expense
+      description: Update an existing expense
+      operationId: updateExpense
+      parameters:
+        - name: expense_id
+          in: path
+          description: Expense ID
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateExpenseRequest'
+      responses:
+        '200':
+          description: Expense updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '404':
+          description: Expense not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      tags:
+        - Expenses
+      summary: Delete expense
+      description: Delete an expense record
+      operationId: deleteExpense
+      parameters:
+        - name: expense_id
+          in: path
+          description: Expense ID
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Expense deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '404':
+          description: Expense not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/expenses/search:
+    get:
+      tags:
+        - Expenses
+      summary: Search expenses
+      description: Search expenses by keyword
+      operationId: searchExpenses
+      parameters:
+        - name: user_id
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: q
+          in: query
+          description: Search query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Expense'
+
+  /api/expenses/filter:
+    get:
+      tags:
+        - Expenses
+      summary: Filter expenses
+      description: Filter expenses by multiple criteria
+      operationId: filterExpenses
+      parameters:
+        - name: user_id
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: min_amount
+          in: query
+          schema:
+            type: number
+        - name: max_amount
+          in: query
+          schema:
+            type: number
+        - name: category_id
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Filtered expenses
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Expense'
+
+  /api/categories:
+    get:
+      tags:
+        - Categories
+      summary: List categories
+      description: Get all categories for a user
+      operationId: getCategories
+      parameters:
+        - name: user_id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Categories retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Category'
+
+    post:
+      tags:
+        - Categories
+      summary: Create category
+      description: Create a new category
+      operationId: createCategory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCategoryRequest'
+      responses:
+        '201':
+          description: Category created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+
+  /api/categories/{category_id}:
+    put:
+      tags:
+        - Categories
+      summary: Update category
+      description: Update an existing category
+      operationId: updateCategory
+      parameters:
+        - name: category_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCategoryRequest'
+      responses:
+        '200':
+          description: Category updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+
+    delete:
+      tags:
+        - Categories
+      summary: Delete category
+      description: Delete a category
+      operationId: deleteCategory
+      parameters:
+        - name: category_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Category deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+
+  /api/metrics/dau:
+    get:
+      tags:
+        - Metrics
+      summary: Get daily active users
+      description: Get daily active users metrics (requires admin API key)
+      operationId: getMetricsDAU
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: DAU metrics retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  data:
+                    type: object
+        '401':
+          description: Unauthorized - invalid or missing API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/metrics/expenses-summary:
+    get:
+      tags:
+        - Metrics
+      summary: Get expense summary
+      description: Get expense metrics by user or globally
+      operationId: getMetricsExpenses
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: user_id
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Expense metrics retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  data:
+                    type: object
+
+  /api/metrics/growth:
+    get:
+      tags:
+        - Metrics
+      summary: Get growth metrics
+      description: Get user growth metrics (requires admin API key)
+      operationId: getMetricsGrowth
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: Growth metrics retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  data:
+                    type: object
+
+  /api/reports/generate:
+    post:
+      tags:
+        - Reports
+      summary: Generate expense report
+      description: Generate expense report for a user
+      operationId: generateReport
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenerateReportRequest'
+      responses:
+        '200':
+          description: Report generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+
+  /api/expenses/export:
+    post:
+      tags:
+        - Reports
+      summary: Export expenses
+      description: Export expenses to CSV or JSON format
+      operationId: exportExpenses
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExportRequest'
+      responses:
+        '200':
+          description: Expenses exported successfully
+          content:
+            text/csv:
+              schema:
+                type: string
+            application/json:
+              schema:
+                type: object
+
+  /api/budget/status:
+    get:
+      tags:
+        - Budget
+      summary: Get budget status
+      description: Get current budget status for user
+      operationId: getBudgetStatus
+      parameters:
+        - name: user_id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Budget status retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+
+  /api/budget/compare:
+    get:
+      tags:
+        - Budget
+      summary: Compare to budget
+      description: Compare spending to budget
+      operationId: compareToBudget
+      parameters:
+        - name: user_id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Budget comparison retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+
+  /api/recurring:
+    post:
+      tags:
+        - Recurring
+      summary: Create recurring expense
+      description: Create a recurring expense
+      operationId: createRecurring
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRecurringRequest'
+      responses:
+        '201':
+          description: Recurring expense created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+
+    get:
+      tags:
+        - Recurring
+      summary: List recurring expenses
+      description: Get all recurring expenses for user
+      operationId: listRecurring
+      parameters:
+        - name: user_id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Recurring expenses retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  data:
+                    type: array
+
+  /api/recurring/{recurring_id}:
+    put:
+      tags:
+        - Recurring
+      summary: Update recurring expense
+      operationId: updateRecurring
+      parameters:
+        - name: recurring_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateRecurringRequest'
+      responses:
+        '200':
+          description: Recurring expense updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+
+    delete:
+      tags:
+        - Recurring
+      summary: Delete recurring expense
+      operationId: deleteRecurring
+      parameters:
+        - name: recurring_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Recurring expense deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+
+  /api/notifications:
+    get:
+      tags:
+        - Notifications
+      summary: List notifications
+      operationId: listNotifications
+      parameters:
+        - name: user_id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Notifications retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  data:
+                    type: array
+
+    post:
+      tags:
+        - Notifications
+      summary: Create notification
+      operationId: createNotification
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateNotificationRequest'
+      responses:
+        '201':
+          description: Notification created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+
+  /api/notifications/{notification_id}/read:
+    put:
+      tags:
+        - Notifications
+      summary: Mark notification as read
+      operationId: markNotificationAsRead
+      parameters:
+        - name: notification_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Notification marked as read
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+
+  /api/archive:
+    post:
+      tags:
+        - Archive
+      summary: Create archive
+      operationId: createArchive
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateArchiveRequest'
+      responses:
+        '201':
+          description: Archive created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+
+    get:
+      tags:
+        - Archive
+      summary: List archives
+      operationId: listArchives
+      parameters:
+        - name: user_id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Archives retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  data:
+                    type: array
+
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Health check
+      description: Check API health status
+      operationId: health
+      responses:
+        '200':
+          description: API is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  timestamp:
+                    type: string
+
+components:
+  schemas:
+    AutoSignupRequest:
+      type: object
+      required:
+        - user_id
+        - messenger_type
+      properties:
+        user_id:
+          type: string
+          description: Unique user identifier from messenger platform
+        messenger_type:
+          type: string
+          enum: [line, telegram, slack, teams, discord, whatsapp]
+          description: Messenger platform type
+
+    ParseRequest:
+      type: object
+      required:
+        - user_id
+        - text
+      properties:
+        user_id:
+          type: string
+        text:
+          type: string
+          description: Natural language text to parse
+
+    CreateExpenseRequest:
+      type: object
+      required:
+        - user_id
+        - description
+        - amount
+      properties:
+        user_id:
+          type: string
+        description:
+          type: string
+        amount:
+          type: number
+          format: float
+        category_id:
+          type: string
+        expense_date:
+          type: string
+          format: date-time
+
+    UpdateExpenseRequest:
+      type: object
+      properties:
+        description:
+          type: string
+        amount:
+          type: number
+          format: float
+        category_id:
+          type: string
+
+    CreateCategoryRequest:
+      type: object
+      required:
+        - user_id
+        - name
+      properties:
+        user_id:
+          type: string
+        name:
+          type: string
+
+    UpdateCategoryRequest:
+      type: object
+      properties:
+        name:
+          type: string
+
+    GenerateReportRequest:
+      type: object
+      required:
+        - user_id
+      properties:
+        user_id:
+          type: string
+        from:
+          type: string
+          format: date-time
+        to:
+          type: string
+          format: date-time
+
+    ExportRequest:
+      type: object
+      required:
+        - user_id
+        - format
+      properties:
+        user_id:
+          type: string
+        format:
+          type: string
+          enum: [csv, json]
+        from:
+          type: string
+          format: date-time
+        to:
+          type: string
+          format: date-time
+
+    CreateRecurringRequest:
+      type: object
+      required:
+        - user_id
+        - description
+        - amount
+        - frequency
+      properties:
+        user_id:
+          type: string
+        description:
+          type: string
+        amount:
+          type: number
+          format: float
+        category_id:
+          type: string
+        frequency:
+          type: string
+          enum: [daily, weekly, monthly, yearly]
+        start_date:
+          type: string
+          format: date-time
+        end_date:
+          type: string
+          format: date-time
+
+    UpdateRecurringRequest:
+      type: object
+      properties:
+        description:
+          type: string
+        amount:
+          type: number
+          format: float
+        frequency:
+          type: string
+
+    CreateNotificationRequest:
+      type: object
+      required:
+        - user_id
+        - message
+      properties:
+        user_id:
+          type: string
+        message:
+          type: string
+        type:
+          type: string
+          enum: [info, warning, alert]
+
+    CreateArchiveRequest:
+      type: object
+      required:
+        - user_id
+        - name
+      properties:
+        user_id:
+          type: string
+        name:
+          type: string
+        from:
+          type: string
+          format: date-time
+        to:
+          type: string
+          format: date-time
+
+    Expense:
+      type: object
+      properties:
+        id:
+          type: string
+        user_id:
+          type: string
+        description:
+          type: string
+        amount:
+          type: number
+          format: float
+        category_id:
+          type: string
+        expense_date:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    ParsedExpense:
+      type: object
+      properties:
+        description:
+          type: string
+        amount:
+          type: number
+          format: float
+        date:
+          type: string
+          format: date-time
+
+    Category:
+      type: object
+      properties:
+        id:
+          type: string
+        user_id:
+          type: string
+        name:
+          type: string
+        is_default:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+
+    SuccessResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [success]
+        message:
+          type: string
+        data:
+          type: object
+
+    ErrorResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [error]
+        error:
+          type: string
+
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: Admin API key for accessing metrics endpoints

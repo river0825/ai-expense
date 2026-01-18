@@ -124,6 +124,12 @@ func (h *Handler) AutoSignup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Validate required fields
+	if req.UserID == "" || req.MessengerType == "" {
+		h.WriteJSON(w, http.StatusBadRequest, &Response{Status: "error", Error: "Missing required fields: user_id and messenger_type"})
+		return
+	}
+
 	if err := h.autoSignupUC.Execute(ctx, req.UserID, req.MessengerType); err != nil {
 		h.WriteJSON(w, http.StatusInternalServerError, &Response{Status: "error", Error: err.Error()})
 		return

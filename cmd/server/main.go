@@ -10,6 +10,7 @@ import (
 	"github.com/riverlin/aiexpense/internal/adapter/messenger/slack"
 	"github.com/riverlin/aiexpense/internal/adapter/messenger/teams"
 	"github.com/riverlin/aiexpense/internal/adapter/messenger/telegram"
+	"github.com/riverlin/aiexpense/internal/adapter/messenger/terminal"
 	"github.com/riverlin/aiexpense/internal/adapter/messenger/whatsapp"
 	"github.com/riverlin/aiexpense/internal/adapter/repository/sqlite"
 	"github.com/riverlin/aiexpense/internal/ai"
@@ -84,26 +85,43 @@ func main() {
 		cfg.AdminAPIKey,
 	)
 
-	// Initialize LINE client
-	lineClient, err := line.NewClient(cfg.LineChannelToken)
-	if err != nil {
-		log.Fatalf("Failed to initialize LINE client: %v", err)
+	// Initialize LINE client (if enabled)
+	var lineHandler *line.Handler
+	if cfg.IsMessengerEnabled("line") {
+		lineClient, err := line.NewClient(cfg.LineChannelToken)
+		if err != nil {
+			log.Fatalf("Failed to initialize LINE client: %v", err)
+		}
+
+		// Initialize LINE use case
+		lineUseCase := line.NewLineUseCase(
+			autoSignupUseCase,
+			parseConversationUseCase,
+			createExpenseUseCase,
+			lineClient,
+		)
+
+		// Initialize LINE webhook handler
+		lineHandler = line.NewHandler(cfg.LineChannelID, lineUseCase)
 	}
 
-	// Initialize LINE use case
-	lineUseCase := line.NewLineUseCase(
-		autoSignupUseCase,
-		parseConversationUseCase,
-		createExpenseUseCase,
-		lineClient,
-	)
-
-	// Initialize LINE webhook handler
-	lineHandler := line.NewHandler(cfg.LineChannelID, lineUseCase)
+	// Initialize Terminal messenger (if enabled)
+	var terminalHandler *terminal.Handler
+	if cfg.IsMessengerEnabled("terminal") {
+		terminalUseCase := terminal.NewTerminalUseCase(
+			autoSignupUseCase,
+			parseConversationUseCase,
+			createExpenseUseCase,
+			getExpensesUseCase,
+			userRepo,
+		)
+		terminalHandler = terminal.NewHandler(terminalUseCase)
+		log.Printf("Terminal messenger initialized")
+	}
 
 	// Initialize Telegram client (optional)
 	var telegramHandler *telegram.Handler
-	if cfg.TelegramBotToken != "" {
+	if cfg.IsMessengerEnabled("telegram") && cfg.TelegramBotToken != "" {
 		telegramClient, err := telegram.NewClient(cfg.TelegramBotToken)
 		if err != nil {
 			log.Fatalf("Failed to initialize Telegram client: %v", err)
@@ -123,7 +141,7 @@ func main() {
 
 	// Initialize Discord client (optional)
 	var discordHandler *discord.Handler
-	if cfg.DiscordBotToken != "" {
+	if cfg.IsMessengerEnabled("discord") && cfg.DiscordBotToken != "" {
 		discordClient, err := discord.NewClient(cfg.DiscordBotToken)
 		if err != nil {
 			log.Fatalf("Failed to initialize Discord client: %v", err)
@@ -143,7 +161,7 @@ func main() {
 
 	// Initialize WhatsApp client (optional)
 	var whatsappHandler *whatsapp.Handler
-	if cfg.WhatsAppPhoneNumberID != "" && cfg.WhatsAppAccessToken != "" {
+	if cfg.IsMessengerEnabled("whatsapp") && cfg.WhatsAppPhoneNumberID != "" && cfg.WhatsAppAccessToken != "" {
 		whatsappClient, err := whatsapp.NewClient(cfg.WhatsAppPhoneNumberID, cfg.WhatsAppAccessToken)
 		if err != nil {
 			log.Fatalf("Failed to initialize WhatsApp client: %v", err)
@@ -164,7 +182,7 @@ func main() {
 
 	// Initialize Slack client (optional)
 	var slackHandler *slack.Handler
-	if cfg.SlackBotToken != "" {
+	if cfg.IsMessengerEnabled("slack") && cfg.SlackBotToken != "" {
 		slackClient, err := slack.NewClient(cfg.SlackBotToken)
 		if err != nil {
 			log.Fatalf("Failed to initialize Slack client: %v", err)
@@ -184,7 +202,7 @@ func main() {
 
 	// Initialize Microsoft Teams client (optional)
 	var teamsHandler *teams.Handler
-	if cfg.TeamsAppID != "" && cfg.TeamsAppPassword != "" {
+	if cfg.IsMessengerEnabled("teams") && cfg.TeamsAppID != "" && cfg.TeamsAppPassword != "" {
 		teamsClient, err := teams.NewClient(cfg.TeamsAppID, cfg.TeamsAppPassword)
 		if err != nil {
 			log.Fatalf("Failed to initialize Teams client: %v", err)
@@ -207,36 +225,46 @@ func main() {
 	httpAdapter.RegisterRoutes(mux, handler)
 
 	// Add LINE webhook endpoint
-	mux.HandleFunc("POST /webhook/line", lineHandler.HandleWebhook)
+	if lineHandler != nil {
+		mux.HandleFunc("/webhook/line", lineHandler.HandleWebhook)
+		log.Printf("LINE webhook enabled at /webhook/line")
+	}
+
+	// Add Terminal messenger endpoints
+	if terminalHandler != nil {
+		mux.HandleFunc("/api/chat/terminal", terminalHandler.HandleMessage)
+		mux.HandleFunc("/api/chat/terminal/user", terminalHandler.GetUserInfo)
+		log.Printf("Terminal messenger enabled at /api/chat/terminal")
+	}
 
 	// Add Telegram webhook endpoint (if configured)
 	if telegramHandler != nil {
-		mux.HandleFunc("POST /webhook/telegram", telegramHandler.HandleWebhook)
+		mux.HandleFunc("/webhook/telegram", telegramHandler.HandleWebhook)
 		log.Printf("Telegram webhook enabled at /webhook/telegram")
 	}
 
 	// Add Discord webhook endpoint (if configured)
 	if discordHandler != nil {
-		mux.HandleFunc("POST /webhook/discord", discordHandler.HandleWebhook)
+		mux.HandleFunc("/webhook/discord", discordHandler.HandleWebhook)
 		log.Printf("Discord webhook enabled at /webhook/discord")
 	}
 
 	// Add WhatsApp webhook endpoint (if configured)
 	if whatsappHandler != nil {
-		mux.HandleFunc("GET /webhook/whatsapp", whatsappHandler.HandleWebhook)
-		mux.HandleFunc("POST /webhook/whatsapp", whatsappHandler.HandleWebhook)
+		// WhatsApp uses GET for verification and POST for events
+		mux.HandleFunc("/webhook/whatsapp", whatsappHandler.HandleWebhook)
 		log.Printf("WhatsApp webhook enabled at /webhook/whatsapp")
 	}
 
 	// Add Slack webhook endpoint (if configured)
 	if slackHandler != nil {
-		mux.HandleFunc("POST /webhook/slack", slackHandler.HandleWebhook)
+		mux.HandleFunc("/webhook/slack", slackHandler.HandleWebhook)
 		log.Printf("Slack webhook enabled at /webhook/slack")
 	}
 
 	// Add Microsoft Teams webhook endpoint (if configured)
 	if teamsHandler != nil {
-		mux.HandleFunc("POST /webhook/teams", teamsHandler.HandleWebhook)
+		mux.HandleFunc("/webhook/teams", teamsHandler.HandleWebhook)
 		log.Printf("Microsoft Teams webhook enabled at /webhook/teams")
 	}
 

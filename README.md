@@ -58,8 +58,9 @@ aiexpense/
 
 - Go 1.21+
 - Environment variables configured:
-  - `LINE_CHANNEL_TOKEN` - LINE Messaging API channel token
-  - `LINE_CHANNEL_ID` - LINE channel ID (for webhook signature verification)
+  - `ENABLED_MESSENGERS` - Comma-separated list of enabled messengers (default: `terminal`). Options: `terminal`, `line`, `telegram`, `discord`, `slack`, `teams`, `whatsapp`.
+  - `LINE_CHANNEL_TOKEN` - LINE Messaging API channel token (required if line is enabled)
+  - `LINE_CHANNEL_ID` - LINE channel ID (required if line is enabled)
   - `GEMINI_API_KEY` - Google Gemini API key
   - `ADMIN_API_KEY` - (Optional) API key for metrics endpoints
   - `SERVER_PORT` - (Optional, default: 8080)
@@ -75,14 +76,39 @@ go build ./cmd/server
 
 ### Running
 
+#### Quick Start (Terminal Mode)
+
 ```bash
+# Runs with terminal messenger by default
+# No external credentials required
+./server
+```
+
+#### Production Mode (LINE)
+
+```bash
+export ENABLED_MESSENGERS=line
 export LINE_CHANNEL_TOKEN=<your_token>
 export LINE_CHANNEL_ID=<your_id>
 export GEMINI_API_KEY=<your_api_key>
 ./server
 ```
 
-The server will start on `http://localhost:8080`
+The server will start on `http://localhost:8080`.
+
+#### Using Terminal Messenger
+
+If running in terminal mode (`ENABLED_MESSENGERS=terminal`), you can interact with the bot via API:
+
+```bash
+# Send a message
+curl -X POST http://localhost:8080/api/chat/terminal \
+  -H "Content-Type: application/json" \
+  -d '{"user_id": "test_user", "message": "早餐$20"}'
+
+# Check user stats
+curl "http://localhost:8080/api/chat/terminal/user?user_id=test_user"
+```
 
 ## API Endpoints
 

@@ -322,8 +322,8 @@ func TestAPICreateExpense(t *testing.T) {
 	w := httptest.NewRecorder()
 	handler.CreateExpense(w, req)
 
-	if w.Code != http.StatusOK {
-		t.Errorf("Expected %d, got %d", http.StatusOK, w.Code)
+	if w.Code != http.StatusCreated {
+		t.Errorf("Expected %d, got %d", http.StatusCreated, w.Code)
 	}
 
 	// Verify expense was created
@@ -400,9 +400,9 @@ func TestAPIMissingRequired(t *testing.T) {
 	w := httptest.NewRecorder()
 	handler.AutoSignup(w, req)
 
-	// Should fail due to missing user_id
-	if w.Code == http.StatusOK {
-		t.Error("Expected error status for missing required field")
+	// Should fail due to missing user_id - expect 4xx status
+	if w.Code >= 200 && w.Code < 300 {
+		t.Errorf("Expected error status (4xx) for missing required field, got %d", w.Code)
 	}
 }
 
@@ -500,8 +500,8 @@ func TestAPIMultipleExpenses(t *testing.T) {
 	req1.Header.Set("Content-Type", "application/json")
 	w1 := httptest.NewRecorder()
 	handler.CreateExpense(w1, req1)
-	if w1.Code != http.StatusOK {
-		t.Errorf("First expense: expected %d, got %d", http.StatusOK, w1.Code)
+	if w1.Code != http.StatusCreated {
+		t.Errorf("First expense: expected %d, got %d", http.StatusCreated, w1.Code)
 	}
 
 	// Create second expense
@@ -515,8 +515,8 @@ func TestAPIMultipleExpenses(t *testing.T) {
 	req2.Header.Set("Content-Type", "application/json")
 	w2 := httptest.NewRecorder()
 	handler.CreateExpense(w2, req2)
-	if w2.Code != http.StatusOK {
-		t.Errorf("Second expense: expected %d, got %d", http.StatusOK, w2.Code)
+	if w2.Code != http.StatusCreated {
+		t.Errorf("Second expense: expected %d, got %d", http.StatusCreated, w2.Code)
 	}
 
 	// Verify both expenses created
