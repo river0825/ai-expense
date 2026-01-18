@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/riverlin/aiexpense/internal/domain"
@@ -184,5 +185,39 @@ func (m *MockAIService) ParseExpense(ctx context.Context, text string, userID st
 }
 
 func (m *MockAIService) SuggestCategory(ctx context.Context, description string) (string, error) {
-	return "Food", nil
+	description = strings.ToLower(description)
+
+	// Food keywords
+	if strings.Contains(description, "breakfast") || strings.Contains(description, "lunch") ||
+		strings.Contains(description, "dinner") || strings.Contains(description, "restaurant") ||
+		strings.Contains(description, "cafe") || strings.Contains(description, "meal") ||
+		strings.Contains(description, "food") || strings.Contains(description, "eat") {
+		return "Food", nil
+	}
+
+	// Transport keywords
+	if strings.Contains(description, "taxi") || strings.Contains(description, "uber") ||
+		strings.Contains(description, "transport") || strings.Contains(description, "gas") ||
+		strings.Contains(description, "fuel") || strings.Contains(description, "bus") ||
+		strings.Contains(description, "train") || strings.Contains(description, "airport") ||
+		strings.Contains(description, "car") {
+		return "Transport", nil
+	}
+
+	// Shopping keywords
+	if strings.Contains(description, "shopping") || strings.Contains(description, "shirt") ||
+		strings.Contains(description, "clothes") || strings.Contains(description, "buy") ||
+		strings.Contains(description, "shop") || strings.Contains(description, "store") ||
+		strings.Contains(description, "mall") {
+		return "Shopping", nil
+	}
+
+	// Entertainment keywords
+	if strings.Contains(description, "movie") || strings.Contains(description, "cinema") ||
+		strings.Contains(description, "entertainment") || strings.Contains(description, "tickets") ||
+		strings.Contains(description, "concert") || strings.Contains(description, "show") {
+		return "Entertainment", nil
+	}
+
+	return "Other", nil
 }
