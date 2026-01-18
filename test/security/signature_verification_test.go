@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"strconv"
 	"testing"
 	"time"
 
@@ -184,7 +185,7 @@ func TestSlackSignatureVerification(t *testing.T) {
 	payload := []byte(`{"type":"url_verification","challenge":"test_challenge"}`)
 
 	// Compute valid signature
-	basestring := "v0:" + string(timestamp) + ":" + string(payload)
+	basestring := "v0:" + strconv.FormatInt(timestamp, 10) + ":" + string(payload)
 	mac := hmac.New(sha256.New, []byte(secret))
 	mac.Write([]byte(basestring))
 	validSignature := "v0=" + hex.EncodeToString(mac.Sum(nil))
@@ -204,7 +205,7 @@ func TestSlackSignatureVerification(t *testing.T) {
 	t.Run("ReplayAttackPrevention", func(t *testing.T) {
 		// Test 5-minute window (300 seconds)
 		oldTimestamp := time.Now().Unix() - 600 // 10 minutes ago
-		basestring := "v0:" + string(oldTimestamp) + ":" + string(payload)
+		basestring := "v0:" + strconv.FormatInt(oldTimestamp, 10) + ":" + string(payload)
 		mac := hmac.New(sha256.New, []byte(secret))
 		mac.Write([]byte(basestring))
 		oldSignature := "v0=" + hex.EncodeToString(mac.Sum(nil))
