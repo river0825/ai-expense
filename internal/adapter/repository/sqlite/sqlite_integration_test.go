@@ -3,6 +3,7 @@ package sqlite
 import (
 	"context"
 	"os"
+	"strconv"
 	"testing"
 	"time"
 
@@ -87,7 +88,7 @@ func TestSQLiteUserRepository(t *testing.T) {
 	t.Run("MultipleUsers", func(t *testing.T) {
 		// Create multiple users
 		for i := 2; i <= 5; i++ {
-			userID := "test_user_" + string(rune(i))
+			userID := "test_user_" + strconv.Itoa(i)
 			user := &domain.User{
 				UserID:        userID,
 				MessengerType: "telegram",
@@ -100,7 +101,7 @@ func TestSQLiteUserRepository(t *testing.T) {
 
 		// Verify all users exist
 		for i := 1; i <= 5; i++ {
-			userID := "test_user_" + string(rune(i))
+			userID := "test_user_" + strconv.Itoa(i)
 			exists, err := repo.Exists(ctx, userID)
 			if err != nil {
 				t.Fatalf("Failed to check user %s: %v", userID, err)

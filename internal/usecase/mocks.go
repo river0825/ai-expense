@@ -231,7 +231,7 @@ func (m *MockAIService) ParseExpense(ctx context.Context, text string, userID st
 	return expenses, nil
 }
 
-func (m *MockAIService) SuggestCategory(ctx context.Context, description string) (string, error) {
+func (m *MockAIService) SuggestCategory(ctx context.Context, description string, userID string) (string, error) {
 	descLower := strings.ToLower(description)
 
 	// Food keywords (English + Chinese)

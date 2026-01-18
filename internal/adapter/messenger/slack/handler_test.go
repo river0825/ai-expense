@@ -193,9 +193,9 @@ func createSlackWebhookPayload(userID, text string, recentTimestamp bool) ([]byt
 			"channel": "D123456",
 			"ts":      "1234567890.123456",
 		},
-		"team_id":   "T123456",
+		"team_id":    "T123456",
 		"api_app_id": "A123456",
-		"event_id":  "Ev123456",
+		"event_id":   "Ev123456",
 		"event_time": ts,
 	}
 
@@ -214,11 +214,11 @@ func createSlackWebhookPayload(userID, text string, recentTimestamp bool) ([]byt
 // Helper to create Slack URL verification payload
 func createSlackUrlVerificationPayload() ([]byte, string, string) {
 	event := map[string]interface{}{
-		"type":      "url_verification",
-		"challenge": "test_challenge_string_123",
-		"team_id":   "T123456",
+		"type":       "url_verification",
+		"challenge":  "test_challenge_string_123",
+		"team_id":    "T123456",
 		"api_app_id": "A123456",
-		"event_id":  "Ev123456",
+		"event_id":   "Ev123456",
 		"event_time": time.Now().Unix(),
 	}
 
@@ -526,6 +526,6 @@ func (m *mockAIService) ParseExpense(ctx context.Context, text string, userID st
 	}, nil
 }
 
-func (m *mockAIService) SuggestCategory(ctx context.Context, description string) (string, error) {
+func (m *mockAIService) SuggestCategory(ctx context.Context, description string, userID string) (string, error) {
 	return "Food", nil
 }

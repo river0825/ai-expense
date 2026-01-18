@@ -482,6 +482,6 @@ func (m *mockAIService) ParseExpense(ctx context.Context, text string, userID st
 	}, nil
 }
 
-func (m *mockAIService) SuggestCategory(ctx context.Context, description string) (string, error) {
+func (m *mockAIService) SuggestCategory(ctx context.Context, description string, userID string) (string, error) {
 	return "Food", nil
 }

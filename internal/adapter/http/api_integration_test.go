@@ -163,7 +163,7 @@ func (s *TestAIService) ParseExpense(ctx context.Context, text string, userID st
 	}, nil
 }
 
-func (s *TestAIService) SuggestCategory(ctx context.Context, description string) (string, error) {
+func (s *TestAIService) SuggestCategory(ctx context.Context, description string, userID string) (string, error) {
 	return "food", nil
 }
 
@@ -190,14 +190,30 @@ func (r *TestMetricsRepository) GetNewUsersPerDay(ctx context.Context, from, to 
 	return []*domain.DailyMetrics{}, nil
 }
 
+// TestPolicyRepository for API integration tests
+type TestPolicyRepository struct {
+	policies map[string]*domain.Policy
+}
+
+func (r *TestPolicyRepository) GetByKey(ctx context.Context, key string) (*domain.Policy, error) {
+	if p, ok := r.policies[key]; ok {
+		return p, nil
+	}
+	return nil, nil // Return nil if not found (matching sqlite behavior)
+}
+
 // TestAPIAutoSignupFlow tests complete auto-signup flow
 func TestAPIAutoSignupFlow(t *testing.T) {
 	userRepo := &TestUserRepository{users: make(map[string]*domain.User)}
 	categoryRepo := &TestCategoryRepository{categories: make(map[string]*domain.Category)}
+	policyRepo := &TestPolicyRepository{policies: make(map[string]*domain.Policy)}
 
-	handler := &Handler{
-		autoSignupUC: usecase.NewAutoSignupUseCase(userRepo, categoryRepo),
-	}
+	handler := NewHandler(
+		usecase.NewAutoSignupUseCase(userRepo, categoryRepo),
+		nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
+		usecase.NewGetPolicyUseCase(policyRepo),
+		userRepo, categoryRepo, nil, nil, "",
+	)
 
 	// Create request body
 	bodyMap := map[string]interface{}{
@@ -227,10 +243,14 @@ func TestAPIAutoSignupFlow(t *testing.T) {
 func TestAPIAutoSignup(t *testing.T) {
 	userRepo := &TestUserRepository{users: make(map[string]*domain.User)}
 	categoryRepo := &TestCategoryRepository{categories: make(map[string]*domain.Category)}
+	policyRepo := &TestPolicyRepository{policies: make(map[string]*domain.Policy)}
 
-	handler := &Handler{
-		autoSignupUC: usecase.NewAutoSignupUseCase(userRepo, categoryRepo),
-	}
+	handler := NewHandler(
+		usecase.NewAutoSignupUseCase(userRepo, categoryRepo),
+		nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
+		usecase.NewGetPolicyUseCase(policyRepo),
+		userRepo, categoryRepo, nil, nil, "",
+	)
 
 	bodyMap := map[string]string{
 		"user_id":        "test_user_1",
@@ -266,11 +286,15 @@ func TestAPIParseExpenses(t *testing.T) {
 	userRepo := &TestUserRepository{users: make(map[string]*domain.User)}
 	categoryRepo := &TestCategoryRepository{categories: make(map[string]*domain.Category)}
 	aiService := &TestAIService{}
+	policyRepo := &TestPolicyRepository{policies: make(map[string]*domain.Policy)}
 
-	handler := &Handler{
-		autoSignupUC:        usecase.NewAutoSignupUseCase(userRepo, categoryRepo),
-		parseConversationUC: usecase.NewParseConversationUseCase(aiService),
-	}
+	handler := NewHandler(
+		usecase.NewAutoSignupUseCase(userRepo, categoryRepo),
+		usecase.NewParseConversationUseCase(aiService),
+		nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
+		usecase.NewGetPolicyUseCase(policyRepo),
+		userRepo, categoryRepo, nil, nil, "",
+	)
 
 	bodyMap := map[string]string{
 		"user_id": "test_user_1",
@@ -303,11 +327,16 @@ func TestAPICreateExpense(t *testing.T) {
 		CreatedAt:     time.Now(),
 	})
 
-	handler := &Handler{
-		autoSignupUC:        usecase.NewAutoSignupUseCase(userRepo, categoryRepo),
-		createExpenseUC:     usecase.NewCreateExpenseUseCase(expenseRepo, categoryRepo, aiService),
-		parseConversationUC: usecase.NewParseConversationUseCase(aiService),
-	}
+	policyRepo := &TestPolicyRepository{policies: make(map[string]*domain.Policy)}
+
+	handler := NewHandler(
+		usecase.NewAutoSignupUseCase(userRepo, categoryRepo),
+		usecase.NewParseConversationUseCase(aiService),
+		usecase.NewCreateExpenseUseCase(expenseRepo, categoryRepo, aiService),
+		nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
+		usecase.NewGetPolicyUseCase(policyRepo),
+		userRepo, categoryRepo, expenseRepo, nil, "",
+	)
 
 	bodyMap := map[string]interface{}{
 		"user_id":     "test_user_1",
@@ -338,7 +367,6 @@ func TestAPIGetExpenses(t *testing.T) {
 	userRepo := &TestUserRepository{users: make(map[string]*domain.User)}
 	categoryRepo := &TestCategoryRepository{categories: make(map[string]*domain.Category)}
 	expenseRepo := &TestExpenseRepository{expenses: make(map[string]*domain.Expense)}
-	aiService := &TestAIService{}
 
 	// Create test data
 	userRepo.Create(context.Background(), &domain.User{
@@ -356,11 +384,16 @@ func TestAPIGetExpenses(t *testing.T) {
 		CreatedAt:   time.Now(),
 	})
 
-	handler := &Handler{
-		autoSignupUC:    usecase.NewAutoSignupUseCase(userRepo, categoryRepo),
-		getExpensesUC:   usecase.NewGetExpensesUseCase(expenseRepo, categoryRepo),
-		createExpenseUC: usecase.NewCreateExpenseUseCase(expenseRepo, categoryRepo, aiService),
-	}
+	policyRepo := &TestPolicyRepository{policies: make(map[string]*domain.Policy)}
+
+	handler := NewHandler(
+		usecase.NewAutoSignupUseCase(userRepo, categoryRepo),
+		nil, nil,
+		usecase.NewGetExpensesUseCase(expenseRepo, categoryRepo),
+		nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
+		usecase.NewGetPolicyUseCase(policyRepo),
+		userRepo, categoryRepo, expenseRepo, nil, "",
+	)
 
 	req := httptest.NewRequest("GET", "/api/expenses?user_id=test_user_1", nil)
 	req.Header.Set("Content-Type", "application/json")
@@ -381,12 +414,17 @@ func TestAPIGetExpenses(t *testing.T) {
 
 // TestAPIMissingRequired tests error handling for missing required fields
 func TestAPIMissingRequired(t *testing.T) {
-	handler := &Handler{
-		autoSignupUC: usecase.NewAutoSignupUseCase(
+	policyRepo := &TestPolicyRepository{policies: make(map[string]*domain.Policy)}
+
+	handler := NewHandler(
+		usecase.NewAutoSignupUseCase(
 			&TestUserRepository{users: make(map[string]*domain.User)},
 			&TestCategoryRepository{categories: make(map[string]*domain.Category)},
 		),
-	}
+		nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
+		usecase.NewGetPolicyUseCase(policyRepo),
+		nil, nil, nil, nil, "",
+	)
 
 	// Missing user_id
 	bodyMap := map[string]string{
@@ -411,11 +449,16 @@ func TestAPINotFound(t *testing.T) {
 	userRepo := &TestUserRepository{users: make(map[string]*domain.User)}
 	categoryRepo := &TestCategoryRepository{categories: make(map[string]*domain.Category)}
 	expenseRepo := &TestExpenseRepository{expenses: make(map[string]*domain.Expense)}
+	policyRepo := &TestPolicyRepository{policies: make(map[string]*domain.Policy)}
 
-	handler := &Handler{
-		autoSignupUC:  usecase.NewAutoSignupUseCase(userRepo, categoryRepo),
-		getExpensesUC: usecase.NewGetExpensesUseCase(expenseRepo, categoryRepo),
-	}
+	handler := NewHandler(
+		usecase.NewAutoSignupUseCase(userRepo, categoryRepo),
+		nil, nil,
+		usecase.NewGetExpensesUseCase(expenseRepo, categoryRepo),
+		nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
+		usecase.NewGetPolicyUseCase(policyRepo),
+		userRepo, categoryRepo, expenseRepo, nil, "",
+	)
 
 	// Try to get expenses for non-existent user
 	req := httptest.NewRequest("GET", "/api/expenses?user_id=nonexistent_user", nil)
@@ -442,10 +485,16 @@ func TestAPICategoryManagement(t *testing.T) {
 		CreatedAt:     time.Now(),
 	})
 
-	handler := &Handler{
-		manageCategoryUC: usecase.NewManageCategoryUseCase(categoryRepo),
-		autoSignupUC:     usecase.NewAutoSignupUseCase(userRepo, categoryRepo),
-	}
+	policyRepo := &TestPolicyRepository{policies: make(map[string]*domain.Policy)}
+
+	handler := NewHandler(
+		usecase.NewAutoSignupUseCase(userRepo, categoryRepo),
+		nil, nil, nil, nil, nil,
+		usecase.NewManageCategoryUseCase(categoryRepo),
+		nil, nil, nil, nil, nil, nil, nil, nil,
+		usecase.NewGetPolicyUseCase(policyRepo),
+		userRepo, categoryRepo, nil, nil, "",
+	)
 
 	// Create category
 	bodyMap := map[string]interface{}{
@@ -484,10 +533,16 @@ func TestAPIMultipleExpenses(t *testing.T) {
 		CreatedAt:     time.Now(),
 	})
 
-	handler := &Handler{
-		autoSignupUC:    usecase.NewAutoSignupUseCase(userRepo, categoryRepo),
-		createExpenseUC: usecase.NewCreateExpenseUseCase(expenseRepo, categoryRepo, aiService),
-	}
+	policyRepo := &TestPolicyRepository{policies: make(map[string]*domain.Policy)}
+
+	handler := NewHandler(
+		usecase.NewAutoSignupUseCase(userRepo, categoryRepo),
+		nil,
+		usecase.NewCreateExpenseUseCase(expenseRepo, categoryRepo, aiService),
+		nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
+		usecase.NewGetPolicyUseCase(policyRepo),
+		userRepo, categoryRepo, expenseRepo, nil, "",
+	)
 
 	// Create first expense
 	bodyMap1 := map[string]interface{}{
@@ -530,10 +585,14 @@ func TestAPIMultipleExpenses(t *testing.T) {
 func TestAPIConcurrentRequests(t *testing.T) {
 	userRepo := &TestUserRepository{users: make(map[string]*domain.User)}
 	categoryRepo := &TestCategoryRepository{categories: make(map[string]*domain.Category)}
+	policyRepo := &TestPolicyRepository{policies: make(map[string]*domain.Policy)}
 
-	handler := &Handler{
-		autoSignupUC: usecase.NewAutoSignupUseCase(userRepo, categoryRepo),
-	}
+	handler := NewHandler(
+		usecase.NewAutoSignupUseCase(userRepo, categoryRepo),
+		nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
+		usecase.NewGetPolicyUseCase(policyRepo),
+		userRepo, categoryRepo, nil, nil, "",
+	)
 
 	// Simulate concurrent signup requests
 	done := make(chan bool, 3)

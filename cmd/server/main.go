@@ -37,9 +37,11 @@ func main() {
 	categoryRepo := sqlite.NewCategoryRepository(db)
 	expenseRepo := sqlite.NewExpenseRepository(db)
 	metricsRepo := sqlite.NewMetricsRepository(db)
+	aiCostRepo := sqlite.NewAICostRepository(db)
+	policyRepo := sqlite.NewPolicyRepository(db)
 
 	// Initialize AI service
-	aiService, err := ai.Factory(cfg.AIProvider, cfg.GeminiAPIKey)
+	aiService, err := ai.Factory(cfg.AIProvider, cfg.GeminiAPIKey, aiCostRepo)
 	if err != nil {
 		log.Fatalf("Failed to initialize AI service: %v", err)
 	}
@@ -60,6 +62,7 @@ func main() {
 	notificationUseCase := usecase.NewNotificationUseCase()
 	searchExpenseUseCase := usecase.NewSearchExpenseUseCase(expenseRepo, categoryRepo)
 	archiveUseCase := usecase.NewArchiveUseCase(expenseRepo)
+	getPolicyUseCase := usecase.NewGetPolicyUseCase(policyRepo)
 
 	// Initialize HTTP handler
 	handler := httpAdapter.NewHandler(
@@ -78,6 +81,7 @@ func main() {
 		searchExpenseUseCase,
 		archiveUseCase,
 		metricsUseCase,
+		getPolicyUseCase,
 		userRepo,
 		categoryRepo,
 		expenseRepo,
@@ -278,10 +282,13 @@ func main() {
 	// Wrap mux with CORS middleware for dashboard
 	corsHandler := withCORS(mux)
 
+	// Wrap with logging middleware
+	loggingHandler := httpAdapter.LoggingMiddleware(corsHandler)
+
 	// Start server
 	addr := ":" + cfg.ServerPort
 	log.Printf("Starting server on %s", addr)
-	if err := http.ListenAndServe(addr, corsHandler); err != nil {
+	if err := http.ListenAndServe(addr, loggingHandler); err != nil {
 		log.Fatalf("Server failed: %v", err)
 	}
 }

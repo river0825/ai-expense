@@ -64,3 +64,29 @@ type CategoryMetrics struct {
 	Count      int
 	Percent    float64
 }
+
+// AICostLog represents a record of AI API usage and cost
+type AICostLog struct {
+	ID           string    `db:"id"`
+	UserID       string    `db:"user_id"`
+	Operation    string    `db:"operation"` // e.g., "parse_expense", "suggest_category"
+	Provider     string    `db:"provider"`  // e.g., "gemini", "openai"
+	Model        string    `db:"model"`     // e.g., "gemini-2.5-lite"
+	InputTokens  int       `db:"input_tokens"`
+	OutputTokens int       `db:"output_tokens"`
+	TotalTokens  int       `db:"total_tokens"`
+	Cost         float64   `db:"cost"`
+	Currency     string    `db:"currency"` // e.g., "USD"
+	CreatedAt    time.Time `db:"created_at"`
+}
+
+// Policy represents a legal document (Privacy Policy, Terms of Use)
+type Policy struct {
+	ID        string    `db:"id" json:"id"`
+	Key       string    `db:"key" json:"key"` // e.g., "privacy_policy", "terms_of_use"
+	Title     string    `db:"title" json:"title"`
+	Content   string    `db:"content" json:"content"`
+	Version   string    `db:"version" json:"version"`
+	CreatedAt time.Time `db:"created_at" json:"created_at"`
+	UpdatedAt time.Time `db:"updated_at" json:"updated_at"`
+}

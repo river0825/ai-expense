@@ -8,7 +8,7 @@ type AIService interface {
 	ParseExpense(ctx context.Context, text string, userID string) ([]*ParsedExpense, error)
 
 	// SuggestCategory suggests a category based on description
-	SuggestCategory(ctx context.Context, description string) (string, error)
+	SuggestCategory(ctx context.Context, description string, userID string) (string, error)
 }
 
 // ConversationParser defines operations for parsing user messages

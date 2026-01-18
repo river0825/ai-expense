@@ -154,8 +154,8 @@ func (m *MockCategoryRepository) DeleteKeyword(ctx context.Context, id string) e
 // Helper to create Discord PING interaction
 func createDiscordPingInteraction() []byte {
 	interaction := map[string]interface{}{
-		"type": 1, // PING
-		"id":   "ping_123",
+		"type":  1, // PING
+		"id":    "ping_123",
 		"token": "ping_token",
 	}
 	body, _ := json.Marshal(interaction)
@@ -165,8 +165,8 @@ func createDiscordPingInteraction() []byte {
 // Helper to create Discord message interaction
 func createDiscordMessageInteraction(userID, content string) []byte {
 	interaction := map[string]interface{}{
-		"type": 2, // APPLICATION_COMMAND
-		"id":   "interaction_123",
+		"type":  2, // APPLICATION_COMMAND
+		"id":    "interaction_123",
 		"token": "response_token",
 		"user": map[string]string{
 			"id":       userID,
@@ -183,8 +183,8 @@ func createDiscordMessageInteraction(userID, content string) []byte {
 // Helper to create Discord interaction with guild member
 func createDiscordGuildInteraction(userID, content string) []byte {
 	interaction := map[string]interface{}{
-		"type": 2,
-		"id":   "interaction_456",
+		"type":  2,
+		"id":    "interaction_456",
 		"token": "response_token",
 		"member": map[string]interface{}{
 			"user": map[string]string{
@@ -370,6 +370,6 @@ func (m *mockAIService) ParseExpense(ctx context.Context, text string, userID st
 	}, nil
 }
 
-func (m *mockAIService) SuggestCategory(ctx context.Context, description string) (string, error) {
+func (m *mockAIService) SuggestCategory(ctx context.Context, description string, userID string) (string, error) {
 	return "Food", nil
 }

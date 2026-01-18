@@ -439,7 +439,7 @@ func TestScenario_SuggestCategoryFromDescription(t *testing.T) {
 
 	for _, tc := range testCases {
 		// WHEN AI service receives expense description
-		category, err := aiService.SuggestCategory(ctx, tc.description)
+		category, err := aiService.SuggestCategory(ctx, tc.description, "")
 		if err != nil {
 			t.Fatalf("category suggestion failed: %v", err)
 		}

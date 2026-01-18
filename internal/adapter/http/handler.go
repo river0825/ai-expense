@@ -26,6 +26,7 @@ type Handler struct {
 	searchExpenseUC     *usecase.SearchExpenseUseCase
 	archiveUC           *usecase.ArchiveUseCase
 	metricsUC           *usecase.MetricsUseCase
+	getPolicyUC         *usecase.GetPolicyUseCase
 	userRepo            domain.UserRepository
 	categoryRepo        domain.CategoryRepository
 	expenseRepo         domain.ExpenseRepository
@@ -50,6 +51,7 @@ func NewHandler(
 	searchExpenseUC *usecase.SearchExpenseUseCase,
 	archiveUC *usecase.ArchiveUseCase,
 	metricsUC *usecase.MetricsUseCase,
+	getPolicyUC *usecase.GetPolicyUseCase,
 	userRepo domain.UserRepository,
 	categoryRepo domain.CategoryRepository,
 	expenseRepo domain.ExpenseRepository,
@@ -72,6 +74,7 @@ func NewHandler(
 		searchExpenseUC:     searchExpenseUC,
 		archiveUC:           archiveUC,
 		metricsUC:           metricsUC,
+		getPolicyUC:         getPolicyUC,
 		userRepo:            userRepo,
 		categoryRepo:        categoryRepo,
 		expenseRepo:         expenseRepo,
@@ -1395,6 +1398,9 @@ func RegisterRoutes(mux *http.ServeMux, handler *Handler) {
 	mux.HandleFunc("GET /api/metrics/dau", handler.GetMetricsDAU)
 	mux.HandleFunc("GET /api/metrics/expenses-summary", handler.GetMetricsExpenses)
 	mux.HandleFunc("GET /api/metrics/growth", handler.GetMetricsGrowth)
+
+	// Legal endpoints
+	mux.HandleFunc("GET /api/policies/{key}", handler.GetPolicy)
 
 	// Health endpoint
 	mux.HandleFunc("GET /health", handler.Health)

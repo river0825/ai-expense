@@ -88,3 +88,18 @@ type MetricsRepository interface {
 	// GetNewUsersPerDay retrieves new users created per day
 	GetNewUsersPerDay(ctx context.Context, from, to time.Time) ([]*DailyMetrics, error)
 }
+
+// AICostRepository defines operations for AI cost logging
+type AICostRepository interface {
+	// Create creates a new cost log entry
+	Create(ctx context.Context, log *AICostLog) error
+
+	// GetByUserID retrieves cost logs for a user
+	GetByUserID(ctx context.Context, userID string, limit int) ([]*AICostLog, error)
+}
+
+// PolicyRepository defines operations for policy documents
+type PolicyRepository interface {
+	// GetByKey retrieves a policy by its unique key
+	GetByKey(ctx context.Context, key string) (*Policy, error)
+}

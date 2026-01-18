@@ -45,13 +45,13 @@ func OpenDB(dbPath string) (*sql.DB, error) {
 // optimizeSQLite applies performance optimization settings
 func optimizeSQLite(db *sql.DB) error {
 	pragmas := []string{
-		"PRAGMA journal_mode = WAL",           // Write-Ahead Logging for better concurrency
-		"PRAGMA synchronous = NORMAL",         // Balance between safety and speed
-		"PRAGMA cache_size = 10000",           // Increase cache size (pages)
-		"PRAGMA temp_store = MEMORY",          // Use memory for temporary operations
-		"PRAGMA foreign_keys = ON",            // Enable foreign key constraints
-		"PRAGMA query_only = FALSE",           // Allow writes
-		"PRAGMA busy_timeout = 5000",          // 5 second timeout for busy database
+		"PRAGMA journal_mode = WAL",   // Write-Ahead Logging for better concurrency
+		"PRAGMA synchronous = NORMAL", // Balance between safety and speed
+		"PRAGMA cache_size = 10000",   // Increase cache size (pages)
+		"PRAGMA temp_store = MEMORY",  // Use memory for temporary operations
+		"PRAGMA foreign_keys = ON",    // Enable foreign key constraints
+		"PRAGMA query_only = FALSE",   // Allow writes
+		"PRAGMA busy_timeout = 5000",  // 5 second timeout for busy database
 	}
 
 	for _, pragma := range pragmas {
@@ -68,6 +68,8 @@ func runMigrations(db *sql.DB) error {
 	migrationFiles := []string{
 		"./migrations/001_init_schema.up.sql",
 		"./migrations/002_optimize_indexes.up.sql",
+		"./migrations/003_create_ai_cost_logs.up.sql",
+		"./migrations/004_create_policies_table.up.sql",
 	}
 
 	for _, filepath := range migrationFiles {

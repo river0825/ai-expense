@@ -12,14 +12,14 @@ type Service interface {
 	ParseExpense(ctx context.Context, text string, userID string) ([]*domain.ParsedExpense, error)
 
 	// SuggestCategory suggests a category based on description
-	SuggestCategory(ctx context.Context, description string) (string, error)
+	SuggestCategory(ctx context.Context, description string, userID string) (string, error)
 }
 
 // Factory creates an AI service based on the provider type
-func Factory(provider string, apiKey string) (Service, error) {
+func Factory(provider string, apiKey string, costRepo domain.AICostRepository) (Service, error) {
 	switch provider {
 	case "gemini":
-		return NewGeminiAI(apiKey)
+		return NewGeminiAI(apiKey, costRepo)
 	case "claude":
 		// TODO: Implement Claude AI
 		return nil, nil
@@ -27,6 +27,6 @@ func Factory(provider string, apiKey string) (Service, error) {
 		// TODO: Implement OpenAI
 		return nil, nil
 	default:
-		return NewGeminiAI(apiKey)
+		return NewGeminiAI(apiKey, costRepo)
 	}
 }
