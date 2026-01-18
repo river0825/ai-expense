@@ -54,19 +54,22 @@ Users want a frictionless way to track expenses through natural conversation, wi
 ### Feature: User Auto-Signup
 ```gherkin
 Scenario 1: First-time user signup
-[ ] WHEN user sends first message to bot
-[ ] THEN system creates user record with messenger type
-[ ] AND initializes default expense categories
+[x] WHEN user sends first message to bot
+[x] THEN system creates user record with messenger type
+[x] AND initializes default expense categories
+Tests: TestScenario_FirstTimeUserSignup ✓
 
 Scenario 2: Existing user message
-[-] WHEN existing user sends message
-[ ] THEN system recognizes user and processes request
-[ ] AND does NOT create duplicate user record
+[x] WHEN existing user sends message
+[x] THEN system recognizes user and processes request
+[x] AND does NOT create duplicate user record
+Tests: TestScenario_ExistingUserMessage ✓
 
 Scenario 3: Multiple messenger platforms
-[ ] WHEN different messenger platforms connect
-[ ] THEN system handles each platform independently
-[ ] AND maintains separate user records per messenger
+[x] WHEN different messenger platforms connect
+[x] THEN system handles each platform independently
+[x] AND maintains separate user records per messenger
+Tests: TestScenario_MultipleMessengerPlatforms ✓
 ```
 
 ### Feature: Expense Management
@@ -76,52 +79,61 @@ Scenario 1: Create expense from natural language
 [x] THEN system parses text to extract amount and description
 [x] AND suggests appropriate category using AI
 [x] AND stores expense with date, amount, category
+Tests: TestScenario_CreateExpenseFromNaturalLanguage ✓
 
 Scenario 2: List expenses by date range
-[-] WHEN user requests expenses for date range
-[-] THEN system returns matching expense records
-[-] AND groups by category or date as requested
+[x] WHEN user requests expenses for date range
+[x] THEN system returns matching expense records
+[x] AND groups by category or date as requested
+Tests: TestScenario_ListExpensesByDateRange ✓
 
 Scenario 3: Update expense
-[ ] WHEN user modifies existing expense
-[ ] THEN system updates record and recalculates metrics
-[ ] AND maintains audit trail of changes
+[x] WHEN user modifies existing expense
+[x] THEN system updates record and recalculates metrics
+[x] AND maintains audit trail of changes
+Tests: TestScenario_UpdateExpense ✓
 
 Scenario 4: Delete expense
 [x] WHEN user deletes own expense
 [x] THEN system removes from database
 [x] AND recalculates user metrics
+Tests: TestScenario_DeleteExpense ✓
 ```
 
 ### Feature: AI-Powered Category Suggestion
 ```gherkin
 Scenario 1: Suggest category from description
-[-] WHEN AI service receives expense description
-[-] THEN system suggests best matching category
-[-] AND provides confidence score and alternatives
+[x] WHEN AI service receives expense description
+[x] THEN system suggests best matching category
+[x] AND provides confidence score and alternatives
+Tests: TestScenario_SuggestCategoryFromDescription ✓
 
 Scenario 2: Learn from corrections
-[ ] WHEN user corrects category suggestion
-[ ] THEN system learns from feedback for future suggestions
-[ ] AND improves recommendation accuracy
+[x] WHEN user corrects category suggestion
+[x] THEN system learns from feedback for future suggestions
+[x] AND improves recommendation accuracy
+Tests: TestScenario_LearnFromCorrections ✓
 ```
 
 ### Feature: Business Metrics Dashboard
 ```gherkin
 Scenario 1: Daily Active Users (DAU)
-[ ] WHEN admin queries DAU metrics
-[ ] THEN system returns count of unique users per day
-[ ] AND shows trend over time
+[x] WHEN admin queries DAU metrics
+[x] THEN system returns count of unique users per day
+[x] AND shows trend over time
+Tests: TestScenario_DailyActiveUsers ✓
 
 Scenario 2: Expense Summary
-[ ] WHEN user requests expense summary
-[ ] THEN system returns total spent, by category, by time period
-[ ] AND provides comparison with previous periods
+[x] WHEN user requests expense summary
+[x] THEN system returns total spent, by category, by time period
+[x] AND provides comparison with previous periods
+Tests: TestScenario_ExpenseSummary ✓
 
 Scenario 3: Category Trends
-[ ] WHEN admin views category analytics
-[ ] THEN system shows spending by category over time
-[ ] AND identifies top spending categories
+[x] WHEN admin views category analytics
+[x] THEN system shows spending by category over time
+[x] AND identifies top spending categories
+Tests: TestScenario_CategoryTrends ✓
 ```
 
 ## DDD Domain Model
