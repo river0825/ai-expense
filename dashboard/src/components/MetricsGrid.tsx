@@ -1,11 +1,28 @@
 'use client'
 
+interface AICostSummary {
+  total_calls: number
+  total_input_tokens: number
+  total_output_tokens: number
+  total_tokens: number
+  total_cost: number
+  currency: string
+}
+
+interface AICostMetrics {
+  summary: AICostSummary
+  daily_stats: any[]
+  by_operation: any[]
+  top_users: any[]
+}
+
 interface MetricsGridProps {
   metrics: {
     dau: any
     expenses: any
     growth: any
   } | null
+  aiCosts?: AICostMetrics | null
 }
 
 interface MetricCard {
@@ -16,7 +33,11 @@ interface MetricCard {
   trend?: { value: number; positive: boolean }
 }
 
-export default function MetricsGrid({ metrics }: MetricsGridProps) {
+function formatNumber(num: number): string {
+  return num.toLocaleString()
+}
+
+export default function MetricsGrid({ metrics, aiCosts }: MetricsGridProps) {
   if (!metrics) return null
 
   const growth = metrics.growth
@@ -54,6 +75,28 @@ export default function MetricsGrid({ metrics }: MetricsGridProps) {
       icon: '📊',
     },
   ]
+
+  if (aiCosts?.summary) {
+    metricCards.push(
+      {
+        title: 'Total AI Calls',
+        value: formatNumber(aiCosts.summary.total_calls || 0),
+        icon: '🤖',
+      },
+      {
+        title: 'Total Tokens',
+        value: formatNumber(aiCosts.summary.total_tokens || 0),
+        subtitle: `In: ${formatNumber(aiCosts.summary.total_input_tokens || 0)} | Out: ${formatNumber(aiCosts.summary.total_output_tokens || 0)}`,
+        icon: '📊',
+      },
+      {
+        title: 'AI Cost',
+        value: `$${(aiCosts.summary.total_cost || 0).toFixed(4)}`,
+        subtitle: aiCosts.summary.currency || 'USD',
+        icon: '💵',
+      }
+    )
+  }
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">

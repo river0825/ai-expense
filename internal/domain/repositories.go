@@ -96,6 +96,18 @@ type AICostRepository interface {
 
 	// GetByUserID retrieves cost logs for a user
 	GetByUserID(ctx context.Context, userID string, limit int) ([]*AICostLog, error)
+
+	// GetSummary retrieves aggregated AI cost metrics for a date range
+	GetSummary(ctx context.Context, from, to time.Time) (*AICostSummary, error)
+
+	// GetDailyStats retrieves daily AI usage statistics
+	GetDailyStats(ctx context.Context, from, to time.Time) ([]*AICostDailyStats, error)
+
+	// GetByOperation retrieves AI cost breakdown by operation type
+	GetByOperation(ctx context.Context, from, to time.Time) ([]*AICostByOperation, error)
+
+	// GetByUserSummary retrieves AI cost breakdown by user
+	GetByUserSummary(ctx context.Context, from, to time.Time, limit int) ([]*AICostByUser, error)
 }
 
 // PolicyRepository defines operations for policy documents

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 
@@ -58,6 +59,7 @@ func main() {
 	budgetManagementUseCase := usecase.NewBudgetManagementUseCase(categoryRepo, expenseRepo)
 	dataExportUseCase := usecase.NewDataExportUseCase(expenseRepo, categoryRepo)
 	metricsUseCase := usecase.NewMetricsUseCase(metricsRepo)
+	aiCostUseCase := usecase.NewAICostUseCase(aiCostRepo)
 	recurringExpenseUseCase := usecase.NewRecurringExpenseUseCase(expenseRepo, categoryRepo)
 	notificationUseCase := usecase.NewNotificationUseCase()
 	searchExpenseUseCase := usecase.NewSearchExpenseUseCase(expenseRepo, categoryRepo)
@@ -106,7 +108,7 @@ func main() {
 		)
 
 		// Initialize LINE webhook handler
-		lineHandler = line.NewHandler(cfg.LineChannelID, lineUseCase)
+		lineHandler = line.NewHandler(cfg.LineChannelSecret, lineUseCase)
 	}
 
 	// Initialize Terminal messenger (if enabled)
@@ -224,9 +226,13 @@ func main() {
 		teamsHandler = teams.NewHandler(cfg.TeamsAppID, cfg.TeamsAppPassword, teamsUseCase)
 	}
 
+	// Initialize AI Cost handler
+	aiCostHandler := httpAdapter.NewAICostHandler(aiCostUseCase, cfg.AdminAPIKey)
+
 	// Initialize HTTP server
 	mux := http.NewServeMux()
 	httpAdapter.RegisterRoutes(mux, handler)
+	httpAdapter.RegisterAICostRoutes(mux, aiCostHandler)
 
 	// Add LINE webhook endpoint
 	if lineHandler != nil {
@@ -288,6 +294,7 @@ func main() {
 	// Start server
 	addr := ":" + cfg.ServerPort
 	log.Printf("Starting server on %s", addr)
+	fmt.Printf("SERVER STARTED ON %s\n", addr)
 	if err := http.ListenAndServe(addr, loggingHandler); err != nil {
 		log.Fatalf("Server failed: %v", err)
 	}

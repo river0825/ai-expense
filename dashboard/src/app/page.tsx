@@ -12,8 +12,23 @@ interface MetricsData {
   growth: any
 }
 
+interface AICostMetrics {
+  summary: {
+    total_calls: number
+    total_input_tokens: number
+    total_output_tokens: number
+    total_tokens: number
+    total_cost: number
+    currency: string
+  }
+  daily_stats: any[]
+  by_operation: any[]
+  top_users: any[]
+}
+
 export default function Dashboard() {
   const [metrics, setMetrics] = useState<MetricsData | null>(null)
+  const [aiCosts, setAiCosts] = useState<AICostMetrics | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [apiKey, setApiKey] = useState('')
@@ -28,10 +43,11 @@ export default function Dashboard() {
 
       const headers = { 'X-API-Key': key }
 
-      const [dauRes, expensesRes, growthRes] = await Promise.all([
+      const [dauRes, expensesRes, growthRes, aiCostsRes] = await Promise.all([
         axios.get(`${apiUrl}/api/metrics/dau`, { headers }),
         axios.get(`${apiUrl}/api/metrics/expenses-summary`, { headers }),
         axios.get(`${apiUrl}/api/metrics/growth`, { headers }),
+        axios.get(`${apiUrl}/api/metrics/ai-costs`, { headers }).catch(() => ({ data: { data: null } })),
       ])
 
       setMetrics({
@@ -39,6 +55,8 @@ export default function Dashboard() {
         expenses: expensesRes.data.data,
         growth: growthRes.data.data,
       })
+
+      setAiCosts(aiCostsRes.data.data)
 
       setShowKeyInput(false)
       localStorage.setItem('apiKey', key)
@@ -55,6 +73,8 @@ export default function Dashboard() {
     if (savedKey) {
       setApiKey(savedKey)
       fetchMetrics(savedKey)
+    } else {
+      setLoading(false)
     }
   }, [])
 
@@ -147,8 +167,8 @@ export default function Dashboard() {
       <Header apiKey={apiKey} onLogout={() => setShowKeyInput(true)} />
 
       <main className="max-w-7xl mx-auto px-4 py-8">
-        <MetricsGrid metrics={metrics} />
-        <ChartSection metrics={metrics} />
+        <MetricsGrid metrics={metrics} aiCosts={aiCosts} />
+        <ChartSection metrics={metrics} aiCosts={aiCosts} />
       </main>
     </div>
   )

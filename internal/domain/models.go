@@ -90,3 +90,44 @@ type Policy struct {
 	CreatedAt time.Time `db:"created_at" json:"created_at"`
 	UpdatedAt time.Time `db:"updated_at" json:"updated_at"`
 }
+
+// AICostSummary represents aggregated AI cost metrics
+type AICostSummary struct {
+	TotalCalls        int     `json:"total_calls"`
+	TotalInputTokens  int     `json:"total_input_tokens"`
+	TotalOutputTokens int     `json:"total_output_tokens"`
+	TotalTokens       int     `json:"total_tokens"`
+	TotalCost         float64 `json:"total_cost"`
+	Currency          string  `json:"currency"`
+}
+
+// AICostDailyStats represents daily AI usage statistics
+type AICostDailyStats struct {
+	Date         time.Time `json:"date"`
+	Calls        int       `json:"calls"`
+	InputTokens  int       `json:"input_tokens"`
+	OutputTokens int       `json:"output_tokens"`
+	TotalTokens  int       `json:"total_tokens"`
+	Cost         float64   `json:"cost"`
+}
+
+// AICostByOperation represents AI cost breakdown by operation type
+type AICostByOperation struct {
+	Operation    string  `json:"operation"`
+	Calls        int     `json:"calls"`
+	InputTokens  int     `json:"input_tokens"`
+	OutputTokens int     `json:"output_tokens"`
+	TotalTokens  int     `json:"total_tokens"`
+	Cost         float64 `json:"cost"`
+	Percent      float64 `json:"percent"`
+}
+
+// AICostByUser represents AI cost breakdown by user
+type AICostByUser struct {
+	UserID       string  `json:"user_id"`
+	Calls        int     `json:"calls"`
+	InputTokens  int     `json:"input_tokens"`
+	OutputTokens int     `json:"output_tokens"`
+	TotalTokens  int     `json:"total_tokens"`
+	Cost         float64 `json:"cost"`
+}
