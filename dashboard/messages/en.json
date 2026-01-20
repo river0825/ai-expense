@@ -1,0 +1,35 @@
+{
+  "Sidebar": {
+    "dashboard": "Dashboard",
+    "analytics": "Analytics",
+    "expenses": "Expenses",
+    "reports": "Reports",
+    "settings": "Settings"
+  },
+  "TopBar": {
+    "searchPlaceholder": "Search transactions, analytics, or reports...",
+    "userRole": "Admin"
+  },
+  "Dashboard": {
+    "title": "Dashboard",
+    "subtitle": "overview",
+    "welcome": "Welcome back, get an overview of your financial pulses.",
+    "downloadReport": "Download Report",
+    "addExpense": "Add Expense",
+    "totalBalance": "Total Balance",
+    "totalIncome": "Total Income",
+    "totalExpenses": "Total Expenses",
+    "revenueAnalytics": "Revenue Analytics",
+    "recentTransactions": "Recent Transactions",
+    "viewAll": "View All",
+    "connectBank": "Connect Bank Account",
+    "connectBankDesc": "Securely link your financial accounts.",
+    "generateReport": "Generate Annual Report",
+    "generateReportDesc": "Download detailed PDF summary."
+  },
+  "Stats": {
+    "monthly": "Monthly",
+    "weekly": "Weekly",
+    "daily": "Daily"
+  }
+}

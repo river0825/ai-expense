@@ -1,0 +1,35 @@
+{
+  "Sidebar": {
+    "dashboard": "儀表板",
+    "analytics": "分析",
+    "expenses": "支出",
+    "reports": "報告",
+    "settings": "設定"
+  },
+  "TopBar": {
+    "searchPlaceholder": "搜尋交易，分析或報告...",
+    "userRole": "管理員"
+  },
+  "Dashboard": {
+    "title": "儀表板",
+    "subtitle": "總覽",
+    "welcome": "歡迎回來，獲取您的財務脈搏概覽。",
+    "downloadReport": "下載報告",
+    "addExpense": "新增支出",
+    "totalBalance": "總餘額",
+    "totalIncome": "總收入",
+    "totalExpenses": "總支出",
+    "revenueAnalytics": "收入分析",
+    "recentTransactions": "最近交易",
+    "viewAll": "查看全部",
+    "connectBank": "連結銀行帳戶",
+    "connectBankDesc": "安全地連結您的財務帳戶。",
+    "generateReport": "產生年度報告",
+    "generateReportDesc": "下載詳細 PDF 摘要。"
+  },
+  "Stats": {
+    "monthly": "每月",
+    "weekly": "每週",
+    "daily": "每日"
+  }
+}

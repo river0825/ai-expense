@@ -1,0 +1,35 @@
+{
+  "Sidebar": {
+    "dashboard": "Panel",
+    "analytics": "Analítica",
+    "expenses": "Gastos",
+    "reports": "Reportes",
+    "settings": "Ajustes"
+  },
+  "TopBar": {
+    "searchPlaceholder": "Buscar transacciones, analíticas o reportes...",
+    "userRole": "Admin"
+  },
+  "Dashboard": {
+    "title": "Panel",
+    "subtitle": "visión general",
+    "welcome": "Bienvenido de nuevo, obtenga una visión general de sus pulsos financieros.",
+    "downloadReport": "Descargar Reporte",
+    "addExpense": "Agregar Gasto",
+    "totalBalance": "Balance Total",
+    "totalIncome": "Ingresos Totales",
+    "totalExpenses": "Gastos Totales",
+    "revenueAnalytics": "Analítica de Ingresos",
+    "recentTransactions": "Transacciones Recientes",
+    "viewAll": "Ver Todo",
+    "connectBank": "Conectar Cuenta Bancaria",
+    "connectBankDesc": "Enlace sus cuentas financieras de forma segura.",
+    "generateReport": "Generar Reporte Anual",
+    "generateReportDesc": "Descargar resumen detallado en PDF."
+  },
+  "Stats": {
+    "monthly": "Mensual",
+    "weekly": "Semanal",
+    "daily": "Diario"
+  }
+}

@@ -9,24 +9,38 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        border: 'hsl(var(--border))',
-        input: 'hsl(var(--input))',
-        ring: 'hsl(var(--ring))',
-        background: 'hsl(var(--background))',
-        foreground: 'hsl(var(--foreground))',
         primary: {
-          DEFAULT: 'hsl(var(--primary))',
-          foreground: 'hsl(var(--primary-foreground))',
+          DEFAULT: '#F59E0B', // Amber 500
+          foreground: '#FFFFFF',
         },
         secondary: {
-          DEFAULT: 'hsl(var(--secondary))',
-          foreground: 'hsl(var(--secondary-foreground))',
+          DEFAULT: '#FBBF24', // Amber 400
+          foreground: '#0F172A',
         },
+        cta: {
+          DEFAULT: '#8B5CF6', // Violet 500
+          foreground: '#FFFFFF',
+        },
+        background: '#0F172A', // Slate 900
+        surface: '#1E293B', // Slate 800 (for cards/glass)
+        text: {
+          DEFAULT: '#F8FAFC', // Slate 50
+          muted: '#94A3B8', // Slate 400
+        },
+        border: 'rgba(255, 255, 255, 0.1)',
       },
-      borderRadius: {
-        lg: 'var(--radius)',
-        md: 'calc(var(--radius) - 2px)',
-        sm: 'calc(var(--radius) - 4px)',
+      fontFamily: {
+        sans: ['var(--font-fira-sans)', 'sans-serif'],
+        mono: ['var(--font-fira-code)', 'monospace'],
+      },
+      boxShadow: {
+        'glass-sm': '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+        'glass-md': '0 8px 30px rgba(0, 0, 0, 0.12)',
+        'glass-lg': '0 30px 60px -12px rgba(0, 0, 0, 0.25)',
+      },
+      backgroundImage: {
+        'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
+        'glass': 'linear-gradient(145deg, rgba(30, 41, 59, 0.7) 0%, rgba(15, 23, 42, 0.6) 100%)',
       },
     },
   },
