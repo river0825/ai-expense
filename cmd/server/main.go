@@ -13,9 +13,11 @@ import (
 	"github.com/riverlin/aiexpense/internal/adapter/messenger/telegram"
 	"github.com/riverlin/aiexpense/internal/adapter/messenger/terminal"
 	"github.com/riverlin/aiexpense/internal/adapter/messenger/whatsapp"
-	"github.com/riverlin/aiexpense/internal/adapter/repository/sqlite"
+	postgresRepo "github.com/riverlin/aiexpense/internal/adapter/repository/postgresql"
+	sqliteRepo "github.com/riverlin/aiexpense/internal/adapter/repository/sqlite"
 	"github.com/riverlin/aiexpense/internal/ai"
 	"github.com/riverlin/aiexpense/internal/config"
+	"github.com/riverlin/aiexpense/internal/domain"
 	"github.com/riverlin/aiexpense/internal/usecase"
 )
 
@@ -26,20 +28,47 @@ func main() {
 		log.Fatalf("Failed to load configuration: %v", err)
 	}
 
-	// Open database
-	db, err := sqlite.OpenDB(cfg.DatabasePath)
-	if err != nil {
-		log.Fatalf("Failed to open database: %v", err)
-	}
-	defer db.Close()
+	// Open database based on configuration
+	var userRepo domain.UserRepository
+	var categoryRepo domain.CategoryRepository
+	var expenseRepo domain.ExpenseRepository
+	var metricsRepo domain.MetricsRepository
+	var aiCostRepo domain.AICostRepository
+	var policyRepo domain.PolicyRepository
 
-	// Initialize repositories
-	userRepo := sqlite.NewUserRepository(db)
-	categoryRepo := sqlite.NewCategoryRepository(db)
-	expenseRepo := sqlite.NewExpenseRepository(db)
-	metricsRepo := sqlite.NewMetricsRepository(db)
-	aiCostRepo := sqlite.NewAICostRepository(db)
-	policyRepo := sqlite.NewPolicyRepository(db)
+	if cfg.DatabaseURL != "" {
+		// Use PostgreSQL
+		log.Printf("Connecting to PostgreSQL: %s", cfg.DatabaseURL)
+		db, err := postgresRepo.OpenDB(cfg.DatabaseURL)
+		if err != nil {
+			log.Fatalf("Failed to open PostgreSQL database: %v", err)
+		}
+		defer db.Close()
+
+		userRepo = postgresRepo.NewUserRepository(db)
+		categoryRepo = postgresRepo.NewCategoryRepository(db)
+		expenseRepo = postgresRepo.NewExpenseRepository(db)
+		metricsRepo = postgresRepo.NewMetricsRepository(db)
+		aiCostRepo = postgresRepo.NewAICostRepository(db)
+		policyRepo = postgresRepo.NewPolicyRepository(db)
+		log.Printf("Connected to PostgreSQL database")
+	} else {
+		// Use SQLite
+		log.Printf("Opening SQLite database: %s", cfg.DatabasePath)
+		db, err := sqliteRepo.OpenDB(cfg.DatabasePath)
+		if err != nil {
+			log.Fatalf("Failed to open SQLite database: %v", err)
+		}
+		defer db.Close()
+
+		userRepo = sqliteRepo.NewUserRepository(db)
+		categoryRepo = sqliteRepo.NewCategoryRepository(db)
+		expenseRepo = sqliteRepo.NewExpenseRepository(db)
+		metricsRepo = sqliteRepo.NewMetricsRepository(db)
+		aiCostRepo = sqliteRepo.NewAICostRepository(db)
+		policyRepo = sqliteRepo.NewPolicyRepository(db)
+		log.Printf("Connected to SQLite database")
+	}
 
 	// Initialize AI service
 	aiService, err := ai.Factory(cfg.AIProvider, cfg.GeminiAPIKey, aiCostRepo)

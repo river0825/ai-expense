@@ -9,6 +9,7 @@ import (
 type Config struct {
 	// Database
 	DatabasePath string
+	DatabaseURL  string
 
 	// LINE Bot
 	LineChannelToken  string
@@ -48,9 +49,16 @@ type Config struct {
 }
 
 func Load() (*Config, error) {
+	// Get database configuration (prefer DATABASE_URL if set)
+	databaseURL := getEnv("DATABASE_URL", "")
+	databasePath := ""
+	if databaseURL == "" {
+		databasePath = getEnv("DATABASE_PATH", "./aiexpense.db")
+	}
+
 	cfg := &Config{
-		DatabasePath:          getEnv("DATABASE_PATH", "./aiexpense.db"),
-		DatabaseURL:          getEnv("DATABASE_URL", ""),
+		DatabasePath:          databasePath,
+		DatabaseURL:           databaseURL,
 		LineChannelToken:      getEnv("LINE_CHANNEL_TOKEN", ""),
 		LineChannelID:         getEnv("LINE_CHANNEL_ID", ""),
 		LineChannelSecret:     getEnv("LINE_CHANNEL_SECRET", ""),
@@ -95,29 +103,6 @@ func Load() (*Config, error) {
 
 	if cfg.DatabasePath != "" && cfg.DatabaseURL != "" {
 		return nil, fmt.Errorf("Only one of DATABASE_PATH or DATABASE_URL can be set, not both")
-	}
-
-	return cfg, nil
-}
-
-	// Parse enabled messengers
-	enabledMessengersEnv := getEnv("ENABLED_MESSENGERS", "")
-	if enabledMessengersEnv == "" {
-		cfg.EnabledMessengers = []string{"terminal"}
-	} else {
-		cfg.EnabledMessengers = strings.Split(enabledMessengersEnv, ",")
-		// Trim spaces
-		for i, m := range cfg.EnabledMessengers {
-			cfg.EnabledMessengers[i] = strings.TrimSpace(m)
-		}
-	}
-
-	// Validate required fields
-	if cfg.IsMessengerEnabled("line") && cfg.LineChannelToken == "" {
-		return nil, fmt.Errorf("LINE_CHANNEL_TOKEN is required when line messenger is enabled")
-	}
-	if cfg.GeminiAPIKey == "" && cfg.AIProvider == "gemini" {
-		return nil, fmt.Errorf("GEMINI_API_KEY is required when using gemini AI provider")
 	}
 
 	return cfg, nil
