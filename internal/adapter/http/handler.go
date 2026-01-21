@@ -1403,5 +1403,5 @@ func RegisterRoutes(mux *http.ServeMux, handler *Handler) {
 	mux.HandleFunc("GET /api/policies/{key}", handler.GetPolicy)
 
 	// Health endpoint
-	mux.HandleFunc("GET /health", handler.Health)
+	mux.HandleFunc("/health", handler.Health)
 }

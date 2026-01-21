@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS policies (
 );
 
 -- Seed initial Privacy Policy
-INSERT INTO policies (id, key, title, content, version, created_at, updated_at)
+INSERT OR IGNORE INTO policies (id, key, title, content, version, created_at, updated_at)
 VALUES (
   'policy_privacy',
   'privacy_policy',
@@ -22,7 +22,7 @@ VALUES (
 );
 
 -- Seed initial Terms of Use
-INSERT INTO policies (id, key, title, content, version, created_at, updated_at)
+INSERT OR IGNORE INTO policies (id, key, title, content, version, created_at, updated_at)
 VALUES (
   'policy_terms',
   'terms_of_use',

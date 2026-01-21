@@ -204,7 +204,7 @@ func (s *E2EAIService) ParseExpense(ctx context.Context, text string, userID str
 	}, nil
 }
 
-func (s *E2EAIService) SuggestCategory(ctx context.Context, description string) (string, error) {
+func (s *E2EAIService) SuggestCategory(ctx context.Context, description string, userID string) (string, error) {
 	return "uncategorized", nil
 }
 

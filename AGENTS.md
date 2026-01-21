@@ -33,11 +33,17 @@ Keep this managed block so 'openspec update' can refresh the instructions.
 - Run server (manual): `go run ./cmd/server`
 
 ### Frontend (Dashboard)
-- Install: `cd dashboard && npm install` (or `bun install`)
-- Dev server: `cd dashboard && npm run dev` (or `bun run dev`)
-- Build: `cd dashboard && npm run build` (or `bun run build`)
-- Start prod: `cd dashboard && npm run start` (or `bun start`)
-- Lint: `cd dashboard && npm run lint`
+- **Package Manager**: Use `bun` (NOT npm)
+- Install: `cd dashboard && bun install`
+- Dev server: `cd dashboard && bun run dev`
+- Build: `cd dashboard && bun run build`
+- Start prod: `cd dashboard && bun start`
+- Lint: `cd dashboard && bun run lint`
+
+### E2E Testing (Playwright)
+- Install browsers: `cd dashboard && bunx playwright install chromium`
+- Run tests: `cd dashboard && bunx playwright test`
+- Run with UI: `cd dashboard && bunx playwright test --ui`
 
 ### Tests (Backend)
 - All tests: `go test ./...`

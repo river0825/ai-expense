@@ -1,0 +1,227 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, closed]
+
+env:
+  GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+  GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  GCP_REGION: ${{ secrets.GCP_REGION }}
+  SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+  NODE_VERSION: 18
+
+jobs:
+  ci:
+    name: CI Tests (Backend + Dashboard)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+          cache: true
+
+      - name: Get dependencies
+        run: go mod download
+
+      - name: Verify dependencies
+        run: go mod verify
+
+      - name: Run Go tests
+        run: go test -v ./...
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Install dashboard dependencies
+        working-directory: ./dashboard
+        run: bun install --frozen-lockfile
+
+      - name: Lint dashboard
+        working-directory: ./dashboard
+        run: bun run lint
+
+      - name: Build dashboard
+        working-directory: ./dashboard
+        run: bun run build
+
+  terraform-preview:
+    name: Deploy Preview Environment (Terraform)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    outputs:
+      cloud_run_service_url: ${{ jobs.terraform_preview.outputs.cloud_run_service_url }}
+      supabase_database_url: ${{ jobs.terraform_preview.outputs.supabase_database_url }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        run: |
+          wget -qO- https://releases.hashicorp.com/terraform/${{TERRAFORM_VERSION}}/terraform_${{TERRAFORM_VERSION}}_linux_amd64.zip -O /tmp/terraform.zip
+          unzip -o /tmp/terraform /tmp/terraform.zip
+          sudo mv /tmp/terraform /usr/local/bin/terraform
+
+      - name: Configure GCP credentials
+        run: |
+          echo "${{ secrets.GCP_SA_KEY }}" | base64 -d > /tmp/gcp_sa_key.json
+          gcloud auth activate-service-account --key-file=/tmp/gcp_sa_key.json
+
+      - name: Terraform init (preview)
+        working-directory: ./terraform
+        run: |
+          terraform init
+
+      - name: Terraform plan (preview)
+        working-directory: ./terraform
+        run: |
+          terraform plan -out=tfplan.preview \
+            -var-file=terraform/preview.tfvars \
+            -var="environment=preview"
+
+      - name: Terraform apply (preview)
+        working-directory: ./terraform
+        run: |
+          terraform apply -auto-approve \
+            -var-file=terraform/preview.tfvars \
+            -var="environment=preview"
+
+      - name: Wait for Cloud Run (preview)
+        run: |
+          sleep 10
+          gcloud run services describe aiexpense-backend-preview-${{ github.event.pull_request.number }} \
+            --region="${{ env.GCP_REGION }}" \
+            --format=json | jq -r '.status.address.url'
+
+  build-docker-preview:
+    name: Build and Push Docker Image (Preview)
+    runs-on: ubuntu-latest
+    needs: terraform-preview
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push (preview)
+        run: |
+          docker buildx build \
+            --platform linux/amd64 \
+            -t aiexpense-backend:preview-${{ github.event.pull_request.number }} \
+            -f Dockerfile \
+            --push=gcr.io/${{ env.GCP_PROJECT_ID }}/aiexpense-backend:latest
+
+      - name: Deploy to Cloud Run (preview)
+        run: |
+          gcloud run deploy aiexpense-backend-preview-${{ github.event.pull_request.number }} \
+            --image=gcr.io/${{ env.GCP_PROJECT_ID }}/aiexpense-backend:latest \
+            --region="${{ env.GCP_REGION }}" \
+            --platform=managed \
+            --allow-unauthenticated \
+            --set-env-vars="DATABASE_URL=${{ steps.terraform-preview.outputs.supabase_database_url }},GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }},LINE_CHANNEL_TOKEN=${{ secrets.LINE_CHANNEL_TOKEN }},ADMIN_API_KEY=${{ secrets.ADMIN_API_KEY }},SERVER_PORT=8080"
+
+  terraform-prod:
+    name: Deploy Production Environment (Terraform)
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    outputs:
+      cloud_run_service_url: ${{ jobs.terraform_prod.outputs.cloud_run_service_url }}
+      supabase_database_url: ${{ jobs.terraform_prod.outputs.supabase_database_url }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        run: |
+          wget -qO- https://releases.hashicorp.com/terraform/${{TERRAFORM_VERSION}}/terraform_${{TERRAFORM_VERSION}}_linux_amd64.zip -O /tmp/terraform.zip
+          unzip -o /tmp/terraform /tmp/terraform.zip
+          sudo mv /tmp/terraform /usr/local/bin/terraform
+
+      - name: Configure GCP credentials
+        run: |
+          echo "${{ secrets.GCP_SA_KEY }}" | base64 -d > /tmp/gcp_sa_key.json
+          gcloud auth activate-service-account --key-file=/tmp/gcp_sa_key.json
+
+      - name: Terraform init (prod)
+        working-directory: ./terraform
+        run: |
+          terraform init
+
+      - name: Terraform plan (prod)
+        working-directory: ./terraform
+        run: |
+          terraform plan -out=tfplan.prod \
+            -var-file=terraform/prod.tfvars \
+            -var="environment=prod"
+
+      - name: Terraform apply (prod)
+        working-directory: ./terraform
+        run: |
+          terraform apply -auto-approve \
+            -var-file=terraform/prod.tfvars \
+            -var="environment=prod"
+
+      - name: Wait for Cloud Run (prod)
+        run: |
+          sleep 10
+          gcloud run services describe aiexpense-backend-prod \
+            --region="${{ env.GCP_REGION }}" \
+            --format=json | jq -r '.status.address.url'
+
+  build-docker-prod:
+    name: Build and Push Docker Image (Production)
+    runs-on: ubuntu-latest
+    needs: terraform-prod
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push (prod)
+        run: |
+          docker buildx build \
+            --platform linux/amd64 \
+            -t aiexpense-backend:latest \
+            -f Dockerfile \
+            --push=gcr.io/${{ env.GCP_PROJECT_ID }}/aiexpense-backend:latest
+
+      - name: Deploy to Cloud Run (prod)
+        run: |
+          gcloud run deploy aiexpense-backend-prod \
+            --image=gcr.io/${{ env.GCP_PROJECT_ID }}/aiexpense-backend:latest \
+            --region="${{ env.GCP_REGION }}" \
+            --platform=managed \
+            --allow-unauthenticated \
+            --set-env-vars="DATABASE_URL=${{ steps.terraform_prod.outputs.supabase_database_url }},GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }},LINE_CHANNEL_TOKEN=${{ secrets.LINE_CHANNEL_TOKEN }},ADMIN_API_KEY=${{ secrets.ADMIN_API_KEY }},SERVER_PORT=8080"
+
+  cleanup-preview:
+    name: Destroy Preview Environment
+    if: github.event_name == 'pull_request' && github.event.action == 'closed' && !contains(github.event.pull_request.labels.*merged, 'true')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        run: |
+          wget -qO- https://releases.hashicorp.com/terraform/${{TERRAFORM_VERSION}}/terraform_${{TERRAFORM_VERSION}}_linux_amd64.zip -O /tmp/terraform.zip
+          unzip -o /tmp/terraform /tmp/terraform.zip
+          sudo mv /tmp/terraform /usr/local/bin/terraform
+
+      - name: Configure GCP credentials
+        run: |
+          echo "${{ secrets.GCP_SA_KEY }}" | base64 -d > /tmp/gcp_sa_key.json
+          gcloud auth activate-service-account --key-file=/tmp/gcp_sa_key.json
+
+      - name: Terraform destroy (preview)
+        working-directory: ./terraform
+        run: |
+          terraform destroy -auto-approve \
+            -var-file=terraform/preview.tfvars \
+            -var="environment=preview"

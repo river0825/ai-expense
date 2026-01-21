@@ -88,6 +88,12 @@ func (u *LineUseCase) sendMessage(ctx context.Context, replyToken, text string) 
 		return nil
 	}
 
+	log.Printf("[LINE] Sending reply to %s: %s", replyToken, text)
 	// Send actual message via LINE Messaging API
-	return u.client.SendMessage(ctx, replyToken, text)
+	if err := u.client.SendMessage(ctx, replyToken, text); err != nil {
+		log.Printf("[LINE] Failed to send message: %v", err)
+		return err
+	}
+	log.Printf("[LINE] Reply sent successfully")
+	return nil
 }

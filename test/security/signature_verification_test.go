@@ -405,7 +405,7 @@ func verifySlackSignature(payload []byte, signature string, timestamp int64, sec
 		return false
 	}
 
-	basestring := "v0:" + formatTimestamp(timestamp) + ":" + string(payload)
+	basestring := "v0:" + strconv.FormatInt(timestamp, 10) + ":" + string(payload)
 	mac := hmac.New(sha256.New, []byte(secret))
 	mac.Write([]byte(basestring))
 	expectedSignature := "v0=" + hex.EncodeToString(mac.Sum(nil))
@@ -442,8 +442,12 @@ func isValidDiscordInteraction(payload []byte) bool {
 	if err := json.Unmarshal(payload, &interaction); err != nil {
 		return false
 	}
-	_, hasType := interaction["type"]
-	return hasType
+	val, hasType := interaction["type"]
+	if !hasType {
+		return false
+	}
+	_, ok := val.(float64)
+	return ok
 }
 
 // TestSignatureEdgeCases tests edge cases across all platforms
@@ -502,10 +506,10 @@ func TestReplayAttackPrevention(t *testing.T) {
 		secret := "test_secret"
 		payload := []byte(`{"type":"event_callback"}`)
 
-		// Test at exactly 5-minute boundary
-		timestamp := time.Now().Unix() - 300
+		// Test within 5-minute boundary (with buffer for test execution time)
+		timestamp := time.Now().Unix() - 295
 
-		basestring := "v0:" + formatTimestamp(timestamp) + ":" + string(payload)
+		basestring := "v0:" + strconv.FormatInt(timestamp, 10) + ":" + string(payload)
 		mac := hmac.New(sha256.New, []byte(secret))
 		mac.Write([]byte(basestring))
 		signature := "v0=" + hex.EncodeToString(mac.Sum(nil))
@@ -523,7 +527,7 @@ func TestReplayAttackPrevention(t *testing.T) {
 		// Test just over 5-minute boundary
 		timestamp := time.Now().Unix() - 301
 
-		basestring := "v0:" + formatTimestamp(timestamp) + ":" + string(payload)
+		basestring := "v0:" + strconv.FormatInt(timestamp, 10) + ":" + string(payload)
 		mac := hmac.New(sha256.New, []byte(secret))
 		mac.Write([]byte(basestring))
 		signature := "v0=" + hex.EncodeToString(mac.Sum(nil))

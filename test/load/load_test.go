@@ -193,7 +193,7 @@ func (s *LoadTestAIService) ParseExpense(ctx context.Context, text string, userI
 	}, nil
 }
 
-func (s *LoadTestAIService) SuggestCategory(ctx context.Context, description string) (string, error) {
+func (s *LoadTestAIService) SuggestCategory(ctx context.Context, description string, userID string) (string, error) {
 	return "food", nil
 }
 
@@ -241,13 +241,13 @@ func (m *LoadTestMetrics) getStats() map[string]interface{} {
 	}
 
 	return map[string]interface{}{
-		"total_requests":  total,
+		"total_requests":   total,
 		"success_requests": atomic.LoadInt64(&m.successRequests),
 		"failed_requests":  atomic.LoadInt64(&m.failedRequests),
-		"avg_duration_ns": avgDuration,
-		"avg_duration_ms": float64(avgDuration) / 1e6,
-		"min_duration_ms": float64(m.minDuration) / 1e6,
-		"max_duration_ms": float64(m.maxDuration) / 1e6,
+		"avg_duration_ns":  avgDuration,
+		"avg_duration_ms":  float64(avgDuration) / 1e6,
+		"min_duration_ms":  float64(m.minDuration) / 1e6,
+		"max_duration_ms":  float64(m.maxDuration) / 1e6,
 		"success_rate": func() float64 {
 			if total == 0 {
 				return 0

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/riverlin/aiexpense/internal/domain"
 	"github.com/riverlin/aiexpense/internal/usecase"
@@ -11,11 +12,11 @@ import (
 
 // TerminalUseCase handles Terminal Chat message processing for local testing
 type TerminalUseCase struct {
-	autoSignup       *usecase.AutoSignupUseCase
+	autoSignup        *usecase.AutoSignupUseCase
 	parseConversation *usecase.ParseConversationUseCase
-	createExpense    *usecase.CreateExpenseUseCase
-	getExpenses      *usecase.GetExpensesUseCase
-	userRepo         domain.UserRepository
+	createExpense     *usecase.CreateExpenseUseCase
+	getExpenses       *usecase.GetExpensesUseCase
+	userRepo          domain.UserRepository
 }
 
 // NewTerminalUseCase creates a new Terminal Chat use case
@@ -60,8 +61,8 @@ func (u *TerminalUseCase) HandleMessage(ctx context.Context, userID, message str
 			Status:  "success",
 			Message: "No expenses detected in message",
 			Data: map[string]interface{}{
-				"user_id": userID,
-				"message": message,
+				"user_id":         userID,
+				"message":         message,
 				"expenses_parsed": 0,
 			},
 		}, nil
@@ -93,21 +94,35 @@ func (u *TerminalUseCase) HandleMessage(ctx context.Context, userID, message str
 			"amount":      parsedExp.Amount,
 			"category":    resp.Category,
 			"message":     resp.Message,
+			"date":        parsedExp.Date,
 		})
 	}
 
 	// Build response message
-	responseMsg := fmt.Sprintf("✓ Recorded %d expense(s), total: $%.2f", len(createdExpenses), totalAmount)
+	var msgBuilder strings.Builder
+	msgBuilder.WriteString(fmt.Sprintf("✓ Recorded %d expense(s), total: $%.2f", len(createdExpenses), totalAmount))
+	for _, exp := range createdExpenses {
+		dateStr := ""
+		if d, ok := exp["date"].(time.Time); ok {
+			dateStr = d.Format("2006-01-02")
+		}
+		msgBuilder.WriteString(fmt.Sprintf("\n• [%s] %s (%s): $%.2f",
+			dateStr,
+			exp["description"],
+			exp["category"],
+			exp["amount"]))
+	}
+	responseMsg := msgBuilder.String()
 
 	return &TerminalResponse{
 		Status:  "success",
 		Message: responseMsg,
 		Data: map[string]interface{}{
-			"user_id":            userID,
-			"expenses_created":   len(createdExpenses),
-			"total_amount":       totalAmount,
-			"expenses":           createdExpenses,
-			"original_message":   message,
+			"user_id":          userID,
+			"expenses_created": len(createdExpenses),
+			"total_amount":     totalAmount,
+			"expenses":         createdExpenses,
+			"original_message": message,
 		},
 	}, nil
 }

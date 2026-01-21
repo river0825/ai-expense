@@ -2,6 +2,8 @@ package usecase
 
 import (
 	"context"
+	"fmt"
+	"log"
 	"regexp"
 	"strings"
 	"time"
@@ -31,9 +33,14 @@ func (u *ParseConversationUseCase) Execute(ctx context.Context, text string, use
 		expenses = u.parseWithRegex(text)
 	}
 
-	// Parse relative dates
+	// Parse relative dates ONLY if date is zero (not set by AI)
 	for _, expense := range expenses {
-		expense.Date = u.parseDate(text)
+		if expense.Date.IsZero() {
+			log.Printf("DEBUG: Expense date is zero, parsing relative date from text: %s", text)
+			expense.Date = u.parseDate(text)
+		} else {
+			log.Printf("DEBUG: Expense date already set (by AI?): %v", expense.Date)
+		}
 	}
 
 	return expenses, nil
@@ -42,10 +49,28 @@ func (u *ParseConversationUseCase) Execute(ctx context.Context, text string, use
 // parseDate extracts relative dates from text (昨天, 上週, etc.)
 func (u *ParseConversationUseCase) parseDate(text string) time.Time {
 	text = strings.ToLower(text)
+	log.Printf("DEBUG: parseDate called with: %s", text)
 
-	// Check for yesterday
+	// Check for day before yesterday (前天) - MUST check before yesterday
+	if strings.Contains(text, "前天") || strings.Contains(text, "前日") {
+		d := time.Now().AddDate(0, 0, -2)
+		log.Printf("DEBUG: Detect '前天', returning %v", d)
+		return d
+	}
+
+	// Check for yesterday (昨天)
 	if strings.Contains(text, "昨天") || strings.Contains(text, "昨日") {
 		return time.Now().AddDate(0, 0, -1)
+	}
+
+	// Check for tomorrow (明天)
+	if strings.Contains(text, "明天") || strings.Contains(text, "明日") {
+		return time.Now().AddDate(0, 0, 1)
+	}
+
+	// Check for day after tomorrow (後天)
+	if strings.Contains(text, "後天") || strings.Contains(text, "后天") {
+		return time.Now().AddDate(0, 0, 2)
 	}
 
 	// Check for last week
@@ -64,31 +89,60 @@ func (u *ParseConversationUseCase) parseDate(text string) time.Time {
 
 // parseWithRegex uses regex to extract expenses (fallback)
 func (u *ParseConversationUseCase) parseWithRegex(text string) []*domain.ParsedExpense {
+	// Debug log
+	log.Printf("DEBUG: parseWithRegex called with: %s\n", text)
 	var expenses []*domain.ParsedExpense
 
-	// Pattern: description$amount
-	re := regexp.MustCompile(`([^\d$]+)\$(\d+(?:\.\d{2})?)`)
-	matches := re.FindAllStringSubmatch(text, -1)
-
-	for _, match := range matches {
-		if len(match) < 3 {
-			continue
-		}
-
-		description := strings.TrimSpace(match[1])
+	// Helper
+	addExpense := func(desc, amtStr string) {
+		description := strings.TrimSpace(desc)
 		if description == "" {
-			continue
+			return
 		}
-
+		description = strings.TrimSuffix(description, " ")
 		amount := 0.0
-		_, _ = parseFloat(match[2], &amount)
+		// Use simple ParseFloat since helper parseFloat isn't exported/shared easily
+		// or use the one defined in this file.
+		// The existing file has parseFloat helper at bottom.
+		val, err := parseFloat(amtStr, &amount)
+		if err != nil {
+			return
+		}
+		amount = val
 
 		expense := &domain.ParsedExpense{
 			Description: description,
 			Amount:      amount,
-			Date:        time.Now(),
+			// Date:        time.Now(), // DON'T SET DATE HERE, let Execute() handle it
 		}
 		expenses = append(expenses, expense)
+	}
+
+	// Pattern 1: description$amount
+	reDollar := regexp.MustCompile(`([^\d$]+?)\s*\$(\d+(?:\.\d{2})?)`)
+	dollarMatches := reDollar.FindAllStringSubmatch(text, -1)
+	fmt.Printf("DEBUG: dollarMatches: %v\n", dollarMatches)
+
+	// Pattern 2: description amount 元
+	reYuan := regexp.MustCompile(`(.*?)\s+(\d+(?:\.\d{2})?)\s*元`)
+	yuanMatches := reYuan.FindAllStringSubmatch(text, -1)
+	fmt.Printf("DEBUG: yuanMatches: %v\n", yuanMatches)
+
+	if len(dollarMatches) > 0 || len(yuanMatches) > 0 {
+		for _, match := range dollarMatches {
+			addExpense(match[1], match[2])
+		}
+		for _, match := range yuanMatches {
+			addExpense(match[1], match[2])
+		}
+	} else {
+		// Pattern 3: Loose space
+		reSpace := regexp.MustCompile(`([^\d]+?)\s+(\d+(?:\.\d{2})?)(?:\s|$)`)
+		matches := reSpace.FindAllStringSubmatch(text, -1)
+		fmt.Printf("DEBUG: reSpace matches: %v\n", matches)
+		for _, match := range matches {
+			addExpense(match[1], match[2])
+		}
 	}
 
 	return expenses

@@ -25,7 +25,7 @@ func NewClient(channelToken string) (*Client, error) {
 
 	return &Client{
 		channelToken: channelToken,
-		apiURL:       "https://api.line.biz/v2/bot/message",
+		apiURL:       "https://api.line.me/v2/bot/message",
 		httpClient:   &http.Client{},
 	}, nil
 }
@@ -49,6 +49,8 @@ type LineAPIResponse struct {
 
 // SendMessage sends a reply message to a user via LINE Messaging API
 func (c *Client) SendMessage(ctx context.Context, replyToken, text string) error {
+	// https://developers.line.biz/en/docs/messaging-api/message-types/#text-messages-v2
+	// Ensure we're using the correct format. The current struct TextMessage matches standard text message format.
 	req := ReplyMessageRequest{
 		ReplyToken: replyToken,
 		Messages: []TextMessage{
@@ -87,11 +89,12 @@ func (c *Client) SendMessage(ctx context.Context, replyToken, text string) error
 
 	// Check HTTP status code
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
+		log.Printf("[LINE API Error] Status: %d, Body: %s", resp.StatusCode, string(body))
 		var apiResp LineAPIResponse
 		if err := json.Unmarshal(body, &apiResp); err == nil && apiResp.Message != "" {
 			return fmt.Errorf("line api error: %s (status: %d)", apiResp.Message, resp.StatusCode)
 		}
-		return fmt.Errorf("line api error: status %d", resp.StatusCode)
+		return fmt.Errorf("line api error: status %d, body: %s", resp.StatusCode, string(body))
 	}
 
 	log.Printf("[LINE] Message sent to reply token %s", replyToken)

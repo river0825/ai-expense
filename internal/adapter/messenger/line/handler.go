@@ -52,7 +52,12 @@ func (h *Handler) HandleWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Debug log: Print webhook details
+	log.Printf("[LINE Webhook] Signature: %s", signature)
+	log.Printf("[LINE Webhook] Body: %s", string(body))
+
 	if !h.verifySignature(signature, body) {
+		log.Printf("[LINE Webhook] Invalid signature")
 		http.Error(w, "Invalid signature", http.StatusUnauthorized)
 		return
 	}
@@ -73,8 +78,11 @@ func (h *Handler) HandleWebhook(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Handle the message
+		log.Printf("[LINE Webhook] Processing message event from user %s: %s", e.Source.UserID, e.Message.Text)
 		if err := h.useCase.HandleMessage(ctx, e.Source.UserID, e.Message.Text, e.ReplyToken); err != nil {
-			log.Printf("Error handling message: %v", err)
+			log.Printf("[LINE Webhook] Error handling message: %v", err)
+		} else {
+			log.Printf("[LINE Webhook] Message handled successfully")
 		}
 	}
 

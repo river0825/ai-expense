@@ -1,0 +1,14 @@
+# Terraform state files
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+
+# Variables files (sensitive)
+*.tfvars
+dev.tfvars
+prod.tfvars
+preview.tfvars
+
+# OS files
+.DS_Store
+Thumbs.db

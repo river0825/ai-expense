@@ -1,8 +1,13 @@
 package ai
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
+	"log"
+	"net/http"
 	"regexp"
 	"strconv"
 	"strings"
@@ -38,73 +43,228 @@ func NewGeminiAI(apiKey string, costRepo domain.AICostRepository) (*GeminiAI, er
 }
 
 // ParseExpense extracts expenses from natural language text
-// For now, uses regex-based fallback parsing until Gemini SDK is fully integrated
 func (g *GeminiAI) ParseExpense(ctx context.Context, text string, userID string) ([]*domain.ParsedExpense, error) {
-	// TODO: Call Gemini API with prompt engineered for expense parsing
-	// For now, use regex-based fallback parsing
-	expenses, err := g.parseExpenseRegex(text)
-	if err != nil {
-		return nil, err
+	log.Printf("DEBUG: GeminiAI.ParseExpense called with: %s", text)
+
+	// Try Gemini API first
+	expenses, err := g.callGeminiAPI(ctx, text)
+	if err == nil {
+		// Log cost for successful API call
+		g.logCost(userID, "parse_expense", "gemini-2.5-flash-lite", len(text), len(expenses)*50) // Estimate
+		return expenses, nil
 	}
 
-	// Log cost (using hardcoded estimates for now since it's regex fallback)
-	// In real AI implementation, we would get usage from response
-	if g.costRepo != nil && userID != "" {
-		costLog := &domain.AICostLog{
-			ID:           fmt.Sprintf("log_%d", time.Now().UnixNano()),
-			UserID:       userID,
-			Operation:    "parse_expense",
-			Provider:     "gemini",
-			Model:        "regex-fallback",
-			InputTokens:  len(text), // Rough estimate
-			OutputTokens: len(expenses) * 10,
-			TotalTokens:  len(text) + len(expenses)*10,
-			Cost:         0, // Regex is free
-			Currency:     "USD",
-			CreatedAt:    time.Now(),
+	log.Printf("WARN: Gemini API failed (using regex fallback): %v", err)
+
+	// Fallback to regex
+	return g.parseExpenseRegex(text)
+}
+
+type geminiRequest struct {
+	Contents         []geminiContent         `json:"contents"`
+	GenerationConfig *geminiGenerationConfig `json:"generationConfig,omitempty"`
+}
+
+type geminiContent struct {
+	Parts []geminiPart `json:"parts"`
+}
+
+type geminiPart struct {
+	Text string `json:"text"`
+}
+
+type geminiGenerationConfig struct {
+	ResponseMimeType string `json:"responseMimeType,omitempty"`
+}
+
+type geminiResponse struct {
+	Candidates []struct {
+		Content struct {
+			Parts []struct {
+				Text string `json:"text"`
+			} `json:"parts"`
+		} `json:"content"`
+	} `json:"candidates"`
+}
+
+func (g *GeminiAI) callGeminiAPI(ctx context.Context, text string) ([]*domain.ParsedExpense, error) {
+	url := "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=" + g.apiKey
+
+	prompt := fmt.Sprintf(`
+You are an expense tracking assistant. Extract expenses from the following text.
+Today is %s.
+
+Return a JSON array of objects with these fields:
+- description: string (what was bought)
+- amount: number (price)
+- suggested_category: string (Food, Transport, Shopping, Entertainment, Other)
+- date: string (ISO 8601 format YYYY-MM-DD, resolve relative dates like "yesterday" based on today's date)
+
+If the currency is not specified, assume TWD.
+If no expenses are found, return an empty array [].
+
+Text: %s
+`, time.Now().Format("2006-01-02"), text)
+
+	reqBody := geminiRequest{
+		Contents: []geminiContent{
+			{
+				Parts: []geminiPart{
+					{Text: prompt},
+				},
+			},
+		},
+		GenerationConfig: &geminiGenerationConfig{
+			ResponseMimeType: "application/json",
+		},
+	}
+
+	jsonBody, err := json.Marshal(reqBody)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(jsonBody))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to call API: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("API error %d: %s", resp.StatusCode, string(body))
+	}
+
+	var geminiResp geminiResponse
+	if err := json.NewDecoder(resp.Body).Decode(&geminiResp); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	if len(geminiResp.Candidates) == 0 || len(geminiResp.Candidates[0].Content.Parts) == 0 {
+		return nil, fmt.Errorf("no content in response")
+	}
+
+	responseText := geminiResp.Candidates[0].Content.Parts[0].Text
+
+	// Parse the JSON array from the response text
+	var parsedItems []struct {
+		Description       string  `json:"description"`
+		Amount            float64 `json:"amount"`
+		SuggestedCategory string  `json:"suggested_category"`
+		Date              string  `json:"date"`
+	}
+
+	if err := json.Unmarshal([]byte(responseText), &parsedItems); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal result JSON: %w", err)
+	}
+
+	var expenses []*domain.ParsedExpense
+	for _, item := range parsedItems {
+		var expenseDate time.Time
+		if item.Date != "" {
+			if parsedDate, err := time.Parse("2006-01-02", item.Date); err == nil {
+				expenseDate = parsedDate
+			} else {
+				expenseDate = time.Now()
+			}
+		} else {
+			expenseDate = time.Now()
 		}
-		// Fire and forget cost logging to not block response
-		go func() {
-			_ = g.costRepo.Create(context.Background(), costLog)
-		}()
+
+		expenses = append(expenses, &domain.ParsedExpense{
+			Description:       item.Description,
+			Amount:            item.Amount,
+			SuggestedCategory: item.SuggestedCategory,
+			Date:              expenseDate,
+		})
 	}
 
 	return expenses, nil
 }
 
+func (g *GeminiAI) logCost(userID, operation, model string, inputTokens, outputTokens int) {
+	if g.costRepo == nil || userID == "" {
+		return
+	}
+
+	costLog := &domain.AICostLog{
+		ID:           fmt.Sprintf("log_%d", time.Now().UnixNano()),
+		UserID:       userID,
+		Operation:    operation,
+		Provider:     "gemini",
+		Model:        model,
+		InputTokens:  inputTokens,
+		OutputTokens: outputTokens,
+		TotalTokens:  inputTokens + outputTokens,
+		Cost:         0, // TODO: Implement pricing lookup
+		Currency:     "USD",
+		CreatedAt:    time.Now(),
+	}
+
+	go func() {
+		_ = g.costRepo.Create(context.Background(), costLog)
+	}()
+}
+
 // parseExpenseRegex uses regex to extract expenses (fallback when AI unavailable)
 func (g *GeminiAI) parseExpenseRegex(text string) ([]*domain.ParsedExpense, error) {
-	// Pattern: description$amount or description amount
-	// Examples: "早餐$20", "午餐 30", "加油$200"
-
 	var expenses []*domain.ParsedExpense
 
-	// Try to extract items with format: text$amount
-	re := regexp.MustCompile(`([^\d$]+)\$(\d+(?:\.\d{2})?)`)
-	matches := re.FindAllStringSubmatch(text, -1)
-
-	for _, match := range matches {
-		if len(match) < 3 {
-			continue
-		}
-
-		description := strings.TrimSpace(match[1])
+	// Helper to add expense
+	addExpense := func(desc, amtStr string) {
+		description := strings.TrimSpace(desc)
 		if description == "" {
-			continue
+			return
 		}
+		// Clean description (remove trailing tokens if overlapping)
+		description = strings.TrimSuffix(description, " ")
 
-		amount, err := strconv.ParseFloat(match[2], 64)
+		amount, err := strconv.ParseFloat(amtStr, 64)
 		if err != nil {
-			continue
+			return
 		}
 
 		expense := &domain.ParsedExpense{
 			Description:       description,
 			Amount:            amount,
 			SuggestedCategory: "Other", // Default category
-			Date:              time.Now(),
+			// Date is left zero to let usecase handle relative date parsing
 		}
 		expenses = append(expenses, expense)
+	}
+
+	// Strategy: Try patterns from specific to general
+
+	// Pattern 1: $ symbol (e.g., "lunch $10", "dinner$20")
+	reDollar := regexp.MustCompile(`([^\d$]+?)\s*\$(\d+(?:\.\d{2})?)`)
+	dollarMatches := reDollar.FindAllStringSubmatch(text, -1)
+
+	// Pattern 2: '元' suffix (e.g., "早餐 10元", "午餐 100 元")
+	reYuan := regexp.MustCompile(`(.*?)\s+(\d+(?:\.\d{2})?)\s*元`)
+	yuanMatches := reYuan.FindAllStringSubmatch(text, -1)
+
+	if len(dollarMatches) > 0 || len(yuanMatches) > 0 {
+		for _, match := range dollarMatches {
+			addExpense(match[1], match[2])
+		}
+		for _, match := range yuanMatches {
+			addExpense(match[1], match[2])
+		}
+	} else {
+		// Fallback: Loose space matching (e.g., "lunch 10")
+		// Only use if no currency markers found to avoid duplicates or misparsing
+		reSpace := regexp.MustCompile(`([^\d]+?)\s+(\d+(?:\.\d{2})?)(?:\s|$)`)
+		matches := reSpace.FindAllStringSubmatch(text, -1)
+		for _, match := range matches {
+			addExpense(match[1], match[2])
+		}
 	}
 
 	return expenses, nil

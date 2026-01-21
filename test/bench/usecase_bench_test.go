@@ -152,7 +152,7 @@ func (s *BenchAIService) ParseExpense(ctx context.Context, text string, userID s
 	}, nil
 }
 
-func (s *BenchAIService) SuggestCategory(ctx context.Context, description string) (string, error) {
+func (s *BenchAIService) SuggestCategory(ctx context.Context, description string, userID string) (string, error) {
 	return "food", nil
 }
 

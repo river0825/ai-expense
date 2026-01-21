@@ -378,8 +378,11 @@ func TestSQLiteExpenseRepository(t *testing.T) {
 		}
 
 		// Verify deletion
-		_, err = expenseRepo.GetByID(ctx, "exp_001")
-		if err == nil {
+		exp, err := expenseRepo.GetByID(ctx, "exp_001")
+		if err != nil {
+			t.Fatalf("Failed to check deletion: %v", err)
+		}
+		if exp != nil {
 			t.Error("Expected expense to be deleted")
 		}
 	})

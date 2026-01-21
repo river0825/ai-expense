@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { DashboardCard } from '@/components/DashboardCard';
 import { Sidebar } from '@/components/Sidebar';
@@ -8,50 +8,60 @@ import { TopBar } from '@/components/TopBar';
 import { 
   ArrowTrendingUpIcon, 
   ArrowTrendingDownIcon,
-  EllipsisHorizontalIcon,
   CurrencyDollarIcon,
   WalletIcon,
   ShoppingBagIcon
 } from '@heroicons/react/24/outline';
+import RepositoryFactory from '@/infrastructure/RepositoryFactory';
+import { DashboardStats } from '@/domain/models/Stats';
+import { Transaction } from '@/domain/models/Transaction';
 
-const STATS_CONFIG = [
-  { 
-    key: 'totalBalance', 
-    value: '$24,562.00', 
-    change: '+2.5%', 
-    isPositive: true,
-    icon: WalletIcon,
-    color: 'from-blue-500 to-cyan-400'
-  },
-  { 
-    key: 'totalIncome', 
-    value: '$8,240.50', 
-    change: '+12.3%', 
-    isPositive: true,
-    icon: CurrencyDollarIcon,
-    color: 'from-emerald-500 to-lime-400'
-  },
-  { 
-    key: 'totalExpenses', 
-    value: '$3,820.00', 
-    change: '-4.1%', 
-    isPositive: false,
-    icon: ShoppingBagIcon,
-    color: 'from-rose-500 to-orange-400'
-  },
-];
-
-const TRANSACTIONS = [
-  { id: 1, name: 'AWS Infrastructure', category: 'Services', date: 'Oct 24, 2024', amount: '-$240.00', status: 'Completed' },
-  { id: 2, name: 'Stripe Payment', category: 'Income', date: 'Oct 23, 2024', amount: '+$1,250.00', status: 'Completed' },
-  { id: 3, name: 'Slack Subscription', category: 'Software', date: 'Oct 22, 2024', amount: '-$12.00', status: 'Pending' },
-  { id: 4, name: 'Google Ads', category: 'Marketing', date: 'Oct 21, 2024', amount: '-$650.00', status: 'Completed' },
-  { id: 5, name: 'Client Invoice #002', category: 'Income', date: 'Oct 20, 2024', amount: '+$3,400.00', status: 'Completed' },
-];
+const STATS_UI = {
+  totalBalance: { icon: WalletIcon, color: 'from-blue-500 to-cyan-400' },
+  totalIncome: { icon: CurrencyDollarIcon, color: 'from-emerald-500 to-lime-400' },
+  totalExpenses: { icon: ShoppingBagIcon, color: 'from-rose-500 to-orange-400' }
+};
 
 export default function Dashboard() {
   const t = useTranslations('Dashboard');
   const tStats = useTranslations('Stats');
+  
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const statsRepo = RepositoryFactory.getStatsRepository();
+        const txRepo = RepositoryFactory.getTransactionRepository();
+        
+        const [statsData, txData] = await Promise.all([
+          statsRepo.getDashboardStats(),
+          txRepo.getRecentTransactions(5)
+        ]);
+        
+        setStats(statsData);
+        setTransactions(txData);
+      } catch (error) {
+        console.error('Failed to fetch dashboard data', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  if (loading || !stats) {
+    return (
+      <div className="min-h-screen bg-background font-sans text-text flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  const statKeys = ['totalBalance', 'totalIncome', 'totalExpenses'] as const;
 
   return (
     <div className="min-h-screen bg-background font-sans text-text selection:bg-primary/30">
@@ -77,26 +87,32 @@ export default function Dashboard() {
 
           {/* Stats Grid */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {STATS_CONFIG.map((stat) => (
-              <DashboardCard key={stat.key} className="relative overflow-hidden group">
-                 <div className={`absolute -right-6 -top-6 w-24 h-24 rounded-full bg-gradient-to-br ${stat.color} opacity-20 blur-2xl group-hover:opacity-30 transition-opacity duration-500`}></div>
-                 <div className="relative z-10">
-                   <div className="flex justify-between items-start mb-4">
-                     <div className={`p-3 rounded-xl bg-white/5 border border-white/5 text-white ring-1 ring-inset ring-white/10`}>
-                       <stat.icon className="w-6 h-6" />
+            {statKeys.map((key) => {
+              const stat = stats[key];
+              const ui = STATS_UI[key];
+              const Icon = ui.icon;
+              
+              return (
+                <DashboardCard key={key} className="relative overflow-hidden group">
+                   <div className={`absolute -right-6 -top-6 w-24 h-24 rounded-full bg-gradient-to-br ${ui.color} opacity-20 blur-2xl group-hover:opacity-30 transition-opacity duration-500`}></div>
+                   <div className="relative z-10">
+                     <div className="flex justify-between items-start mb-4">
+                       <div className={`p-3 rounded-xl bg-white/5 border border-white/5 text-white ring-1 ring-inset ring-white/10`}>
+                         <Icon className="w-6 h-6" />
+                       </div>
+                       <span className={`flex items-center gap-1 text-sm font-medium px-2 py-1 rounded-full border border-white/5 ${stat.isPositive ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
+                         {stat.isPositive ? <ArrowTrendingUpIcon className="w-3 h-3" /> : <ArrowTrendingDownIcon className="w-3 h-3" />}
+                         {stat.change}
+                       </span>
                      </div>
-                     <span className={`flex items-center gap-1 text-sm font-medium px-2 py-1 rounded-full border border-white/5 ${stat.isPositive ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
-                       {stat.isPositive ? <ArrowTrendingUpIcon className="w-3 h-3" /> : <ArrowTrendingDownIcon className="w-3 h-3" />}
-                       {stat.change}
-                     </span>
+                     <div className="space-y-1">
+                        <p className="text-text/60 text-sm font-medium uppercase tracking-wider">{t(key)}</p>
+                        <h3 className="text-3xl font-mono font-bold text-text tracking-tight">{stat.value}</h3>
+                     </div>
                    </div>
-                   <div className="space-y-1">
-                      <p className="text-text/60 text-sm font-medium uppercase tracking-wider">{t(stat.key)}</p>
-                      <h3 className="text-3xl font-mono font-bold text-text tracking-tight">{stat.value}</h3>
-                   </div>
-                 </div>
-              </DashboardCard>
-            ))}
+                </DashboardCard>
+              );
+            })}
           </div>
 
           {/* Main Grid: Chart & Transactions */}
@@ -139,7 +155,7 @@ export default function Dashboard() {
             {/* Recent Transactions */}
             <DashboardCard title={t('recentTransactions')} className="h-full" action={<button className="text-xs text-primary hover:text-primary/80 transition-colors">{t('viewAll')}</button>}>
                <div className="space-y-4">
-                 {TRANSACTIONS.map((tx) => (
+                 {transactions.map((tx) => (
                    <div key={tx.id} className="group flex items-center justify-between p-3 rounded-xl hover:bg-white/5 border border-transparent hover:border-white/5 transition-all duration-200 cursor-pointer">
                      <div className="flex items-center gap-4">
                        <div className={`w-10 h-10 rounded-full flex items-center justify-center border border-white/5 ${tx.amount.startsWith('+') ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400' }`}>
