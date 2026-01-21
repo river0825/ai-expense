@@ -1,7 +1,10 @@
 package postgresql
 
 import (
+	"context"
 	"database/sql"
+	"time"
+
 	_ "github.com/lib/pq"
 )
 
@@ -12,8 +15,12 @@ func OpenDB(databaseURL string) (*sql.DB, error) {
 		return nil, err
 	}
 
-	// Test the connection
-	if err := db.Ping(); err != nil {
+	// Test the connection with timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := db.PingContext(ctx); err != nil {
+		db.Close()
 		return nil, err
 	}
 

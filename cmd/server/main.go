@@ -35,6 +35,7 @@ func main() {
 	var metricsRepo domain.MetricsRepository
 	var aiCostRepo domain.AICostRepository
 	var policyRepo domain.PolicyRepository
+	var dbCloser interface{ Close() error }
 
 	if cfg.DatabaseURL != "" {
 		// Use PostgreSQL
@@ -43,7 +44,7 @@ func main() {
 		if err != nil {
 			log.Fatalf("Failed to open PostgreSQL database: %v", err)
 		}
-		defer db.Close()
+		dbCloser = db
 
 		userRepo = postgresRepo.NewUserRepository(db)
 		categoryRepo = postgresRepo.NewCategoryRepository(db)
@@ -59,7 +60,7 @@ func main() {
 		if err != nil {
 			log.Fatalf("Failed to open SQLite database: %v", err)
 		}
-		defer db.Close()
+		dbCloser = db
 
 		userRepo = sqliteRepo.NewUserRepository(db)
 		categoryRepo = sqliteRepo.NewCategoryRepository(db)
@@ -69,6 +70,13 @@ func main() {
 		policyRepo = sqliteRepo.NewPolicyRepository(db)
 		log.Printf("Connected to SQLite database")
 	}
+
+	// Ensure database is closed on exit
+	defer func() {
+		if dbCloser != nil {
+			dbCloser.Close()
+		}
+	}()
 
 	// Initialize AI service
 	aiService, err := ai.Factory(cfg.AIProvider, cfg.GeminiAPIKey, aiCostRepo)
