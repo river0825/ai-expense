@@ -3,10 +3,10 @@ package postgresql
 import (
 	"context"
 	"database/sql"
-	"fmt"
+	"errors"
+	"time"
 
 	"github.com/riverlin/aiexpense/internal/domain"
-	"github.com/riverlin/aiexpense/internal/repository"
 )
 
 type ExpenseRepository struct {
@@ -45,7 +45,7 @@ func (r *ExpenseRepository) GetByID(ctx context.Context, id string) (*domain.Exp
 		&expense.CreatedAt, &expense.UpdatedAt,
 	)
 	if err != nil {
-		if err.Error() == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, err
@@ -90,11 +90,69 @@ func (r *ExpenseRepository) Update(ctx context.Context, expense *domain.Expense)
 	`
 
 	_, err := r.db.ExecContext(ctx, query,
+		expense.ID,
 		expense.Description, expense.Amount, expense.CategoryID,
 		expense.ExpenseDate, time.Now(),
-		expense.ID,
 	)
 	return err
+}
+
+func (r *ExpenseRepository) GetByUserIDAndDateRange(ctx context.Context, userID string, from, to time.Time) ([]*domain.Expense, error) {
+	const query = `
+		SELECT id, user_id, description, amount, category_id, expense_date, created_at, updated_at
+		FROM expenses
+		WHERE user_id = $1 AND expense_date BETWEEN $2 AND $3
+		ORDER BY expense_date DESC, created_at DESC
+	`
+
+	rows, err := r.db.QueryContext(ctx, query, userID, from, to)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var expenses []*domain.Expense
+	for rows.Next() {
+		expense := &domain.Expense{}
+		if err := rows.Scan(
+			&expense.ID, &expense.UserID, &expense.Description,
+			&expense.Amount, &expense.CategoryID, &expense.ExpenseDate,
+			&expense.CreatedAt, &expense.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		expenses = append(expenses, expense)
+	}
+	return expenses, rows.Err()
+}
+
+func (r *ExpenseRepository) GetByUserIDAndCategory(ctx context.Context, userID, categoryID string) ([]*domain.Expense, error) {
+	const query = `
+		SELECT id, user_id, description, amount, category_id, expense_date, created_at, updated_at
+		FROM expenses
+		WHERE user_id = $1 AND category_id = $2
+		ORDER BY expense_date DESC, created_at DESC
+	`
+
+	rows, err := r.db.QueryContext(ctx, query, userID, categoryID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var expenses []*domain.Expense
+	for rows.Next() {
+		expense := &domain.Expense{}
+		if err := rows.Scan(
+			&expense.ID, &expense.UserID, &expense.Description,
+			&expense.Amount, &expense.CategoryID, &expense.ExpenseDate,
+			&expense.CreatedAt, &expense.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		expenses = append(expenses, expense)
+	}
+	return expenses, rows.Err()
 }
 
 func (r *ExpenseRepository) Delete(ctx context.Context, id string) error {

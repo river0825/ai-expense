@@ -211,10 +211,10 @@ func TestWhatsAppWebhookVerification(t *testing.T) {
 	createExpenseUC := usecase.NewCreateExpenseUseCase(expenseRepo, categoryRepo, mockAI)
 
 	whatsappUseCase := NewWhatsAppUseCase(autoSignupUC, parseUC, createExpenseUC, nil)
-	handler := NewHandler("123456789", "test_app_secret", whatsappUseCase)
+	handler := NewHandler("test_app_secret", "123456789", whatsappUseCase)
 
 	// GET request for webhook verification
-	req := httptest.NewRequest("GET", "/webhook/whatsapp?hub.mode=subscribe&hub.verify_token=test_token&hub.challenge=test_challenge_123", nil)
+	req := httptest.NewRequest("GET", "/webhook/whatsapp?hub.mode=subscribe&hub.verify_token=verify_token&hub.challenge=test_challenge_123", nil)
 
 	w := httptest.NewRecorder()
 	handler.HandleWebhook(w, req)
@@ -241,13 +241,13 @@ func TestWhatsAppMessageWithValidSignature(t *testing.T) {
 	createExpenseUC := usecase.NewCreateExpenseUseCase(expenseRepo, categoryRepo, mockAI)
 
 	whatsappUseCase := NewWhatsAppUseCase(autoSignupUC, parseUC, createExpenseUC, nil)
-	handler := NewHandler("123456789", "test_app_secret", whatsappUseCase)
+	handler := NewHandler("test_app_secret", "123456789", whatsappUseCase)
 
 	// POST message with valid signature
 	payload, signature := createWhatsAppMessagePayload("16505551234", "早餐$20")
 
 	req := httptest.NewRequest("POST", "/webhook/whatsapp", bytes.NewReader(payload))
-	req.Header.Set("X-Hub-Signature", "sha256="+signature)
+	req.Header.Set("X-Hub-Signature-256", "sha256="+signature)
 	req.Header.Set("Content-Type", "application/json")
 
 	w := httptest.NewRecorder()
@@ -271,7 +271,7 @@ func TestWhatsAppMessageWithInvalidSignature(t *testing.T) {
 	createExpenseUC := usecase.NewCreateExpenseUseCase(expenseRepo, categoryRepo, mockAI)
 
 	whatsappUseCase := NewWhatsAppUseCase(autoSignupUC, parseUC, createExpenseUC, nil)
-	handler := NewHandler("123456789", "test_app_secret", whatsappUseCase)
+	handler := NewHandler("test_app_secret", "123456789", whatsappUseCase)
 
 	payload, _ := createWhatsAppMessagePayload("16505551234", "早餐$20")
 
@@ -300,7 +300,7 @@ func TestWhatsAppMissingSignature(t *testing.T) {
 	createExpenseUC := usecase.NewCreateExpenseUseCase(expenseRepo, categoryRepo, mockAI)
 
 	whatsappUseCase := NewWhatsAppUseCase(autoSignupUC, parseUC, createExpenseUC, nil)
-	handler := NewHandler("123456789", "test_app_secret", whatsappUseCase)
+	handler := NewHandler("test_app_secret", "123456789", whatsappUseCase)
 
 	payload, _ := createWhatsAppMessagePayload("16505551234", "早餐$20")
 
@@ -328,7 +328,7 @@ func TestWhatsAppInvalidVerifyToken(t *testing.T) {
 	createExpenseUC := usecase.NewCreateExpenseUseCase(expenseRepo, categoryRepo, mockAI)
 
 	whatsappUseCase := NewWhatsAppUseCase(autoSignupUC, parseUC, createExpenseUC, nil)
-	handler := NewHandler("123456789", "test_app_secret", whatsappUseCase)
+	handler := NewHandler("test_app_secret", "123456789", whatsappUseCase)
 
 	// GET with wrong verify token
 	req := httptest.NewRequest("GET", "/webhook/whatsapp?hub.mode=subscribe&hub.verify_token=wrong_token&hub.challenge=test_challenge_123", nil)
@@ -354,12 +354,12 @@ func TestWhatsAppMultipleMessages(t *testing.T) {
 	createExpenseUC := usecase.NewCreateExpenseUseCase(expenseRepo, categoryRepo, mockAI)
 
 	whatsappUseCase := NewWhatsAppUseCase(autoSignupUC, parseUC, createExpenseUC, nil)
-	handler := NewHandler("123456789", "test_app_secret", whatsappUseCase)
+	handler := NewHandler("test_app_secret", "123456789", whatsappUseCase)
 
 	payload, signature := createWhatsAppMessagePayload("16505551234", "早餐$20午餐$30晚餐$50")
 
 	req := httptest.NewRequest("POST", "/webhook/whatsapp", bytes.NewReader(payload))
-	req.Header.Set("X-Hub-Signature", "sha256="+signature)
+	req.Header.Set("X-Hub-Signature-256", "sha256="+signature)
 	req.Header.Set("Content-Type", "application/json")
 
 	w := httptest.NewRecorder()
