@@ -91,6 +91,7 @@ Keep this managed block so 'openspec update' can refresh the instructions.
 - Prefer explicit error checks; no silent failures
 - Use pointers only when optionality is required (e.g., nullable fields)
 - Keep domain models in `internal/domain`
+- **Always add interface compliance checks**: When implementing an interface, add `var _ InterfaceName = (*StructName)(nil)` after imports to ensure compile-time verification
 
 ## Imports
 - Group imports by standard library, external, then internal

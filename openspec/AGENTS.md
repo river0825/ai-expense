@@ -381,6 +381,10 @@ notifications/spec.md
 - Avoid frameworks without clear justification
 - Choose boring, proven patterns
 
+### Go Interface Implementation
+- **Always add interface compliance checks**: When implementing an interface, add `var _ InterfaceName = (*StructName)(nil)` after imports to ensure compile-time verification
+- This catches missing interface methods at build time instead of runtime
+
 ### Complexity Triggers
 Only add complexity with:
 - Performance data showing current solution too slow

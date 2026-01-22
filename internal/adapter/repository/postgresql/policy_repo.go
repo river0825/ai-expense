@@ -8,6 +8,8 @@ import (
 	"github.com/riverlin/aiexpense/internal/domain"
 )
 
+var _ domain.PolicyRepository = (*PolicyRepository)(nil)
+
 type PolicyRepository struct {
 	db *sql.DB
 }

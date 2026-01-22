@@ -8,6 +8,8 @@ import (
 	"github.com/riverlin/aiexpense/internal/domain"
 )
 
+var _ domain.UserRepository = (*UserRepository)(nil)
+
 type UserRepository struct {
 	db *sql.DB
 }

@@ -8,6 +8,8 @@ import (
 	"github.com/riverlin/aiexpense/internal/domain"
 )
 
+var _ domain.MetricsRepository = (*MetricsRepository)(nil)
+
 type MetricsRepository struct {
 	db *sql.DB
 }

@@ -9,6 +9,8 @@ import (
 	"github.com/riverlin/aiexpense/internal/domain"
 )
 
+var _ domain.ExpenseRepository = (*ExpenseRepository)(nil)
+
 type ExpenseRepository struct {
 	db *sql.DB
 }

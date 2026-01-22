@@ -34,6 +34,7 @@ All development must follow:
 - Four-layer architecture: Domain → UseCase → Adapter → Infrastructure
 - Repository pattern for data access abstraction
 - Initial implementation: **In-Memory Repositories** (before database integration)
+- **Interface Compliance**: Always add `var _ InterfaceName = (*StructName)(nil)` after imports when implementing interfaces for compile-time verification
 
 **Development Workflow**:
 1. Write Gherkin specs with checkbox status tracking

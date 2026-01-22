@@ -16,6 +16,8 @@ import (
 	"github.com/riverlin/aiexpense/internal/domain"
 )
 
+var _ Service = (*GeminiAI)(nil)
+
 // GeminiAI implements the AI Service using Google Gemini API
 type GeminiAI struct {
 	apiKey   string

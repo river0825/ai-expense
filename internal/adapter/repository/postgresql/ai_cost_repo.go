@@ -8,6 +8,8 @@ import (
 	"github.com/riverlin/aiexpense/internal/domain"
 )
 
+var _ domain.AICostRepository = (*AICostRepository)(nil)
+
 type AICostRepository struct {
 	db *sql.DB
 }
