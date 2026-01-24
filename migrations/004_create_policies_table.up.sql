@@ -9,8 +9,8 @@ CREATE TABLE IF NOT EXISTS policies (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Seed initial Privacy Policy
-INSERT OR IGNORE INTO policies (id, key, title, content, version, created_at, updated_at)
+-- Seed initial Privacy Policy (using ON CONFLICT for PostgreSQL/SQLite compatibility)
+INSERT INTO policies (id, key, title, content, version, created_at, updated_at)
 VALUES (
   'policy_privacy',
   'privacy_policy',
@@ -19,10 +19,11 @@ VALUES (
   '1.0',
   CURRENT_TIMESTAMP,
   CURRENT_TIMESTAMP
-);
+)
+ON CONFLICT (key) DO NOTHING;
 
 -- Seed initial Terms of Use
-INSERT OR IGNORE INTO policies (id, key, title, content, version, created_at, updated_at)
+INSERT INTO policies (id, key, title, content, version, created_at, updated_at)
 VALUES (
   'policy_terms',
   'terms_of_use',
@@ -31,4 +32,5 @@ VALUES (
   '1.0',
   CURRENT_TIMESTAMP,
   CURRENT_TIMESTAMP
-);
+)
+ON CONFLICT (key) DO NOTHING;

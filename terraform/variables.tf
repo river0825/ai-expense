@@ -21,20 +21,9 @@ variable "cloud_run_service_name" {
   default     = "aiexpense-backend"
 }
 
-variable "supabase_db_password" {
-  type        = string
-  description = "Supabase database password"
-  sensitive   = true
-}
-
-variable "supabase_project_suffix" {
-  type        = string
-  description = "Supabase project suffix"
-  default     = "aiexpense"
-}
-
 variable "artifact_registry_image_name" {
   type        = string
   description = "Docker image name in Artifact Registry"
   default     = "aiexpense-backend"
 }
+

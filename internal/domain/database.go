@@ -1,10 +1,7 @@
-package repository
+package domain
 
 import (
-	"context"
 	"database/sql"
-	"github.com/lib/pq"
-	"github.com/riverlin/aiexpense/internal/domain"
 )
 
 type DatabaseType string

@@ -2,7 +2,24 @@
   "permissions": {
     "allow": [
       "Bash(openspec validate:*)",
-      "Bash(openspec show:*)"
+      "Bash(openspec show:*)",
+      "Bash(openspec list:*)",
+      "Bash(openspec update:*)",
+      "Bash(supabase:*)",
+      "Bash(supabase status:*)",
+      "Bash(go get:*)",
+      "Bash(go mod tidy:*)",
+      "Bash(go build:*)",
+      "Bash(timeout 5 go run:*)",
+      "Bash(GEMINI_API_KEY=test AI_PROVIDER=gemini SERVER_PORT=9999 timeout 5 go run:*)",
+      "Bash(sqlite3:*)",
+      "Bash(GEMINI_API_KEY=test AI_PROVIDER=gemini SERVER_PORT=9999 DATABASE_URL=\"postgresql://postgres:postgres@127.0.0.1:54322/postgres\" timeout 5 go run:*)",
+      "Bash(GEMINI_API_KEY=test AI_PROVIDER=gemini SERVER_PORT=9999 DATABASE_URL=\"postgresql://postgres:postgres@127.0.0.1:54322/postgres?sslmode=disable\" timeout 5 go run:*)",
+      "Bash(psql:*)",
+      "Bash(pkill:*)",
+      "Bash(lsof:*)",
+      "Bash(xargs kill -9 sleep 2)",
+      "Bash(curl:*)"
     ]
   }
 }

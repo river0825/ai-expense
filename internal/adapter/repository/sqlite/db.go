@@ -3,10 +3,10 @@ package sqlite
 import (
 	"database/sql"
 	"fmt"
-	"os"
 	"time"
 
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/riverlin/aiexpense/internal/adapter/repository/migrations"
 )
 
 // OpenDB opens a SQLite database connection and runs migrations
@@ -34,8 +34,8 @@ func OpenDB(dbPath string) (*sql.DB, error) {
 		return nil, fmt.Errorf("failed to optimize SQLite: %w", err)
 	}
 
-	// Run migrations
-	if err := runMigrations(db); err != nil {
+	// Run migrations using golang-migrate
+	if err := migrations.RunMigrations(db, "sqlite3"); err != nil {
 		return nil, fmt.Errorf("failed to run migrations: %w", err)
 	}
 
@@ -63,35 +63,3 @@ func optimizeSQLite(db *sql.DB) error {
 	return nil
 }
 
-// runMigrations runs all migration files
-func runMigrations(db *sql.DB) error {
-	migrationFiles := []string{
-		"./migrations/001_init_schema.up.sql",
-		"./migrations/002_optimize_indexes.up.sql",
-		"./migrations/003_create_ai_cost_logs.up.sql",
-		"./migrations/004_create_policies_table.up.sql",
-	}
-
-	for _, filepath := range migrationFiles {
-		// Check if file exists before reading
-		if _, err := os.Stat(filepath); err != nil {
-			if os.IsNotExist(err) {
-				// Skip if migration file doesn't exist (not an error)
-				continue
-			}
-			return fmt.Errorf("failed to stat migration file %s: %w", filepath, err)
-		}
-
-		schemaSQL, err := os.ReadFile(filepath)
-		if err != nil {
-			return fmt.Errorf("failed to read migration file %s: %w", filepath, err)
-		}
-
-		// Execute migration
-		if _, err := db.Exec(string(schemaSQL)); err != nil {
-			return fmt.Errorf("failed to execute migration %s: %w", filepath, err)
-		}
-	}
-
-	return nil
-}

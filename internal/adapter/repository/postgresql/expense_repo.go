@@ -22,7 +22,7 @@ func NewExpenseRepository(db *sql.DB) *ExpenseRepository {
 func (r *ExpenseRepository) Create(ctx context.Context, expense *domain.Expense) error {
 	const query = `
 		INSERT INTO expenses (id, user_id, description, amount, category_id, expense_date, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 	`
 
 	_, err := r.db.ExecContext(ctx, query,

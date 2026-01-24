@@ -1,25 +1,11 @@
--- User profiles
+-- User profiles (created first - no FK dependencies)
 CREATE TABLE IF NOT EXISTS users (
   user_id TEXT PRIMARY KEY,
   messenger_type TEXT NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Expense records
-CREATE TABLE IF NOT EXISTS expenses (
-  id TEXT PRIMARY KEY,
-  user_id TEXT NOT NULL,
-  description TEXT NOT NULL,
-  amount DECIMAL NOT NULL,
-  category_id TEXT,
-  expense_date DATE NOT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (user_id) REFERENCES users(user_id),
-  FOREIGN KEY (category_id) REFERENCES categories(id)
-);
-
--- Categories
+-- Categories (created before expenses - expenses references categories)
 CREATE TABLE IF NOT EXISTS categories (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL,
@@ -39,6 +25,20 @@ CREATE TABLE IF NOT EXISTS category_keywords (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (category_id) REFERENCES categories(id),
   UNIQUE(category_id, keyword)
+);
+
+-- Expense records (created after categories - has FK to categories)
+CREATE TABLE IF NOT EXISTS expenses (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  description TEXT NOT NULL,
+  amount DECIMAL NOT NULL,
+  category_id TEXT,
+  expense_date DATE NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(user_id),
+  FOREIGN KEY (category_id) REFERENCES categories(id)
 );
 
 -- Indexes for performance
