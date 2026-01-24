@@ -218,7 +218,7 @@ func (jq *JobQueue) executeJob(job *Job) {
 		jq.metrics.mu.Lock()
 		jq.metrics.Failed++
 		jq.metrics.mu.Unlock()
-		jq.errorsCh <- fmt.Errorf(job.Error)
+		jq.errorsCh <- fmt.Errorf("%s", job.Error)
 		return
 	}
 

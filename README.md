@@ -165,6 +165,37 @@ Pull Request Close → Preview Environment Destroyed
 
 ## 🔧 Configuration
 
+### Database Setup
+
+The application uses **versioned migrations** via [golang-migrate](https://github.com/golang-migrate/migrate) for both SQLite and PostgreSQL:
+
+#### SQLite (Local Development - Default)
+```bash
+# Database is created automatically at ./aiexpense.db
+# Migrations run on startup
+DATABASE_PATH=./aiexpense.db go run ./cmd/server/main.go
+```
+
+#### PostgreSQL with Local Supabase (Production-like Testing)
+```bash
+# Install Supabase CLI
+brew install supabase/tap/supabase
+
+# Start local Supabase instance
+supabase start
+
+# Get connection string
+supabase status
+
+# Run with PostgreSQL
+DATABASE_URL="postgresql://postgres:postgres@localhost:54322/postgres" \
+go run ./cmd/server/main.go
+```
+
+For detailed database setup instructions, see:
+- [Database Migrations Guide](./docs/migrations.md) - How migrations work and how to create new ones
+- [Local Supabase Setup](./docs/supabase-local-setup.md) - How to set up local PostgreSQL testing
+
 ### Repository Factory Pattern
 
 The system uses a repository factory pattern to choose between SQLite (local) and PostgreSQL (production):

@@ -1,0 +1,31 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "start-supabase",
+            "type": "shell",
+            "command": "supabase",
+            "args": ["start", "--workdir", "${workspaceFolder}"],
+            "presentation": {
+                "echo": true,
+                "reveal": "silent",
+                "focus": false,
+                "panel": "shared"
+            },
+            "runOptions": {
+                "runOn": "folderOpen"
+            }
+        },
+        {
+            "label": "stop-supabase",
+            "type": "shell",
+            "command": "supabase",
+            "args": ["stop", "--project-id", "aiexpense"],
+            "presentation": {
+                "echo": true,
+                "reveal": "silent",
+                "focus": false
+            }
+        }
+    ]
+}

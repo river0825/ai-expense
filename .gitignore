@@ -3,5 +3,7 @@
 *.db-shm
 *.db-wal
 server.log
+server
 
 .lh/
+
