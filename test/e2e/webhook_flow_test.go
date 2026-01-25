@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/riverlin/aiexpense/internal/ai"
 	"github.com/riverlin/aiexpense/internal/domain"
 	"github.com/riverlin/aiexpense/internal/usecase"
 )
@@ -183,29 +184,148 @@ func (r *E2ECategoryRepository) DeleteKeyword(ctx context.Context, id string) er
 	return nil
 }
 
+// E2EPricingRepository for e2e tests
+type E2EPricingRepository struct {
+	pricing map[string]*domain.PricingConfig
+	mu      sync.RWMutex
+}
+
+func (r *E2EPricingRepository) GetByProviderAndModel(ctx context.Context, provider, model string) (*domain.PricingConfig, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	key := provider + ":" + model
+	if p, ok := r.pricing[key]; ok {
+		return p, nil
+	}
+	return nil, nil
+}
+
+func (r *E2EPricingRepository) GetAll(ctx context.Context) ([]*domain.PricingConfig, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	var result []*domain.PricingConfig
+	for _, p := range r.pricing {
+		result = append(result, p)
+	}
+	return result, nil
+}
+
+func (r *E2EPricingRepository) Create(ctx context.Context, pricing *domain.PricingConfig) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	key := pricing.Provider + ":" + pricing.Model
+	r.pricing[key] = pricing
+	return nil
+}
+
+func (r *E2EPricingRepository) Update(ctx context.Context, pricing *domain.PricingConfig) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	key := pricing.Provider + ":" + pricing.Model
+	r.pricing[key] = pricing
+	return nil
+}
+
+func (r *E2EPricingRepository) Deactivate(ctx context.Context, provider, model string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	key := provider + ":" + model
+	if p, ok := r.pricing[key]; ok {
+		p.IsActive = false
+	}
+	return nil
+}
+
+// E2EAICostRepository for e2e tests
+type E2EAICostRepository struct {
+	costs map[string]*domain.AICostLog
+	mu    sync.RWMutex
+}
+
+func (r *E2EAICostRepository) Create(ctx context.Context, log *domain.AICostLog) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.costs[log.ID] = log
+	return nil
+}
+
+func (r *E2EAICostRepository) GetByUserID(ctx context.Context, userID string, limit int) ([]*domain.AICostLog, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	var result []*domain.AICostLog
+	for _, log := range r.costs {
+		if log.UserID == userID {
+			result = append(result, log)
+			if len(result) >= limit {
+				break
+			}
+		}
+	}
+	return result, nil
+}
+
+func (r *E2EAICostRepository) GetSummary(ctx context.Context, from, to time.Time) (*domain.AICostSummary, error) {
+	return &domain.AICostSummary{}, nil
+}
+
+func (r *E2EAICostRepository) GetDailyStats(ctx context.Context, from, to time.Time) ([]*domain.AICostDailyStats, error) {
+	return []*domain.AICostDailyStats{}, nil
+}
+
+func (r *E2EAICostRepository) GetByOperation(ctx context.Context, from, to time.Time) ([]*domain.AICostByOperation, error) {
+	return []*domain.AICostByOperation{}, nil
+}
+
+func (r *E2EAICostRepository) GetByUserSummary(ctx context.Context, from, to time.Time, limit int) ([]*domain.AICostByUser, error) {
+	return []*domain.AICostByUser{}, nil
+}
+
 type E2EAIService struct {
 	parseResponses map[string][]*domain.ParsedExpense
 	mu             sync.RWMutex
 }
 
-func (s *E2EAIService) ParseExpense(ctx context.Context, text string, userID string) ([]*domain.ParsedExpense, error) {
+var _ ai.Service = (*E2EAIService)(nil)
+
+func (s *E2EAIService) ParseExpense(ctx context.Context, text string, userID string) (*ai.ParseExpenseResponse, error) {
 	s.mu.RLock()
 	if responses, ok := s.parseResponses[text]; ok {
 		s.mu.RUnlock()
-		return responses, nil
+		return &ai.ParseExpenseResponse{
+			Expenses: responses,
+			Tokens: &ai.TokenMetadata{
+				InputTokens:  10,
+				OutputTokens: 20,
+				TotalTokens:  30,
+			},
+		}, nil
 	}
 	s.mu.RUnlock()
 
-	return []*domain.ParsedExpense{
-		{
-			Amount:      20.0,
-			Description: text,
+	return &ai.ParseExpenseResponse{
+		Expenses: []*domain.ParsedExpense{
+			{
+				Amount:      20.0,
+				Description: text,
+			},
+		},
+		Tokens: &ai.TokenMetadata{
+			InputTokens:  10,
+			OutputTokens: 20,
+			TotalTokens:  30,
 		},
 	}, nil
 }
 
-func (s *E2EAIService) SuggestCategory(ctx context.Context, description string, userID string) (string, error) {
-	return "uncategorized", nil
+func (s *E2EAIService) SuggestCategory(ctx context.Context, description string, userID string) (*ai.SuggestCategoryResponse, error) {
+	return &ai.SuggestCategoryResponse{
+		Category: "uncategorized",
+		Tokens: &ai.TokenMetadata{
+			InputTokens:  5,
+			OutputTokens: 5,
+			TotalTokens:  10,
+		},
+	}, nil
 }
 
 func (s *E2EAIService) SetParseResponse(text string, expenses []*domain.ParsedExpense) {
@@ -224,9 +344,11 @@ func TestE2ENewUserWebhookFlow(t *testing.T) {
 	categoryRepo := &E2ECategoryRepository{categories: make(map[string]*domain.Category)}
 	expenseRepo := &E2EExpenseRepository{expenses: make(map[string]*domain.Expense)}
 	aiService := &E2EAIService{parseResponses: make(map[string][]*domain.ParsedExpense)}
+	pricingRepo := &E2EPricingRepository{pricing: make(map[string]*domain.PricingConfig)}
+	costRepo := &E2EAICostRepository{costs: make(map[string]*domain.AICostLog)}
 
 	autoSignupUC := usecase.NewAutoSignupUseCase(userRepo, categoryRepo)
-	parseUC := usecase.NewParseConversationUseCase(aiService)
+	parseUC := usecase.NewParseConversationUseCase(aiService, pricingRepo, costRepo, "gemini", "gemini-2.5-lite")
 	createExpenseUC := usecase.NewCreateExpenseUseCase(expenseRepo, categoryRepo, aiService)
 
 	// Step 1: Auto-signup new user
@@ -334,8 +456,10 @@ func TestE2EMultiExpenseMessage(t *testing.T) {
 	categoryRepo := &E2ECategoryRepository{categories: make(map[string]*domain.Category)}
 	expenseRepo := &E2EExpenseRepository{expenses: make(map[string]*domain.Expense)}
 	aiService := &E2EAIService{parseResponses: make(map[string][]*domain.ParsedExpense)}
+	pricingRepo := &E2EPricingRepository{pricing: make(map[string]*domain.PricingConfig)}
+	costRepo := &E2EAICostRepository{costs: make(map[string]*domain.AICostLog)}
 
-	parseUC := usecase.NewParseConversationUseCase(aiService)
+	parseUC := usecase.NewParseConversationUseCase(aiService, pricingRepo, costRepo, "gemini", "gemini-2.5-lite")
 	createExpenseUC := usecase.NewCreateExpenseUseCase(expenseRepo, categoryRepo, aiService)
 
 	userID := "e2e_multi_user"

@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/riverlin/aiexpense/internal/ai"
 	"github.com/riverlin/aiexpense/internal/domain"
 	"github.com/riverlin/aiexpense/internal/usecase"
 )
@@ -154,17 +155,33 @@ func (r *TestCategoryRepository) DeleteKeyword(ctx context.Context, id string) e
 // Test AI Service
 type TestAIService struct{}
 
-func (s *TestAIService) ParseExpense(ctx context.Context, text string, userID string) ([]*domain.ParsedExpense, error) {
-	return []*domain.ParsedExpense{
-		{
-			Amount:      20.0,
-			Description: "Test expense",
+var _ ai.Service = (*TestAIService)(nil)
+
+func (s *TestAIService) ParseExpense(ctx context.Context, text string, userID string) (*ai.ParseExpenseResponse, error) {
+	return &ai.ParseExpenseResponse{
+		Expenses: []*domain.ParsedExpense{
+			{
+				Amount:      20.0,
+				Description: "Test expense",
+			},
+		},
+		Tokens: &ai.TokenMetadata{
+			InputTokens:  10,
+			OutputTokens: 20,
+			TotalTokens:  30,
 		},
 	}, nil
 }
 
-func (s *TestAIService) SuggestCategory(ctx context.Context, description string, userID string) (string, error) {
-	return "food", nil
+func (s *TestAIService) SuggestCategory(ctx context.Context, description string, userID string) (*ai.SuggestCategoryResponse, error) {
+	return &ai.SuggestCategoryResponse{
+		Category: "food",
+		Tokens: &ai.TokenMetadata{
+			InputTokens:  5,
+			OutputTokens: 5,
+			TotalTokens:  10,
+		},
+	}, nil
 }
 
 // Test Metrics Repository
@@ -200,6 +217,86 @@ func (r *TestPolicyRepository) GetByKey(ctx context.Context, key string) (*domai
 		return p, nil
 	}
 	return nil, nil // Return nil if not found (matching sqlite behavior)
+}
+
+// TestPricingRepository for API integration tests
+type TestPricingRepository struct {
+	pricing map[string]*domain.PricingConfig
+}
+
+func (r *TestPricingRepository) GetByProviderAndModel(ctx context.Context, provider, model string) (*domain.PricingConfig, error) {
+	key := provider + ":" + model
+	if p, ok := r.pricing[key]; ok {
+		return p, nil
+	}
+	return nil, nil
+}
+
+func (r *TestPricingRepository) GetAll(ctx context.Context) ([]*domain.PricingConfig, error) {
+	var result []*domain.PricingConfig
+	for _, p := range r.pricing {
+		result = append(result, p)
+	}
+	return result, nil
+}
+
+func (r *TestPricingRepository) Create(ctx context.Context, pricing *domain.PricingConfig) error {
+	key := pricing.Provider + ":" + pricing.Model
+	r.pricing[key] = pricing
+	return nil
+}
+
+func (r *TestPricingRepository) Update(ctx context.Context, pricing *domain.PricingConfig) error {
+	key := pricing.Provider + ":" + pricing.Model
+	r.pricing[key] = pricing
+	return nil
+}
+
+func (r *TestPricingRepository) Deactivate(ctx context.Context, provider, model string) error {
+	key := provider + ":" + model
+	if p, ok := r.pricing[key]; ok {
+		p.IsActive = false
+	}
+	return nil
+}
+
+// TestAICostRepository for API integration tests
+type TestAICostRepository struct {
+	costs map[string]*domain.AICostLog
+}
+
+func (r *TestAICostRepository) Create(ctx context.Context, log *domain.AICostLog) error {
+	r.costs[log.ID] = log
+	return nil
+}
+
+func (r *TestAICostRepository) GetByUserID(ctx context.Context, userID string, limit int) ([]*domain.AICostLog, error) {
+	var result []*domain.AICostLog
+	for _, log := range r.costs {
+		if log.UserID == userID {
+			result = append(result, log)
+			if len(result) >= limit {
+				break
+			}
+		}
+	}
+	return result, nil
+}
+
+func (r *TestAICostRepository) GetSummary(ctx context.Context, from, to time.Time) (*domain.AICostSummary, error) {
+	return &domain.AICostSummary{}, nil
+}
+
+func (r *TestAICostRepository) GetDailyStats(ctx context.Context, from, to time.Time) ([]*domain.AICostDailyStats, error) {
+	return []*domain.AICostDailyStats{}, nil
+}
+
+func (r *TestAICostRepository) GetByOperation(ctx context.Context, from, to time.Time) ([]*domain.AICostByOperation, error) {
+	return []*domain.AICostByOperation{}, nil
+}
+
+func (r *TestAICostRepository) GetByUserSummary(ctx context.Context, from, to time.Time, limit int) ([]*domain.AICostByUser, error) {
+	return []*domain.AICostByUser{}, nil
 }
 
 // TestAPIAutoSignupFlow tests complete auto-signup flow
@@ -287,10 +384,12 @@ func TestAPIParseExpenses(t *testing.T) {
 	categoryRepo := &TestCategoryRepository{categories: make(map[string]*domain.Category)}
 	aiService := &TestAIService{}
 	policyRepo := &TestPolicyRepository{policies: make(map[string]*domain.Policy)}
+	pricingRepo := &TestPricingRepository{pricing: make(map[string]*domain.PricingConfig)}
+	costRepo := &TestAICostRepository{costs: make(map[string]*domain.AICostLog)}
 
 	handler := NewHandler(
 		usecase.NewAutoSignupUseCase(userRepo, categoryRepo),
-		usecase.NewParseConversationUseCase(aiService),
+		usecase.NewParseConversationUseCase(aiService, pricingRepo, costRepo, "gemini", "gemini-2.5-lite"),
 		nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
 		usecase.NewGetPolicyUseCase(policyRepo),
 		userRepo, categoryRepo, nil, nil, "",
@@ -328,10 +427,12 @@ func TestAPICreateExpense(t *testing.T) {
 	})
 
 	policyRepo := &TestPolicyRepository{policies: make(map[string]*domain.Policy)}
+	pricingRepo := &TestPricingRepository{pricing: make(map[string]*domain.PricingConfig)}
+	costRepo := &TestAICostRepository{costs: make(map[string]*domain.AICostLog)}
 
 	handler := NewHandler(
 		usecase.NewAutoSignupUseCase(userRepo, categoryRepo),
-		usecase.NewParseConversationUseCase(aiService),
+		usecase.NewParseConversationUseCase(aiService, pricingRepo, costRepo, "gemini", "gemini-2.5-lite"),
 		usecase.NewCreateExpenseUseCase(expenseRepo, categoryRepo, aiService),
 		nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
 		usecase.NewGetPolicyUseCase(policyRepo),

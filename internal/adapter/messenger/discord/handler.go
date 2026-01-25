@@ -1,23 +1,34 @@
 package discord
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"log"
 	"net/http"
+	"time"
+
+	"github.com/riverlin/aiexpense/internal/domain"
 )
+
+// MessageProcessor defines the interface for processing messages
+type MessageProcessor interface {
+	Execute(ctx context.Context, msg *domain.UserMessage) (*domain.MessageResponse, error)
+}
 
 // Handler handles Discord webhook events
 type Handler struct {
 	botToken string
-	useCase  *DiscordUseCase
+	useCase  MessageProcessor
+	client   *Client
 }
 
 // NewHandler creates a new Discord webhook handler
-func NewHandler(botToken string, useCase *DiscordUseCase) *Handler {
+func NewHandler(botToken string, useCase MessageProcessor, client *Client) *Handler {
 	return &Handler{
 		botToken: botToken,
 		useCase:  useCase,
+		client:   client,
 	}
 }
 
@@ -124,9 +135,22 @@ func (h *Handler) HandleWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Handle the message
-	if err := h.useCase.HandleMessage(r.Context(), userID, messageText, interaction.Token, interaction.ID); err != nil {
-		log.Printf("Error handling message: %v", err)
+	// Map to UserMessage
+	userMsg := &domain.UserMessage{
+		UserID:    userID,
+		Content:   messageText,
+		Source:    "discord",
+		Timestamp: time.Now(), // Interaction doesn't provide easy timestamp, using Now
+		Metadata: map[string]interface{}{
+			"token":          interaction.Token,
+			"interaction_id": interaction.ID,
+		},
+	}
+
+	// Process message
+	resp, err := h.useCase.Execute(r.Context(), userMsg)
+	if err != nil {
+		log.Printf("Error processing message: %v", err)
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"type": 4,
@@ -137,10 +161,14 @@ func (h *Handler) HandleWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Return success response (message handled asynchronously)
+	// Send reply
+	// Discord allows initial response via HTTP response (type 4)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"type": 5, // Defer the response, will send later
+		"type": 4,
+		"data": map[string]string{
+			"content": resp.Text,
+		},
 	})
 }

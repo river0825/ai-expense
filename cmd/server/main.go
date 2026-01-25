@@ -37,6 +37,8 @@ func main() {
 	var policyRepo domain.PolicyRepository
 	var dbCloser interface{ Close() error }
 
+	var pricingRepo domain.PricingRepository
+
 	if cfg.DatabaseURL != "" {
 		// Use PostgreSQL
 		log.Printf("Connecting to PostgreSQL: %s", cfg.DatabaseURL)
@@ -52,6 +54,7 @@ func main() {
 		metricsRepo = postgresRepo.NewMetricsRepository(db)
 		aiCostRepo = postgresRepo.NewAICostRepository(db)
 		policyRepo = postgresRepo.NewPolicyRepository(db)
+		pricingRepo = postgresRepo.NewPricingRepository(db)
 		log.Printf("Connected to PostgreSQL database")
 	} else {
 		// Use SQLite
@@ -68,6 +71,7 @@ func main() {
 		metricsRepo = sqliteRepo.NewMetricsRepository(db)
 		aiCostRepo = sqliteRepo.NewAICostRepository(db)
 		policyRepo = sqliteRepo.NewPolicyRepository(db)
+		pricingRepo = sqliteRepo.NewPricingRepository(db)
 		log.Printf("Connected to SQLite database")
 	}
 
@@ -86,7 +90,13 @@ func main() {
 
 	// Initialize use cases
 	autoSignupUseCase := usecase.NewAutoSignupUseCase(userRepo, categoryRepo)
-	parseConversationUseCase := usecase.NewParseConversationUseCase(aiService)
+	parseConversationUseCase := usecase.NewParseConversationUseCase(
+		aiService,
+		pricingRepo,
+		aiCostRepo,
+		cfg.AIProvider,
+		cfg.AIModel,
+	)
 	createExpenseUseCase := usecase.NewCreateExpenseUseCase(expenseRepo, categoryRepo, aiService)
 	getExpensesUseCase := usecase.NewGetExpensesUseCase(expenseRepo, categoryRepo)
 	updateExpenseUseCase := usecase.NewUpdateExpenseUseCase(expenseRepo, categoryRepo)
@@ -102,6 +112,14 @@ func main() {
 	searchExpenseUseCase := usecase.NewSearchExpenseUseCase(expenseRepo, categoryRepo)
 	archiveUseCase := usecase.NewArchiveUseCase(expenseRepo)
 	getPolicyUseCase := usecase.NewGetPolicyUseCase(policyRepo)
+
+	// Initialize Unified Message Processor
+	processMessageUseCase := usecase.NewProcessMessageUseCase(
+		autoSignupUseCase,
+		parseConversationUseCase,
+		createExpenseUseCase,
+		getExpensesUseCase,
+	)
 
 	// Initialize HTTP handler
 	handler := httpAdapter.NewHandler(
@@ -136,29 +154,14 @@ func main() {
 			log.Fatalf("Failed to initialize LINE client: %v", err)
 		}
 
-		// Initialize LINE use case
-		lineUseCase := line.NewLineUseCase(
-			autoSignupUseCase,
-			parseConversationUseCase,
-			createExpenseUseCase,
-			lineClient,
-		)
-
-		// Initialize LINE webhook handler
-		lineHandler = line.NewHandler(cfg.LineChannelSecret, lineUseCase)
+		// Initialize LINE webhook handler with Unified Message Processor
+		lineHandler = line.NewHandler(cfg.LineChannelSecret, processMessageUseCase, lineClient)
 	}
 
 	// Initialize Terminal messenger (if enabled)
 	var terminalHandler *terminal.Handler
 	if cfg.IsMessengerEnabled("terminal") {
-		terminalUseCase := terminal.NewTerminalUseCase(
-			autoSignupUseCase,
-			parseConversationUseCase,
-			createExpenseUseCase,
-			getExpensesUseCase,
-			userRepo,
-		)
-		terminalHandler = terminal.NewHandler(terminalUseCase)
+		terminalHandler = terminal.NewHandler(processMessageUseCase)
 		log.Printf("Terminal messenger initialized")
 	}
 
@@ -170,16 +173,8 @@ func main() {
 			log.Fatalf("Failed to initialize Telegram client: %v", err)
 		}
 
-		// Initialize Telegram use case
-		telegramUseCase := telegram.NewTelegramUseCase(
-			autoSignupUseCase,
-			parseConversationUseCase,
-			createExpenseUseCase,
-			telegramClient,
-		)
-
 		// Initialize Telegram webhook handler
-		telegramHandler = telegram.NewHandler(cfg.TelegramBotToken, telegramUseCase)
+		telegramHandler = telegram.NewHandler(cfg.TelegramBotToken, processMessageUseCase, telegramClient)
 	}
 
 	// Initialize Discord client (optional)
@@ -190,37 +185,20 @@ func main() {
 			log.Fatalf("Failed to initialize Discord client: %v", err)
 		}
 
-		// Initialize Discord use case
-		discordUseCase := discord.NewDiscordUseCase(
-			autoSignupUseCase,
-			parseConversationUseCase,
-			createExpenseUseCase,
-			discordClient,
-		)
-
 		// Initialize Discord webhook handler
-		discordHandler = discord.NewHandler(cfg.DiscordBotToken, discordUseCase)
+		discordHandler = discord.NewHandler(cfg.DiscordBotToken, processMessageUseCase, discordClient)
 	}
 
 	// Initialize WhatsApp client (optional)
 	var whatsappHandler *whatsapp.Handler
 	if cfg.IsMessengerEnabled("whatsapp") && cfg.WhatsAppPhoneNumberID != "" && cfg.WhatsAppAccessToken != "" {
-		whatsappClient, err := whatsapp.NewClient(cfg.WhatsAppPhoneNumberID, cfg.WhatsAppAccessToken)
-		if err != nil {
-			log.Fatalf("Failed to initialize WhatsApp client: %v", err)
-		}
-
-		// Initialize WhatsApp use case
-		whatsappUseCase := whatsapp.NewWhatsAppUseCase(
-			autoSignupUseCase,
-			parseConversationUseCase,
-			createExpenseUseCase,
-			whatsappClient,
-		)
+		// Client initialization logic removed as it's not used by handler yet
+		// To re-enable client usage, update whatsapp.NewHandler to accept *Client
 
 		// Initialize WhatsApp webhook handler with app secret
 		appSecret := "" // In production, this would be the app secret from Meta
-		whatsappHandler = whatsapp.NewHandler(appSecret, cfg.WhatsAppPhoneNumberID, whatsappUseCase)
+		// TODO: Get AppSecret from config
+		whatsappHandler = whatsapp.NewHandler(appSecret, cfg.WhatsAppPhoneNumberID, processMessageUseCase)
 	}
 
 	// Initialize Slack client (optional)
@@ -231,16 +209,8 @@ func main() {
 			log.Fatalf("Failed to initialize Slack client: %v", err)
 		}
 
-		// Initialize Slack use case
-		slackUseCase := slack.NewSlackUseCase(
-			autoSignupUseCase,
-			parseConversationUseCase,
-			createExpenseUseCase,
-			slackClient,
-		)
-
 		// Initialize Slack webhook handler
-		slackHandler = slack.NewHandler(cfg.SlackSigningSecret, slackUseCase)
+		slackHandler = slack.NewHandler(cfg.SlackSigningSecret, processMessageUseCase, slackClient)
 	}
 
 	// Initialize Microsoft Teams client (optional)
@@ -251,16 +221,8 @@ func main() {
 			log.Fatalf("Failed to initialize Teams client: %v", err)
 		}
 
-		// Initialize Teams use case
-		teamsUseCase := teams.NewTeamsUseCase(
-			autoSignupUseCase,
-			parseConversationUseCase,
-			createExpenseUseCase,
-			teamsClient,
-		)
-
 		// Initialize Teams webhook handler
-		teamsHandler = teams.NewHandler(cfg.TeamsAppID, cfg.TeamsAppPassword, teamsUseCase)
+		teamsHandler = teams.NewHandler(cfg.TeamsAppID, cfg.TeamsAppPassword, processMessageUseCase, teamsClient)
 	}
 
 	// Initialize AI Cost handler

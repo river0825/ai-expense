@@ -1,6 +1,7 @@
 package slack
 
 import (
+	"context"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
@@ -10,19 +11,28 @@ import (
 	"log"
 	"net/http"
 	"time"
+
+	"github.com/riverlin/aiexpense/internal/domain"
 )
+
+// MessageProcessor defines the interface for processing messages
+type MessageProcessor interface {
+	Execute(ctx context.Context, msg *domain.UserMessage) (*domain.MessageResponse, error)
+}
 
 // Handler handles Slack webhook events
 type Handler struct {
 	signingSecret string
-	useCase       *UseCase
+	useCase       MessageProcessor
+	client        *Client
 }
 
 // NewHandler creates a new Slack webhook handler
-func NewHandler(signingSecret string, useCase *UseCase) *Handler {
+func NewHandler(signingSecret string, useCase MessageProcessor, client *Client) *Handler {
 	return &Handler{
 		signingSecret: signingSecret,
 		useCase:       useCase,
+		client:        client,
 	}
 }
 
@@ -92,20 +102,35 @@ func (h *Handler) HandleWebhook(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Handle different event types
-	if slackEvent.Event.Type == "message" && slackEvent.Event.Text != "" && slackEvent.Event.User != "" {
-		go func() {
-			ctx := r.Context()
-			if err := h.useCase.ProcessMessage(ctx, slackEvent.Event.User, slackEvent.Event.Text); err != nil {
+	if (slackEvent.Event.Type == "message" || slackEvent.Event.Type == "app_mention") && slackEvent.Event.Text != "" && slackEvent.Event.User != "" {
+		// Map to UserMessage
+		userMsg := &domain.UserMessage{
+			UserID:    slackEvent.Event.User,
+			Content:   slackEvent.Event.Text,
+			Source:    "slack",
+			Timestamp: time.Now(), // Slack timestamp is a string, using Now for simplicity or parse if needed
+			Metadata: map[string]interface{}{
+				"channel":   slackEvent.Event.Channel,
+				"thread_ts": slackEvent.Event.ThreadTimestamp,
+			},
+		}
+
+		// Handle asynchronously as Slack requires quick response
+		go func(msg *domain.UserMessage, channelID string) {
+			ctx := context.Background() // Create new context for async
+			resp, err := h.useCase.Execute(ctx, msg)
+			if err != nil {
 				log.Printf("Slack: message processing failed: %v", err)
+				// Optionally send error message
+			} else {
+				// Send reply
+				if resp.Text != "" && h.client != nil {
+					if err := h.client.PostMessage(ctx, channelID, resp.Text); err != nil {
+						log.Printf("Slack: failed to send reply: %v", err)
+					}
+				}
 			}
-		}()
-	} else if slackEvent.Event.Type == "app_mention" && slackEvent.Event.User != "" {
-		go func() {
-			ctx := r.Context()
-			if err := h.useCase.ProcessAppMention(ctx, slackEvent.Event.User, slackEvent.Event.Text); err != nil {
-				log.Printf("Slack: mention processing failed: %v", err)
-			}
-		}()
+		}(userMsg, slackEvent.Event.Channel)
 	}
 
 	// Always respond with 200 OK to acknowledge receipt

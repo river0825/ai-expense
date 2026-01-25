@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/riverlin/aiexpense/internal/ai"
 	"github.com/riverlin/aiexpense/internal/domain"
 	"github.com/riverlin/aiexpense/internal/usecase"
 )
@@ -184,17 +185,129 @@ func (r *LoadTestCategoryRepository) DeleteKeyword(ctx context.Context, id strin
 	return nil
 }
 
+// LoadTestPricingRepository for load tests
+type LoadTestPricingRepository struct {
+	pricing map[string]*domain.PricingConfig
+	mu      sync.RWMutex
+}
+
+func (r *LoadTestPricingRepository) GetByProviderAndModel(ctx context.Context, provider, model string) (*domain.PricingConfig, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	key := provider + ":" + model
+	if p, ok := r.pricing[key]; ok {
+		return p, nil
+	}
+	return nil, nil
+}
+
+func (r *LoadTestPricingRepository) GetAll(ctx context.Context) ([]*domain.PricingConfig, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	var result []*domain.PricingConfig
+	for _, p := range r.pricing {
+		result = append(result, p)
+	}
+	return result, nil
+}
+
+func (r *LoadTestPricingRepository) Create(ctx context.Context, pricing *domain.PricingConfig) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	key := pricing.Provider + ":" + pricing.Model
+	r.pricing[key] = pricing
+	return nil
+}
+
+func (r *LoadTestPricingRepository) Update(ctx context.Context, pricing *domain.PricingConfig) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	key := pricing.Provider + ":" + pricing.Model
+	r.pricing[key] = pricing
+	return nil
+}
+
+func (r *LoadTestPricingRepository) Deactivate(ctx context.Context, provider, model string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	key := provider + ":" + model
+	if p, ok := r.pricing[key]; ok {
+		p.IsActive = false
+	}
+	return nil
+}
+
+// LoadTestAICostRepository for load tests
+type LoadTestAICostRepository struct {
+	costs map[string]*domain.AICostLog
+	mu    sync.RWMutex
+}
+
+func (r *LoadTestAICostRepository) Create(ctx context.Context, log *domain.AICostLog) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.costs[log.ID] = log
+	return nil
+}
+
+func (r *LoadTestAICostRepository) GetByUserID(ctx context.Context, userID string, limit int) ([]*domain.AICostLog, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	var result []*domain.AICostLog
+	for _, log := range r.costs {
+		if log.UserID == userID {
+			result = append(result, log)
+			if len(result) >= limit {
+				break
+			}
+		}
+	}
+	return result, nil
+}
+
+func (r *LoadTestAICostRepository) GetSummary(ctx context.Context, from, to time.Time) (*domain.AICostSummary, error) {
+	return &domain.AICostSummary{}, nil
+}
+
+func (r *LoadTestAICostRepository) GetDailyStats(ctx context.Context, from, to time.Time) ([]*domain.AICostDailyStats, error) {
+	return []*domain.AICostDailyStats{}, nil
+}
+
+func (r *LoadTestAICostRepository) GetByOperation(ctx context.Context, from, to time.Time) ([]*domain.AICostByOperation, error) {
+	return []*domain.AICostByOperation{}, nil
+}
+
+func (r *LoadTestAICostRepository) GetByUserSummary(ctx context.Context, from, to time.Time, limit int) ([]*domain.AICostByUser, error) {
+	return []*domain.AICostByUser{}, nil
+}
+
 // LoadTestAIService implements minimal AI service for load testing
 type LoadTestAIService struct{}
 
-func (s *LoadTestAIService) ParseExpense(ctx context.Context, text string, userID string) ([]*domain.ParsedExpense, error) {
-	return []*domain.ParsedExpense{
-		{Amount: 20.0, Description: "Test"},
+var _ ai.Service = (*LoadTestAIService)(nil)
+
+func (s *LoadTestAIService) ParseExpense(ctx context.Context, text string, userID string) (*ai.ParseExpenseResponse, error) {
+	return &ai.ParseExpenseResponse{
+		Expenses: []*domain.ParsedExpense{
+			{Amount: 20.0, Description: "Test"},
+		},
+		Tokens: &ai.TokenMetadata{
+			InputTokens:  10,
+			OutputTokens: 20,
+			TotalTokens:  30,
+		},
 	}, nil
 }
 
-func (s *LoadTestAIService) SuggestCategory(ctx context.Context, description string, userID string) (string, error) {
-	return "food", nil
+func (s *LoadTestAIService) SuggestCategory(ctx context.Context, description string, userID string) (*ai.SuggestCategoryResponse, error) {
+	return &ai.SuggestCategoryResponse{
+		Category: "food",
+		Tokens: &ai.TokenMetadata{
+			InputTokens:  5,
+			OutputTokens: 5,
+			TotalTokens:  10,
+		},
+	}, nil
 }
 
 // LoadTestMetrics tracks performance metrics during load tests

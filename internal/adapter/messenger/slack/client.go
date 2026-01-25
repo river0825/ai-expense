@@ -2,6 +2,7 @@ package slack
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -73,6 +74,12 @@ func (c *Client) SendMessage(userID, text string) error {
 	}
 
 	return nil
+}
+
+// PostMessage sends a message to a Slack channel (alias for SendMessage)
+func (c *Client) PostMessage(ctx context.Context, channelID, text string) error {
+	// For now ignoring context as SendMessage doesn't use it, but keeping signature correct for future
+	return c.SendMessage(channelID, text)
 }
 
 // GetBotInfo retrieves information about the bot

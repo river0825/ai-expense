@@ -6,4 +6,5 @@ server.log
 server
 
 .lh/
-
+.worktrees/
+.terraform/

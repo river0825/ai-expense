@@ -76,8 +76,31 @@ type AICostLog struct {
 	OutputTokens int       `db:"output_tokens"`
 	TotalTokens  int       `db:"total_tokens"`
 	Cost         float64   `db:"cost"`
-	Currency     string    `db:"currency"` // e.g., "USD"
+	Currency     string    `db:"currency"`   // e.g., "USD"
+	CostNote     *string   `db:"cost_note"`  // Optional: reason for special cost (e.g., "pricing_not_configured")
 	CreatedAt    time.Time `db:"created_at"`
+}
+
+// PricingConfig represents AI provider and model pricing information
+type PricingConfig struct {
+	ID               string    `db:"id"`
+	Provider         string    `db:"provider"`         // e.g., "gemini", "claude", "openai"
+	Model            string    `db:"model"`            // e.g., "gemini-2.5-lite"
+	InputTokenPrice  float64   `db:"input_token_price"`  // USD per 1M tokens
+	OutputTokenPrice float64   `db:"output_token_price"` // USD per 1M tokens
+	Currency         string    `db:"currency"`         // e.g., "USD"
+	EffectiveDate    time.Time `db:"effective_date"`   // When pricing becomes active
+	IsActive         bool      `db:"is_active"`        // Whether pricing is currently used
+	CreatedAt        time.Time `db:"created_at"`
+	UpdatedAt        time.Time `db:"updated_at"`
+}
+
+// GetCost calculates the cost based on token usage and this pricing configuration
+// Returns cost in USD (same as currency field)
+func (p *PricingConfig) GetCost(inputTokens, outputTokens int) float64 {
+	inputCost := float64(inputTokens) * p.InputTokenPrice / 1_000_000
+	outputCost := float64(outputTokens) * p.OutputTokenPrice / 1_000_000
+	return inputCost + outputCost
 }
 
 // Policy represents a legal document (Privacy Policy, Terms of Use)

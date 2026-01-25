@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/riverlin/aiexpense/internal/ai"
 	"github.com/riverlin/aiexpense/internal/domain"
 )
 
@@ -178,13 +179,15 @@ type MockAIService struct {
 	shouldFail bool
 }
 
+var _ ai.Service = (*MockAIService)(nil)
+
 func NewMockAIService() *MockAIService {
 	return &MockAIService{
 		shouldFail: false,
 	}
 }
 
-func (m *MockAIService) ParseExpense(ctx context.Context, text string, userID string) ([]*domain.ParsedExpense, error) {
+func (m *MockAIService) ParseExpense(ctx context.Context, text string, userID string) (*ai.ParseExpenseResponse, error) {
 	if m.shouldFail {
 		return nil, nil // Falls back to regex in ParseConversationUseCase
 	}
@@ -228,11 +231,19 @@ func (m *MockAIService) ParseExpense(ctx context.Context, text string, userID st
 		return nil, nil
 	}
 
-	return expenses, nil
+	return &ai.ParseExpenseResponse{
+		Expenses: expenses,
+		Tokens: &ai.TokenMetadata{
+			InputTokens:  10,
+			OutputTokens: 20,
+			TotalTokens:  30,
+		},
+	}, nil
 }
 
-func (m *MockAIService) SuggestCategory(ctx context.Context, description string, userID string) (string, error) {
+func (m *MockAIService) SuggestCategory(ctx context.Context, description string, userID string) (*ai.SuggestCategoryResponse, error) {
 	descLower := strings.ToLower(description)
+	var category string
 
 	// Food keywords (English + Chinese)
 	if strings.Contains(descLower, "breakfast") || strings.Contains(descLower, "lunch") ||
@@ -242,38 +253,38 @@ func (m *MockAIService) SuggestCategory(ctx context.Context, description string,
 		strings.Contains(description, "早餐") || strings.Contains(description, "午餐") ||
 		strings.Contains(description, "晚餐") || strings.Contains(description, "飯") ||
 		strings.Contains(description, "食") {
-		return "Food", nil
-	}
-
-	// Transport keywords (English + Chinese)
-	if strings.Contains(descLower, "taxi") || strings.Contains(descLower, "uber") ||
+		category = "Food"
+	} else if strings.Contains(descLower, "taxi") || strings.Contains(descLower, "uber") ||
 		strings.Contains(descLower, "transport") || strings.Contains(descLower, "gas") ||
 		strings.Contains(descLower, "fuel") || strings.Contains(descLower, "bus") ||
 		strings.Contains(descLower, "train") || strings.Contains(descLower, "airport") ||
 		strings.Contains(descLower, "car") ||
 		strings.Contains(description, "計程車") || strings.Contains(description, "的士") ||
 		strings.Contains(description, "交通") || strings.Contains(description, "油") {
-		return "Transport", nil
-	}
-
-	// Shopping keywords (English + Chinese)
-	if strings.Contains(descLower, "shopping") || strings.Contains(descLower, "shirt") ||
+		category = "Transport"
+	} else if strings.Contains(descLower, "shopping") || strings.Contains(descLower, "shirt") ||
 		strings.Contains(descLower, "clothes") || strings.Contains(descLower, "buy") ||
 		strings.Contains(descLower, "shop") || strings.Contains(descLower, "store") ||
 		strings.Contains(descLower, "mall") ||
 		strings.Contains(description, "購物") || strings.Contains(description, "買") ||
 		strings.Contains(description, "衣服") {
-		return "Shopping", nil
-	}
-
-	// Entertainment keywords (English + Chinese)
-	if strings.Contains(descLower, "movie") || strings.Contains(descLower, "cinema") ||
+		category = "Shopping"
+	} else if strings.Contains(descLower, "movie") || strings.Contains(descLower, "cinema") ||
 		strings.Contains(descLower, "entertainment") || strings.Contains(descLower, "tickets") ||
 		strings.Contains(descLower, "concert") || strings.Contains(descLower, "show") ||
 		strings.Contains(description, "電影") || strings.Contains(description, "電影院") ||
 		strings.Contains(description, "娛樂") || strings.Contains(description, "演唱會") {
-		return "Entertainment", nil
+		category = "Entertainment"
+	} else {
+		category = "Other"
 	}
 
-	return "Other", nil
+	return &ai.SuggestCategoryResponse{
+		Category: category,
+		Tokens: &ai.TokenMetadata{
+			InputTokens:  5,
+			OutputTokens: 5,
+			TotalTokens:  10,
+		},
+	}, nil
 }

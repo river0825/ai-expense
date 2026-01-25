@@ -60,12 +60,12 @@ func (u *CreateExpenseUseCase) Execute(ctx context.Context, req *CreateRequest) 
 		}
 	} else {
 		// Get AI suggestion
-		suggestedCategoryName, err := u.aiService.SuggestCategory(ctx, req.Description, req.UserID)
-		if err == nil {
+		resp, err := u.aiService.SuggestCategory(ctx, req.Description, req.UserID)
+		if err == nil && resp != nil {
 			// Find category by name
 			categories, _ := u.categoryRepo.GetByUserID(ctx, req.UserID)
 			for _, cat := range categories {
-				if cat.Name == suggestedCategoryName {
+				if cat.Name == resp.Category {
 					categoryID = &cat.ID
 					categoryName = cat.Name
 					break
