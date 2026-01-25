@@ -238,6 +238,8 @@ func (m *MockAIService) ParseExpense(ctx context.Context, text string, userID st
 			OutputTokens: 20,
 			TotalTokens:  30,
 		},
+		SystemPrompt: "mock system prompt",
+		RawResponse:  "mock raw response",
 	}, nil
 }
 

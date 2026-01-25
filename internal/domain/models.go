@@ -50,6 +50,13 @@ type ParsedExpense struct {
 	Date              time.Time
 }
 
+// ParseResult represents the result of parsing a conversation
+type ParseResult struct {
+	Expenses     []*ParsedExpense
+	SystemPrompt string
+	RawResponse  string
+}
+
 // DailyMetrics represents metrics for a single day
 type DailyMetrics struct {
 	Date           time.Time
@@ -156,6 +163,19 @@ type PricingConfig struct {
 	IsActive         bool      `db:"is_active" json:"is_active"`
 	CreatedAt        time.Time `db:"created_at" json:"created_at"`
 	UpdatedAt        time.Time `db:"updated_at" json:"updated_at"`
+}
+
+// InteractionLog represents a complete interaction trace for prompt engineering and debugging
+type InteractionLog struct {
+	ID            string    `db:"id" json:"id"`
+	UserID        string    `db:"user_id" json:"user_id"`
+	UserInput     string    `db:"user_input" json:"user_input"`
+	SystemPrompt  string    `db:"system_prompt" json:"system_prompt"`
+	AIRawResponse string    `db:"ai_raw_response" json:"ai_raw_response"`
+	BotFinalReply string    `db:"bot_final_reply" json:"bot_final_reply"`
+	DurationMs    int64     `db:"duration_ms" json:"duration_ms"` // processing time in milliseconds
+	Error         string    `db:"error" json:"error"`             // any error message occurred
+	Timestamp     time.Time `db:"timestamp" json:"timestamp"`
 }
 
 // PricingProvider defines the contract for fetching pricing from an AI provider

@@ -14,11 +14,11 @@ import (
 
 // ParseConversationUseCase handles parsing of conversation text to extract expenses
 type ParseConversationUseCase struct {
-	aiService         ai.Service
-	pricingRepo       domain.PricingRepository
-	costRepo          domain.AICostRepository
-	provider          string // e.g., "gemini"
-	model             string // e.g., "gemini-2.5-lite"
+	aiService   ai.Service
+	pricingRepo domain.PricingRepository
+	costRepo    domain.AICostRepository
+	provider    string // e.g., "gemini"
+	model       string // e.g., "gemini-2.5-lite"
 }
 
 // NewParseConversationUseCase creates a new parse conversation use case
@@ -39,11 +39,12 @@ func NewParseConversationUseCase(
 }
 
 // Execute parses conversation text and extracts expenses with cost tracking
-func (u *ParseConversationUseCase) Execute(ctx context.Context, text string, userID string) ([]*domain.ParsedExpense, error) {
+func (u *ParseConversationUseCase) Execute(ctx context.Context, text, userID string) (*domain.ParseResult, error) {
 	// Call AI service to parse expenses (returns token metadata)
 	resp, err := u.aiService.ParseExpense(ctx, text, userID)
 	var expenses []*domain.ParsedExpense
 	var tokens *ai.TokenMetadata
+	var systemPrompt, rawResponse string
 
 	if err != nil || resp == nil || len(resp.Expenses) == 0 {
 		// Fallback to regex parsing if AI fails or returns no expenses
@@ -52,6 +53,8 @@ func (u *ParseConversationUseCase) Execute(ctx context.Context, text string, use
 	} else {
 		expenses = resp.Expenses
 		tokens = resp.Tokens
+		systemPrompt = resp.SystemPrompt
+		rawResponse = resp.RawResponse
 	}
 
 	// Parse relative dates ONLY if date is zero (not set by AI)
@@ -67,7 +70,11 @@ func (u *ParseConversationUseCase) Execute(ctx context.Context, text string, use
 	// Log cost asynchronously (if pricing available)
 	go u.logCost(context.Background(), userID, tokens)
 
-	return expenses, nil
+	return &domain.ParseResult{
+		Expenses:     expenses,
+		SystemPrompt: systemPrompt,
+		RawResponse:  rawResponse,
+	}, nil
 }
 
 // logCost calculates and logs the cost of the AI API call

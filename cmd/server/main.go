@@ -35,6 +35,7 @@ func main() {
 	var metricsRepo domain.MetricsRepository
 	var aiCostRepo domain.AICostRepository
 	var policyRepo domain.PolicyRepository
+	var interactionLogRepo domain.InteractionLogRepository
 	var dbCloser interface{ Close() error }
 
 	var pricingRepo domain.PricingRepository
@@ -55,6 +56,7 @@ func main() {
 		aiCostRepo = postgresRepo.NewAICostRepository(db)
 		policyRepo = postgresRepo.NewPolicyRepository(db)
 		pricingRepo = postgresRepo.NewPricingRepository(db)
+		interactionLogRepo = postgresRepo.NewInteractionLogRepository(db)
 		log.Printf("Connected to PostgreSQL database")
 	} else {
 		// Use SQLite
@@ -72,6 +74,7 @@ func main() {
 		aiCostRepo = sqliteRepo.NewAICostRepository(db)
 		policyRepo = sqliteRepo.NewPolicyRepository(db)
 		pricingRepo = sqliteRepo.NewPricingRepository(db)
+		interactionLogRepo = sqliteRepo.NewInteractionLogRepository(db)
 		log.Printf("Connected to SQLite database")
 	}
 
@@ -83,7 +86,7 @@ func main() {
 	}()
 
 	// Initialize AI service
-	aiService, err := ai.Factory(cfg.AIProvider, cfg.GeminiAPIKey, aiCostRepo)
+	aiService, err := ai.Factory(cfg.AIProvider, cfg.GeminiAPIKey, cfg.AIModel, aiCostRepo)
 	if err != nil {
 		log.Fatalf("Failed to initialize AI service: %v", err)
 	}
@@ -97,12 +100,14 @@ func main() {
 		cfg.AIProvider,
 		cfg.AIModel,
 	)
-	createExpenseUseCase := usecase.NewCreateExpenseUseCase(
+	createExpenseUseCase := usecase.NewCreateExpenseUseCaseWithAIConfig(
 		expenseRepo,
 		categoryRepo,
 		aiCostRepo,
 		pricingRepo,
 		aiService,
+		cfg.AIProvider,
+		cfg.AIModel,
 	)
 	getExpensesUseCase := usecase.NewGetExpensesUseCase(expenseRepo, categoryRepo)
 	updateExpenseUseCase := usecase.NewUpdateExpenseUseCase(expenseRepo, categoryRepo)
@@ -125,6 +130,7 @@ func main() {
 		parseConversationUseCase,
 		createExpenseUseCase,
 		getExpensesUseCase,
+		interactionLogRepo,
 	)
 
 	// Initialize HTTP handler

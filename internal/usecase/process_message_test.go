@@ -21,12 +21,12 @@ func (m *mockAutoSignup) Execute(ctx context.Context, userID, sourceType string)
 
 type mockParseConversation struct{ mock.Mock }
 
-func (m *mockParseConversation) Execute(ctx context.Context, text, userID string) ([]*domain.ParsedExpense, error) {
+func (m *mockParseConversation) Execute(ctx context.Context, text, userID string) (*domain.ParseResult, error) {
 	args := m.Called(ctx, text, userID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).([]*domain.ParsedExpense), args.Error(1)
+	return args.Get(0).(*domain.ParseResult), args.Error(1)
 }
 
 type mockCreateExpense struct{ mock.Mock }
@@ -46,7 +46,7 @@ func TestProcessMessageUseCase_Execute(t *testing.T) {
 		parser := new(mockParseConversation)
 		creator := new(mockCreateExpense)
 
-		uc := NewProcessMessageUseCase(autoSignup, parser, creator, nil)
+		uc := NewProcessMessageUseCase(autoSignup, parser, creator, nil, nil)
 
 		// Expectations
 		autoSignup.On("Execute", mock.Anything, "user1", "terminal").Return(nil)
@@ -54,7 +54,12 @@ func TestProcessMessageUseCase_Execute(t *testing.T) {
 		parsedExpenses := []*domain.ParsedExpense{
 			{Description: "Lunch", Amount: 100, Date: time.Now()},
 		}
-		parser.On("Execute", mock.Anything, "Lunch 100", "user1").Return(parsedExpenses, nil)
+		parseResult := &domain.ParseResult{
+			Expenses:     parsedExpenses,
+			SystemPrompt: "prompt",
+			RawResponse:  "response",
+		}
+		parser.On("Execute", mock.Anything, "Lunch 100", "user1").Return(parseResult, nil)
 
 		// CreateResponse only has ID, Category, Message based on file inspection
 		createResp := &CreateResponse{ID: "1", Category: "Food", Message: "Saved"}
@@ -83,7 +88,7 @@ func TestProcessMessageUseCase_Execute(t *testing.T) {
 		parser := new(mockParseConversation)
 		creator := new(mockCreateExpense)
 
-		uc := NewProcessMessageUseCase(autoSignup, parser, creator, nil)
+		uc := NewProcessMessageUseCase(autoSignup, parser, creator, nil, nil)
 
 		// Expectations
 		autoSignup.On("Execute", mock.Anything, "user1", "terminal").Return(nil)

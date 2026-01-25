@@ -133,3 +133,9 @@ type PolicyRepository interface {
 	// GetByKey retrieves a policy by its unique key
 	GetByKey(ctx context.Context, key string) (*Policy, error)
 }
+
+// InteractionLogRepository defines operations for logging user-AI interactions
+type InteractionLogRepository interface {
+	// Create creates a new interaction log entry
+	Create(ctx context.Context, log *InteractionLog) error
+}

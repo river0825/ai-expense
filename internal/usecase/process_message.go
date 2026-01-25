@@ -15,6 +15,7 @@ type ProcessMessageUseCase struct {
 	parseConversation ParseConversation
 	createExpense     CreateExpense
 	getExpenses       GetExpenses
+	interactionRepo   domain.InteractionLogRepository
 }
 
 // Interfaces to break dependency cycles (if needed) or mock easier
@@ -23,7 +24,7 @@ type AutoSignup interface {
 }
 
 type ParseConversation interface {
-	Execute(ctx context.Context, text, userID string) ([]*domain.ParsedExpense, error)
+	Execute(ctx context.Context, text, userID string) (*domain.ParseResult, error)
 }
 
 type CreateExpense interface {
@@ -40,35 +41,79 @@ func NewProcessMessageUseCase(
 	parseConversation ParseConversation,
 	createExpense CreateExpense,
 	getExpenses GetExpenses,
+	interactionRepo domain.InteractionLogRepository,
 ) *ProcessMessageUseCase {
 	return &ProcessMessageUseCase{
 		autoSignup:        autoSignup,
 		parseConversation: parseConversation,
 		createExpense:     createExpense,
 		getExpenses:       getExpenses,
+		interactionRepo:   interactionRepo,
 	}
 }
 
 // Execute processes the incoming UserMessage
 func (u *ProcessMessageUseCase) Execute(ctx context.Context, msg *domain.UserMessage) (*domain.MessageResponse, error) {
+	start := time.Now()
+	var botReply string
+	var err error
+	var systemPrompt, rawResponse string
+
+	defer func() {
+		// Log interaction asynchronously
+		if u.interactionRepo != nil {
+			go func() {
+				// Use a background context for logging to ensure it completes even if request cancels
+				logCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer cancel()
+
+				errMsg := ""
+				if err != nil {
+					errMsg = err.Error()
+				}
+
+				interactionLog := &domain.InteractionLog{
+					ID:            fmt.Sprintf("int_%d", start.UnixNano()),
+					UserID:        msg.UserID,
+					UserInput:     msg.Content,
+					SystemPrompt:  systemPrompt,
+					AIRawResponse: rawResponse,
+					BotFinalReply: botReply,
+					DurationMs:    time.Since(start).Milliseconds(),
+					Error:         errMsg,
+					Timestamp:     start,
+				}
+				_ = u.interactionRepo.Create(logCtx, interactionLog)
+			}()
+		}
+	}()
+
 	// 1. Auto-signup
-	if err := u.autoSignup.Execute(ctx, msg.UserID, msg.Source); err != nil {
+	if err = u.autoSignup.Execute(ctx, msg.UserID, msg.Source); err != nil {
+		botReply = fmt.Sprintf("Failed to signup user: %v", err)
 		return &domain.MessageResponse{
-			Text: fmt.Sprintf("Failed to signup user: %v", err),
+			Text: botReply,
 		}, nil // We return success to the adapter so it can send the error message back to user
 	}
 
 	// 2. Parse Message
-	expenses, err := u.parseConversation.Execute(ctx, msg.Content, msg.UserID)
+	var parseResult *domain.ParseResult
+	parseResult, err = u.parseConversation.Execute(ctx, msg.Content, msg.UserID)
 	if err != nil {
+		botReply = fmt.Sprintf("Failed to parse message: %v", err)
 		return &domain.MessageResponse{
-			Text: fmt.Sprintf("Failed to parse message: %v", err),
+			Text: botReply,
 		}, nil
 	}
 
+	systemPrompt = parseResult.SystemPrompt
+	rawResponse = parseResult.RawResponse
+	expenses := parseResult.Expenses
+
 	if len(expenses) == 0 {
+		botReply = "No expenses detected in message"
 		return &domain.MessageResponse{
-			Text: "No expenses detected in message",
+			Text: botReply,
 		}, nil
 	}
 
@@ -115,8 +160,10 @@ func (u *ProcessMessageUseCase) Execute(ctx context.Context, msg *domain.UserMes
 			exp["amount"]))
 	}
 
+	botReply = sb.String()
+
 	return &domain.MessageResponse{
-		Text: sb.String(),
+		Text: botReply,
 		Data: createdExpenses,
 	}, nil
 }
