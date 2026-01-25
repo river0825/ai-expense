@@ -34,6 +34,8 @@ func (m *TestMockAIService) ParseExpense(ctx context.Context, text string, userI
 			OutputTokens: 20,
 			TotalTokens:  30,
 		},
+		SystemPrompt: "mock prompt",
+		RawResponse:  "mock response",
 	}, nil
 }
 
@@ -98,15 +100,15 @@ func TestParseDateLogic(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			expenses, err := uc.Execute(ctx, tt.text, "user")
+			result, err := uc.Execute(ctx, tt.text, "user")
 			if err != nil {
 				t.Fatalf("Execute() error = %v", err)
 			}
-			if len(expenses) == 0 {
+			if len(result.Expenses) == 0 {
 				t.Fatalf("Execute() returned no expenses")
 			}
 
-			got := expenses[0].Date
+			got := result.Expenses[0].Date
 			// Compare year, month, day only
 			if got.Year() != tt.want.Year() || got.Month() != tt.want.Month() || got.Day() != tt.want.Day() {
 				t.Errorf("parseDate() = %v, want %v (day comparison)", got.Format("2006-01-02"), tt.want.Format("2006-01-02"))

@@ -11,12 +11,16 @@ type TokenMetadata struct {
 
 // ParseExpenseResponse wraps parsed expenses with token metadata
 type ParseExpenseResponse struct {
-	Expenses []*domain.ParsedExpense
-	Tokens   *TokenMetadata
+	Expenses     []*domain.ParsedExpense
+	Tokens       *TokenMetadata
+	SystemPrompt string
+	RawResponse  string
 }
 
 // SuggestCategoryResponse wraps suggested category with token metadata
 type SuggestCategoryResponse struct {
-	Category string
-	Tokens   *TokenMetadata
+	Category     string
+	Tokens       *TokenMetadata
+	SystemPrompt string
+	RawResponse  string
 }

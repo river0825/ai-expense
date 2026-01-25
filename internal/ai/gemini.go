@@ -18,16 +18,22 @@ import (
 
 var _ Service = (*GeminiAI)(nil)
 
+const defaultGeminiModel = "gemini-2.5-flash-lite"
+
 // GeminiAI implements the AI Service using Google Gemini API
 type GeminiAI struct {
 	apiKey string
+	model  string
 	// client *genai.Client // TODO: Initialize when Gemini SDK is available
 }
 
 // NewGeminiAI creates a new Gemini AI service
-func NewGeminiAI(apiKey string, costRepo domain.AICostRepository) (*GeminiAI, error) {
+func NewGeminiAI(apiKey string, model string, costRepo domain.AICostRepository) (*GeminiAI, error) {
 	if apiKey == "" {
 		return nil, fmt.Errorf("Gemini API key is required")
+	}
+	if model == "" {
+		model = defaultGeminiModel
 	}
 
 	// TODO: Initialize Gemini client
@@ -38,6 +44,7 @@ func NewGeminiAI(apiKey string, costRepo domain.AICostRepository) (*GeminiAI, er
 
 	return &GeminiAI{
 		apiKey: apiKey,
+		model:  model,
 		// client: client,
 	}, nil
 }
@@ -102,8 +109,12 @@ type geminiResponse struct {
 	} `json:"usageMetadata"`
 }
 
-func (g *GeminiAI) sendGeminiRequest(ctx context.Context, prompt string) (*geminiResponse, error) {
-	url := "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=" + g.apiKey
+func (g *GeminiAI) sendGeminiRequest(ctx context.Context, prompt string) (*geminiResponse, string, error) {
+	model := g.model
+	if model == "" {
+		model = defaultGeminiModel
+	}
+	url := "https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent?key=" + g.apiKey
 
 	reqBody := geminiRequest{
 		Contents: []geminiContent{
@@ -120,33 +131,38 @@ func (g *GeminiAI) sendGeminiRequest(ctx context.Context, prompt string) (*gemin
 
 	jsonBody, err := json.Marshal(reqBody)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal request: %w", err)
+		return nil, "", fmt.Errorf("failed to marshal request: %w", err)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(jsonBody))
 	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
+		return nil, "", fmt.Errorf("failed to create request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to call API: %w", err)
+		return nil, "", fmt.Errorf("failed to call API: %w", err)
 	}
 	defer resp.Body.Close()
 
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to read response body: %w", err)
+	}
+	rawResponse := string(bodyBytes)
+
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API error %d: %s", resp.StatusCode, string(body))
+		return nil, rawResponse, fmt.Errorf("API error %d: %s", resp.StatusCode, rawResponse)
 	}
 
 	var geminiResp geminiResponse
-	if err := json.NewDecoder(resp.Body).Decode(&geminiResp); err != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", err)
+	if err := json.Unmarshal(bodyBytes, &geminiResp); err != nil {
+		return nil, rawResponse, fmt.Errorf("failed to decode response: %w", err)
 	}
 
-	return &geminiResp, nil
+	return &geminiResp, rawResponse, nil
 }
 
 func (g *GeminiAI) callGeminiAPI(ctx context.Context, text string) (*ParseExpenseResponse, error) {
@@ -166,7 +182,7 @@ If no expenses are found, return an empty array [].
 Text: %s
 `, time.Now().Format("2006-01-02"), text)
 
-	geminiResp, err := g.sendGeminiRequest(ctx, prompt)
+	geminiResp, rawResp, err := g.sendGeminiRequest(ctx, prompt)
 	if err != nil {
 		return nil, err
 	}
@@ -218,8 +234,10 @@ Text: %s
 	}
 
 	return &ParseExpenseResponse{
-		Expenses: expenses,
-		Tokens:   tokens,
+		Expenses:     expenses,
+		Tokens:       tokens,
+		SystemPrompt: prompt,
+		RawResponse:  rawResp,
 	}, nil
 }
 
@@ -240,7 +258,7 @@ Description: %s
 Return JUST the category name. Do not add any punctuation or explanation.
 `, description)
 
-	geminiResp, err := g.sendGeminiRequest(ctx, prompt)
+	geminiResp, rawResp, err := g.sendGeminiRequest(ctx, prompt)
 	if err != nil {
 		return nil, err
 	}
@@ -261,8 +279,10 @@ Return JUST the category name. Do not add any punctuation or explanation.
 	}
 
 	return &SuggestCategoryResponse{
-		Category: category,
-		Tokens:   tokens,
+		Category:     category,
+		Tokens:       tokens,
+		SystemPrompt: prompt,
+		RawResponse:  rawResp,
 	}, nil
 }
 
