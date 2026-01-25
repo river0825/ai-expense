@@ -97,29 +97,13 @@ type geminiResponse struct {
 		} `json:"content"`
 	} `json:"candidates"`
 	UsageMetadata struct {
-		PromptTokenCount   int `json:"promptTokenCount"`
+		PromptTokenCount     int `json:"promptTokenCount"`
 		CandidatesTokenCount int `json:"candidatesTokenCount"`
 	} `json:"usageMetadata"`
 }
 
-func (g *GeminiAI) callGeminiAPI(ctx context.Context, text string) (*ParseExpenseResponse, error) {
+func (g *GeminiAI) sendGeminiRequest(ctx context.Context, prompt string) (*geminiResponse, error) {
 	url := "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=" + g.apiKey
-
-	prompt := fmt.Sprintf(`
-You are an expense tracking assistant. Extract expenses from the following text.
-Today is %s.
-
-Return a JSON array of objects with these fields:
-- description: string (what was bought)
-- amount: number (price)
-- suggested_category: string (Food, Transport, Shopping, Entertainment, Other)
-- date: string (ISO 8601 format YYYY-MM-DD, resolve relative dates like "yesterday" based on today's date)
-
-If the currency is not specified, assume TWD.
-If no expenses are found, return an empty array [].
-
-Text: %s
-`, time.Now().Format("2006-01-02"), text)
 
 	reqBody := geminiRequest{
 		Contents: []geminiContent{
@@ -160,6 +144,31 @@ Text: %s
 	var geminiResp geminiResponse
 	if err := json.NewDecoder(resp.Body).Decode(&geminiResp); err != nil {
 		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return &geminiResp, nil
+}
+
+func (g *GeminiAI) callGeminiAPI(ctx context.Context, text string) (*ParseExpenseResponse, error) {
+	prompt := fmt.Sprintf(`
+You are an expense tracking assistant. Extract expenses from the following text.
+Today is %s.
+
+Return a JSON array of objects with these fields:
+- description: string (what was bought)
+- amount: number (price)
+- suggested_category: string (Food, Transport, Shopping, Entertainment, Other)
+- date: string (ISO 8601 format YYYY-MM-DD, resolve relative dates like "yesterday" based on today's date)
+
+If the currency is not specified, assume TWD.
+If no expenses are found, return an empty array [].
+
+Text: %s
+`, time.Now().Format("2006-01-02"), text)
+
+	geminiResp, err := g.sendGeminiRequest(ctx, prompt)
+	if err != nil {
+		return nil, err
 	}
 
 	if len(geminiResp.Candidates) == 0 || len(geminiResp.Candidates[0].Content.Parts) == 0 {
@@ -210,6 +219,49 @@ Text: %s
 
 	return &ParseExpenseResponse{
 		Expenses: expenses,
+		Tokens:   tokens,
+	}, nil
+}
+
+func (g *GeminiAI) callGeminiCategoryAPI(ctx context.Context, description string) (*SuggestCategoryResponse, error) {
+	prompt := fmt.Sprintf(`
+You are an expense tracking assistant. Categorize the following expense description into one of these categories:
+- Food
+- Transport
+- Shopping
+- Entertainment
+- Other
+- Health
+- Education
+- Bills
+
+Description: %s
+
+Return JUST the category name. Do not add any punctuation or explanation.
+`, description)
+
+	geminiResp, err := g.sendGeminiRequest(ctx, prompt)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(geminiResp.Candidates) == 0 || len(geminiResp.Candidates[0].Content.Parts) == 0 {
+		return nil, fmt.Errorf("no content in response")
+	}
+
+	category := strings.TrimSpace(geminiResp.Candidates[0].Content.Parts[0].Text)
+
+	// Clean up category string just in case
+	category = strings.Trim(category, ".\"")
+
+	tokens := &TokenMetadata{
+		InputTokens:  geminiResp.UsageMetadata.PromptTokenCount,
+		OutputTokens: geminiResp.UsageMetadata.CandidatesTokenCount,
+		TotalTokens:  geminiResp.UsageMetadata.PromptTokenCount + geminiResp.UsageMetadata.CandidatesTokenCount,
+	}
+
+	return &SuggestCategoryResponse{
+		Category: category,
 		Tokens:   tokens,
 	}, nil
 }
@@ -272,14 +324,18 @@ func (g *GeminiAI) parseExpenseRegex(text string) ([]*domain.ParsedExpense, erro
 }
 
 // SuggestCategory suggests a category based on description
-// For now, uses keyword matching (no API call, so zero tokens)
 func (g *GeminiAI) SuggestCategory(ctx context.Context, description string, userID string) (*SuggestCategoryResponse, error) {
-	// TODO: Call Gemini API with category suggestion prompt
-	// For now, use keyword-based matching (free, no API call)
+	// Try Gemini API first
+	resp, err := g.callGeminiCategoryAPI(ctx, description)
+	if err == nil {
+		return resp, nil
+	}
+
+	log.Printf("WARN: Gemini API failed for category suggestion (using fallback): %v", err)
+
+	// Fallback to keyword matching (free, no API call)
 	category := g.suggestCategoryKeywords(description)
 
-	// Return zero tokens since no API call was made (keyword matching is free)
-	// Note: Cost logging has moved to UseCase layer
 	return &SuggestCategoryResponse{
 		Category: category,
 		Tokens: &TokenMetadata{
