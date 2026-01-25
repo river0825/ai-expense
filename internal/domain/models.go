@@ -1,6 +1,9 @@
 package domain
 
-import "time"
+import (
+	"context"
+	"time"
+)
 
 // User represents a user in the system
 type User struct {
@@ -130,4 +133,27 @@ type AICostByUser struct {
 	OutputTokens int     `json:"output_tokens"`
 	TotalTokens  int     `json:"total_tokens"`
 	Cost         float64 `json:"cost"`
+}
+
+// PricingConfig represents pricing configuration for an AI model
+type PricingConfig struct {
+	ID               string    `db:"id" json:"id"`
+	Provider         string    `db:"provider" json:"provider"`
+	Model            string    `db:"model" json:"model"`
+	InputTokenPrice  float64   `db:"input_token_price" json:"input_token_price"`
+	OutputTokenPrice float64   `db:"output_token_price" json:"output_token_price"`
+	Currency         string    `db:"currency" json:"currency"`
+	EffectiveDate    time.Time `db:"effective_date" json:"effective_date"`
+	IsActive         bool      `db:"is_active" json:"is_active"`
+	CreatedAt        time.Time `db:"created_at" json:"created_at"`
+	UpdatedAt        time.Time `db:"updated_at" json:"updated_at"`
+}
+
+// PricingProvider defines the contract for fetching pricing from an AI provider
+type PricingProvider interface {
+	// Fetch retrieves current pricing from the provider
+	Fetch(ctx context.Context) ([]*PricingConfig, error)
+
+	// Provider returns the provider name (e.g., "gemini", "claude")
+	Provider() string
 }

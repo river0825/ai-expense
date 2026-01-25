@@ -1,24 +1,35 @@
 package telegram
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
+	"time"
+
+	"github.com/riverlin/aiexpense/internal/domain"
 )
+
+// MessageProcessor defines the interface for processing messages
+type MessageProcessor interface {
+	Execute(ctx context.Context, msg *domain.UserMessage) (*domain.MessageResponse, error)
+}
 
 // Handler handles Telegram bot webhook events
 type Handler struct {
 	botToken string
-	useCase  *TelegramUseCase
+	useCase  MessageProcessor
+	client   *Client
 }
 
 // NewHandler creates a new Telegram webhook handler
-func NewHandler(botToken string, useCase *TelegramUseCase) *Handler {
+func NewHandler(botToken string, useCase MessageProcessor, client *Client) *Handler {
 	return &Handler{
 		botToken: botToken,
 		useCase:  useCase,
+		client:   client,
 	}
 }
 
@@ -69,9 +80,29 @@ func (h *Handler) HandleWebhook(w http.ResponseWriter, r *http.Request) {
 			userID := fmt.Sprintf("telegram_%d", update.Message.From.ID)
 			chatID := update.Message.Chat.ID
 
-			// Handle the message
-			if err := h.useCase.HandleMessage(r.Context(), userID, chatID, update.Message.Text); err != nil {
+			// Map to UserMessage
+			userMsg := &domain.UserMessage{
+				UserID:    userID,
+				Content:   update.Message.Text,
+				Source:    "telegram",
+				Timestamp: time.Unix(update.Message.Date, 0),
+				Metadata: map[string]interface{}{
+					"chat_id": chatID,
+				},
+			}
+
+			// Execute logic
+			resp, err := h.useCase.Execute(r.Context(), userMsg)
+			if err != nil {
 				log.Printf("Error handling message: %v", err)
+				// Optionally send error to user
+			} else {
+				// Send reply
+				if resp.Text != "" && h.client != nil {
+					if err := h.client.SendMessage(r.Context(), chatID, resp.Text); err != nil {
+						log.Printf("Error sending reply: %v", err)
+					}
+				}
 			}
 		}
 	}

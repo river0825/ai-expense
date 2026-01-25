@@ -1,30 +1,40 @@
 package teams
 
 import (
+	"context"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"strings"
+	"time"
+
+	"github.com/riverlin/aiexpense/internal/domain"
 )
+
+// MessageProcessor defines the interface for processing messages
+type MessageProcessor interface {
+	Execute(ctx context.Context, msg *domain.UserMessage) (*domain.MessageResponse, error)
+}
 
 // Handler handles Microsoft Teams webhook events
 type Handler struct {
 	appID       string
 	appPassword string
-	useCase     *UseCase
+	useCase     MessageProcessor
+	client      *Client
 }
 
 // NewHandler creates a new Teams webhook handler
-func NewHandler(appID, appPassword string, useCase *UseCase) *Handler {
+func NewHandler(appID, appPassword string, useCase MessageProcessor, client *Client) *Handler {
 	return &Handler{
 		appID:       appID,
 		appPassword: appPassword,
 		useCase:     useCase,
+		client:      client,
 	}
 }
 
@@ -100,8 +110,8 @@ func (h *Handler) HandleWebhook(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Set service URL for reply
-	if h.useCase.client != nil {
-		h.useCase.client.SetServiceURL(activity.ServiceURL)
+	if h.client != nil {
+		h.client.SetServiceURL(activity.ServiceURL)
 	}
 
 	// Handle different activity types
@@ -109,17 +119,29 @@ func (h *Handler) HandleWebhook(w http.ResponseWriter, r *http.Request) {
 	case "message":
 		// Process text messages
 		if activity.Text != "" && activity.From.ID != "" {
+			// Map to UserMessage
+			userMsg := &domain.UserMessage{
+				UserID:    activity.From.ID,
+				Content:   activity.Text,
+				Source:    "teams",
+				Timestamp: time.Now(), // Should parse activity.Timestamp if precise time needed
+				Metadata: map[string]interface{}{
+					"conversation_id": activity.Conversation.ID,
+					"service_url":     activity.ServiceURL,
+				},
+			}
+
 			go func() {
-				ctx := r.Context()
-				isMention := h.containsBotMention(activity)
-				if isMention {
-					if err := h.useCase.ProcessMention(ctx, activity.From.ID, activity.Text); err != nil {
-						log.Printf("Teams: mention processing failed: %v", err)
-					}
-				} else if activity.ChannelID == "" || activity.Conversation.ConversationType == "personal" {
-					// Direct message only
-					if err := h.useCase.ProcessMessage(ctx, activity.From.ID, activity.Text); err != nil {
-						log.Printf("Teams: message processing failed: %v", err)
+				ctx := context.Background()
+				resp, err := h.useCase.Execute(ctx, userMsg)
+				if err != nil {
+					log.Printf("Teams: processing failed: %v", err)
+				} else {
+					// Send reply
+					if resp.Text != "" && h.client != nil {
+						if err := h.client.SendMessage(activity.Conversation.ID, resp.Text); err != nil {
+							log.Printf("Teams: failed to send reply: %v", err)
+						}
 					}
 				}
 			}()
@@ -138,16 +160,6 @@ func (h *Handler) HandleWebhook(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"ok": "true"})
-}
-
-// containsBotMention checks if the activity contains a mention of the bot
-func (h *Handler) containsBotMention(activity Activity) bool {
-	if activity.Text == "" {
-		return false
-	}
-
-	// Check for <at>BotName</at> pattern
-	return strings.Contains(activity.Text, "<at>") && strings.Contains(activity.Text, "</at>")
 }
 
 // verifySignature verifies the Teams request signature
@@ -172,12 +184,4 @@ func (h *Handler) verifySignature(r *http.Request, body []byte) bool {
 
 	// Compare signatures
 	return hmac.Equal([]byte(signature), []byte(expectedSignature))
-}
-
-// SendMessage sends a message to a Teams conversation
-func (h *Handler) SendMessage(conversationID, text string) error {
-	if h.useCase.client == nil {
-		return fmt.Errorf("teams client not configured")
-	}
-	return h.useCase.client.SendMessage(conversationID, text)
 }

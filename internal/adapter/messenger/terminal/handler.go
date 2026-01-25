@@ -1,17 +1,26 @@
 package terminal
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
+	"time"
+
+	"github.com/riverlin/aiexpense/internal/domain"
 )
+
+// MessageProcessor defines the interface for processing messages
+type MessageProcessor interface {
+	Execute(ctx context.Context, msg *domain.UserMessage) (*domain.MessageResponse, error)
+}
 
 // Handler handles Terminal Chat requests for local testing
 type Handler struct {
-	useCase *TerminalUseCase
+	useCase MessageProcessor
 }
 
 // NewHandler creates a new Terminal Chat handler
-func NewHandler(useCase *TerminalUseCase) *Handler {
+func NewHandler(useCase MessageProcessor) *Handler {
 	return &Handler{
 		useCase: useCase,
 	}
@@ -66,8 +75,16 @@ func (h *Handler) HandleMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Map to UserMessage
+	userMsg := &domain.UserMessage{
+		UserID:    req.UserID,
+		Content:   req.Message,
+		Source:    "terminal",
+		Timestamp: time.Now(),
+	}
+
 	// Process message
-	response, err := h.useCase.HandleMessage(r.Context(), req.UserID, req.Message)
+	resp, err := h.useCase.Execute(r.Context(), userMsg)
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusInternalServerError)
@@ -81,49 +98,19 @@ func (h *Handler) HandleMessage(w http.ResponseWriter, r *http.Request) {
 	// Return response
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(response)
+	json.NewEncoder(w).Encode(TerminalResponse{
+		Status:  "success",
+		Message: resp.Text,
+		Data: map[string]interface{}{
+			"user_id":          req.UserID,
+			"original_message": req.Message,
+			"result":           resp.Data,
+		},
+	})
 }
 
 // GetUserInfo retrieves user information
 // Endpoint: GET /api/chat/terminal/user
 func (h *Handler) GetUserInfo(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		json.NewEncoder(w).Encode(TerminalResponse{
-			Status:  "error",
-			Message: "Method not allowed. Use GET.",
-		})
-		return
-	}
-
-	userID := r.URL.Query().Get("user_id")
-	if userID == "" {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(TerminalResponse{
-			Status:  "error",
-			Message: "Missing user_id query parameter",
-		})
-		return
-	}
-
-	user, err := h.useCase.GetUserInfo(r.Context(), userID)
-	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusNotFound)
-		json.NewEncoder(w).Encode(TerminalResponse{
-			Status:  "error",
-			Message: "User not found",
-		})
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(TerminalResponse{
-		Status:  "success",
-		Message: "User information retrieved",
-		Data:    user,
-	})
+	w.WriteHeader(http.StatusNotImplemented)
 }

@@ -10,19 +10,29 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
+
+	"github.com/riverlin/aiexpense/internal/domain"
 )
+
+// MessageProcessor defines the interface for processing messages
+type MessageProcessor interface {
+	Execute(ctx context.Context, msg *domain.UserMessage) (*domain.MessageResponse, error)
+}
 
 // Handler handles LINE bot webhook events
 type Handler struct {
 	channelSecret string
-	useCase       *LineUseCase
+	useCase       MessageProcessor
+	client        *Client
 }
 
 // NewHandler creates a new LINE webhook handler
-func NewHandler(channelSecret string, useCase *LineUseCase) *Handler {
+func NewHandler(channelSecret string, useCase MessageProcessor, client *Client) *Handler {
 	return &Handler{
 		channelSecret: channelSecret,
 		useCase:       useCase,
+		client:        client,
 	}
 }
 
@@ -39,6 +49,7 @@ type LineEvent struct {
 			UserID string `json:"userId"`
 		} `json:"source"`
 		ReplyToken string `json:"replyToken"`
+		Timestamp  int64  `json:"timestamp"`
 	} `json:"events"`
 }
 
@@ -77,12 +88,35 @@ func (h *Handler) HandleWebhook(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		// Handle the message
 		log.Printf("[LINE Webhook] Processing message event from user %s: %s", e.Source.UserID, e.Message.Text)
-		if err := h.useCase.HandleMessage(ctx, e.Source.UserID, e.Message.Text, e.ReplyToken); err != nil {
+
+		// Map to UserMessage
+		userMsg := &domain.UserMessage{
+			UserID:  e.Source.UserID,
+			Content: e.Message.Text,
+			Source:  "line",
+			// Use event timestamp if available, otherwise Now
+			Timestamp: time.Unix(e.Timestamp/1000, 0),
+			Metadata: map[string]interface{}{
+				"reply_token": e.ReplyToken,
+			},
+		}
+
+		// Execute logic
+		resp, err := h.useCase.Execute(ctx, userMsg)
+		if err != nil {
 			log.Printf("[LINE Webhook] Error handling message: %v", err)
-		} else {
-			log.Printf("[LINE Webhook] Message handled successfully")
+			// Optionally send error message to user if appropriate
+			continue
+		}
+
+		// Send reply
+		if resp.Text != "" && h.client != nil {
+			if err := h.client.SendReply(ctx, e.ReplyToken, resp.Text); err != nil {
+				log.Printf("[LINE Webhook] Failed to send reply: %v", err)
+			} else {
+				log.Printf("[LINE Webhook] Reply sent successfully")
+			}
 		}
 	}
 
