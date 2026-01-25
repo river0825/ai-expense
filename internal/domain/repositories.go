@@ -110,26 +110,26 @@ type AICostRepository interface {
 	GetByUserSummary(ctx context.Context, from, to time.Time, limit int) ([]*AICostByUser, error)
 }
 
+// PricingRepository defines operations for pricing configuration
+type PricingRepository interface {
+	// Create creates a new pricing config
+	Create(ctx context.Context, config *PricingConfig) error
+
+	// Update updates an existing pricing config
+	Update(ctx context.Context, config *PricingConfig) error
+
+	// GetByProviderAndModel retrieves active pricing for a specific model
+	GetByProviderAndModel(ctx context.Context, provider, model string) (*PricingConfig, error)
+
+	// GetAll retrieves all pricing configs
+	GetAll(ctx context.Context) ([]*PricingConfig, error)
+
+	// Deactivate deactivates a pricing config
+	Deactivate(ctx context.Context, provider, model string) error
+}
+
 // PolicyRepository defines operations for policy documents
 type PolicyRepository interface {
 	// GetByKey retrieves a policy by its unique key
 	GetByKey(ctx context.Context, key string) (*Policy, error)
-}
-
-// PricingRepository defines operations for AI provider pricing configuration
-type PricingRepository interface {
-	// GetByProviderAndModel retrieves active pricing for a provider/model combination
-	GetByProviderAndModel(ctx context.Context, provider, model string) (*PricingConfig, error)
-
-	// GetAll retrieves all pricing configurations
-	GetAll(ctx context.Context) ([]*PricingConfig, error)
-
-	// Create creates a new pricing configuration
-	Create(ctx context.Context, config *PricingConfig) error
-
-	// Update updates an existing pricing configuration
-	Update(ctx context.Context, config *PricingConfig) error
-
-	// Deactivate marks pricing as inactive
-	Deactivate(ctx context.Context, provider, model string) error
 }
