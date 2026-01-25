@@ -157,7 +157,7 @@ func TestNewGeminiAI(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := NewGeminiAI(tt.apiKey, nil)
+			_, err := NewGeminiAI(tt.apiKey, "", nil)
 
 			if (err != nil) != tt.shouldErr {
 				t.Errorf("expected error: %v, got: %v", tt.shouldErr, err)

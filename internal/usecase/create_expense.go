@@ -17,6 +17,8 @@ type CreateExpenseUseCase struct {
 	aiCostRepo   domain.AICostRepository
 	pricingRepo  domain.PricingRepository
 	aiService    ai.Service
+	provider     string
+	model        string
 }
 
 // NewCreateExpenseUseCase creates a new create expense use case
@@ -27,12 +29,41 @@ func NewCreateExpenseUseCase(
 	pricingRepo domain.PricingRepository,
 	aiService ai.Service,
 ) *CreateExpenseUseCase {
+	return NewCreateExpenseUseCaseWithAIConfig(
+		expenseRepo,
+		categoryRepo,
+		aiCostRepo,
+		pricingRepo,
+		aiService,
+		"gemini",
+		"gemini-2.5-flash-lite",
+	)
+}
+
+// NewCreateExpenseUseCaseWithAIConfig creates a new create expense use case with provider/model for cost logging
+func NewCreateExpenseUseCaseWithAIConfig(
+	expenseRepo domain.ExpenseRepository,
+	categoryRepo domain.CategoryRepository,
+	aiCostRepo domain.AICostRepository,
+	pricingRepo domain.PricingRepository,
+	aiService ai.Service,
+	provider string,
+	model string,
+) *CreateExpenseUseCase {
+	if provider == "" {
+		provider = "gemini"
+	}
+	if model == "" {
+		model = "gemini-2.5-flash-lite"
+	}
 	return &CreateExpenseUseCase{
 		expenseRepo:  expenseRepo,
 		categoryRepo: categoryRepo,
 		aiCostRepo:   aiCostRepo,
 		pricingRepo:  pricingRepo,
 		aiService:    aiService,
+		provider:     provider,
+		model:        model,
 	}
 }
 
@@ -78,8 +109,8 @@ func (u *CreateExpenseUseCase) Execute(ctx context.Context, req *CreateRequest) 
 					// Create background context for logging to not block response
 					logCtx := context.Background()
 					cost := 0.0
-					provider := "gemini"
-					model := "gemini-1.5-flash" // Default model for category suggestion
+					provider := u.provider
+					model := u.model
 
 					// Calculate cost if pricing is available
 					if u.pricingRepo != nil {
