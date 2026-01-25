@@ -349,7 +349,7 @@ func TestE2ENewUserWebhookFlow(t *testing.T) {
 
 	autoSignupUC := usecase.NewAutoSignupUseCase(userRepo, categoryRepo)
 	parseUC := usecase.NewParseConversationUseCase(aiService, pricingRepo, costRepo, "gemini", "gemini-2.5-lite")
-	createExpenseUC := usecase.NewCreateExpenseUseCase(expenseRepo, categoryRepo, aiService)
+	createExpenseUC := usecase.NewCreateExpenseUseCase(expenseRepo, categoryRepo, nil, nil, aiService)
 
 	// Step 1: Auto-signup new user
 	userID := "e2e_new_user_1"
@@ -409,7 +409,7 @@ func TestE2EExistingUserWebhookFlow(t *testing.T) {
 	aiService := &E2EAIService{parseResponses: make(map[string][]*domain.ParsedExpense)}
 
 	autoSignupUC := usecase.NewAutoSignupUseCase(userRepo, categoryRepo)
-	createExpenseUC := usecase.NewCreateExpenseUseCase(expenseRepo, categoryRepo, aiService)
+	createExpenseUC := usecase.NewCreateExpenseUseCase(expenseRepo, categoryRepo, nil, nil, aiService)
 
 	userID := "e2e_existing_user_1"
 
@@ -460,7 +460,7 @@ func TestE2EMultiExpenseMessage(t *testing.T) {
 	costRepo := &E2EAICostRepository{costs: make(map[string]*domain.AICostLog)}
 
 	parseUC := usecase.NewParseConversationUseCase(aiService, pricingRepo, costRepo, "gemini", "gemini-2.5-lite")
-	createExpenseUC := usecase.NewCreateExpenseUseCase(expenseRepo, categoryRepo, aiService)
+	createExpenseUC := usecase.NewCreateExpenseUseCase(expenseRepo, categoryRepo, nil, nil, aiService)
 
 	userID := "e2e_multi_user"
 
@@ -518,7 +518,7 @@ func TestE2EConcurrentWebhookProcessing(t *testing.T) {
 	aiService := &E2EAIService{parseResponses: make(map[string][]*domain.ParsedExpense)}
 
 	autoSignupUC := usecase.NewAutoSignupUseCase(userRepo, categoryRepo)
-	createExpenseUC := usecase.NewCreateExpenseUseCase(expenseRepo, categoryRepo, aiService)
+	createExpenseUC := usecase.NewCreateExpenseUseCase(expenseRepo, categoryRepo, nil, nil, aiService)
 
 	numRequests := 10
 	done := make(chan bool, numRequests)
@@ -564,7 +564,7 @@ func TestE2EDataIntegrity(t *testing.T) {
 	expenseRepo := &E2EExpenseRepository{expenses: make(map[string]*domain.Expense)}
 	aiService := &E2EAIService{parseResponses: make(map[string][]*domain.ParsedExpense)}
 
-	createExpenseUC := usecase.NewCreateExpenseUseCase(expenseRepo, categoryRepo, aiService)
+	createExpenseUC := usecase.NewCreateExpenseUseCase(expenseRepo, categoryRepo, nil, nil, aiService)
 
 	userID := "e2e_integrity_user"
 

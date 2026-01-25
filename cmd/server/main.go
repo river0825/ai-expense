@@ -152,6 +152,26 @@ func main() {
 		cfg.AdminAPIKey,
 	)
 
+	// Initialize AI Cost handler
+	aiCostHandler := httpAdapter.NewAICostHandler(aiCostUseCase, cfg.AdminAPIKey)
+
+	// Providers
+	geminiProvider := ai.NewGeminiPricingProvider(nil)
+	pricingProviders := map[string]domain.PricingProvider{
+		"gemini": geminiProvider,
+	}
+
+	// Initialize Pricing handler
+	pricingHandler := httpAdapter.NewPricingHandler(
+		pricingRepo,
+		cfg.AdminAPIKey,
+		pricingProviders,
+	)
+
+	// Initialize HTTP server
+	mux := http.NewServeMux()
+	httpAdapter.RegisterRoutes(mux, handler, aiCostHandler, pricingHandler)
+
 	// Initialize LINE client (if enabled)
 	var lineHandler *line.Handler
 	if cfg.IsMessengerEnabled("line") {
@@ -230,14 +250,6 @@ func main() {
 		// Initialize Teams webhook handler
 		teamsHandler = teams.NewHandler(cfg.TeamsAppID, cfg.TeamsAppPassword, processMessageUseCase, teamsClient)
 	}
-
-	// Initialize AI Cost handler
-	aiCostHandler := httpAdapter.NewAICostHandler(aiCostUseCase, cfg.AdminAPIKey)
-
-	// Initialize HTTP server
-	mux := http.NewServeMux()
-	httpAdapter.RegisterRoutes(mux, handler)
-	httpAdapter.RegisterAICostRoutes(mux, aiCostHandler)
 
 	// Add LINE webhook endpoint
 	if lineHandler != nil {
