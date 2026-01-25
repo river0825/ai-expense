@@ -14,6 +14,8 @@ import (
 type CreateExpenseUseCase struct {
 	expenseRepo  domain.ExpenseRepository
 	categoryRepo domain.CategoryRepository
+	aiCostRepo   domain.AICostRepository
+	pricingRepo  domain.PricingRepository
 	aiService    ai.Service
 }
 
@@ -21,11 +23,15 @@ type CreateExpenseUseCase struct {
 func NewCreateExpenseUseCase(
 	expenseRepo domain.ExpenseRepository,
 	categoryRepo domain.CategoryRepository,
+	aiCostRepo domain.AICostRepository,
+	pricingRepo domain.PricingRepository,
 	aiService ai.Service,
 ) *CreateExpenseUseCase {
 	return &CreateExpenseUseCase{
 		expenseRepo:  expenseRepo,
 		categoryRepo: categoryRepo,
+		aiCostRepo:   aiCostRepo,
+		pricingRepo:  pricingRepo,
 		aiService:    aiService,
 	}
 }
@@ -65,6 +71,46 @@ func (u *CreateExpenseUseCase) Execute(ctx context.Context, req *CreateRequest) 
 		resp, err := u.aiService.SuggestCategory(ctx, req.Description, req.UserID)
 		if err == nil && resp != nil {
 			log.Printf("AI suggested category: %s for description: %s", resp.Category, req.Description)
+
+			// Log AI cost
+			if resp.Tokens != nil {
+				go func() {
+					// Create background context for logging to not block response
+					logCtx := context.Background()
+					cost := 0.0
+					provider := "gemini"
+					model := "gemini-1.5-flash" // Default model for category suggestion
+
+					// Calculate cost if pricing is available
+					if u.pricingRepo != nil {
+						pricing, err := u.pricingRepo.GetByProviderAndModel(logCtx, provider, model)
+						if err == nil && pricing != nil {
+							cost = pricing.GetCost(resp.Tokens.InputTokens, resp.Tokens.OutputTokens)
+						}
+					}
+
+					costLog := &domain.AICostLog{
+						ID:           uuid.New().String(),
+						UserID:       req.UserID,
+						Operation:    "suggest_category",
+						Provider:     provider,
+						Model:        model,
+						InputTokens:  resp.Tokens.InputTokens,
+						OutputTokens: resp.Tokens.OutputTokens,
+						TotalTokens:  resp.Tokens.TotalTokens,
+						Cost:         cost,
+						Currency:     "USD",
+						CreatedAt:    time.Now(),
+					}
+
+					if u.aiCostRepo != nil {
+						if err := u.aiCostRepo.Create(logCtx, costLog); err != nil {
+							log.Printf("Failed to log AI cost: %v", err)
+						}
+					}
+				}()
+			}
+
 			// Find category by name
 			categories, _ := u.categoryRepo.GetByUserID(ctx, req.UserID)
 			for _, cat := range categories {

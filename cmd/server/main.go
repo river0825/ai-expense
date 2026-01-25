@@ -97,7 +97,13 @@ func main() {
 		cfg.AIProvider,
 		cfg.AIModel,
 	)
-	createExpenseUseCase := usecase.NewCreateExpenseUseCase(expenseRepo, categoryRepo, aiService)
+	createExpenseUseCase := usecase.NewCreateExpenseUseCase(
+		expenseRepo,
+		categoryRepo,
+		aiCostRepo,
+		pricingRepo,
+		aiService,
+	)
 	getExpensesUseCase := usecase.NewGetExpensesUseCase(expenseRepo, categoryRepo)
 	updateExpenseUseCase := usecase.NewUpdateExpenseUseCase(expenseRepo, categoryRepo)
 	deleteExpenseUseCase := usecase.NewDeleteExpenseUseCase(expenseRepo)
