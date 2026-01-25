@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"log"
 	"time"
 
 	"github.com/google/uuid"
@@ -57,11 +58,13 @@ func (u *CreateExpenseUseCase) Execute(ctx context.Context, req *CreateRequest) 
 		category, _ := u.categoryRepo.GetByID(ctx, *req.CategoryID)
 		if category != nil {
 			categoryName = category.Name
+			log.Printf("Expense created with manual category: %s (ID: %s)", categoryName, *req.CategoryID)
 		}
 	} else {
 		// Get AI suggestion
 		resp, err := u.aiService.SuggestCategory(ctx, req.Description, req.UserID)
 		if err == nil && resp != nil {
+			log.Printf("AI suggested category: %s for description: %s", resp.Category, req.Description)
 			// Find category by name
 			categories, _ := u.categoryRepo.GetByUserID(ctx, req.UserID)
 			for _, cat := range categories {
