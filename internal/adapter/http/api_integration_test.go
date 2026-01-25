@@ -433,7 +433,7 @@ func TestAPICreateExpense(t *testing.T) {
 	handler := NewHandler(
 		usecase.NewAutoSignupUseCase(userRepo, categoryRepo),
 		usecase.NewParseConversationUseCase(aiService, pricingRepo, costRepo, "gemini", "gemini-2.5-lite"),
-		usecase.NewCreateExpenseUseCase(expenseRepo, categoryRepo, aiService),
+		usecase.NewCreateExpenseUseCase(expenseRepo, categoryRepo, nil, nil, aiService),
 		nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
 		usecase.NewGetPolicyUseCase(policyRepo),
 		userRepo, categoryRepo, expenseRepo, nil, "",
@@ -639,7 +639,7 @@ func TestAPIMultipleExpenses(t *testing.T) {
 	handler := NewHandler(
 		usecase.NewAutoSignupUseCase(userRepo, categoryRepo),
 		nil,
-		usecase.NewCreateExpenseUseCase(expenseRepo, categoryRepo, aiService),
+		usecase.NewCreateExpenseUseCase(expenseRepo, categoryRepo, nil, nil, aiService),
 		nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
 		usecase.NewGetPolicyUseCase(policyRepo),
 		userRepo, categoryRepo, expenseRepo, nil, "",

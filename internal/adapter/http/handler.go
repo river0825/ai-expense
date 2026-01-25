@@ -1337,7 +1337,12 @@ func (h *Handler) Health(w http.ResponseWriter, r *http.Request) {
 }
 
 // RegisterRoutes registers all HTTP routes
-func RegisterRoutes(mux *http.ServeMux, handler *Handler) {
+func RegisterRoutes(
+	mux *http.ServeMux,
+	handler *Handler,
+	aiCostHandler *AICostHandler,
+	pricingHandler *PricingHandler,
+) {
 	// User endpoints
 	mux.HandleFunc("POST /api/users/auto-signup", handler.AutoSignup)
 
@@ -1398,6 +1403,24 @@ func RegisterRoutes(mux *http.ServeMux, handler *Handler) {
 	mux.HandleFunc("GET /api/metrics/dau", handler.GetMetricsDAU)
 	mux.HandleFunc("GET /api/metrics/expenses-summary", handler.GetMetricsExpenses)
 	mux.HandleFunc("GET /api/metrics/growth", handler.GetMetricsGrowth)
+
+	// AI Cost endpoints
+	if aiCostHandler != nil {
+		mux.HandleFunc("GET /api/metrics/ai-costs", aiCostHandler.GetAICostMetrics)
+		mux.HandleFunc("GET /api/metrics/ai-costs/summary", aiCostHandler.GetAICostSummary)
+		mux.HandleFunc("GET /api/metrics/ai-costs/daily", aiCostHandler.GetAICostDaily)
+		mux.HandleFunc("GET /api/metrics/ai-costs/by-operation", aiCostHandler.GetAICostByOperation)
+		mux.HandleFunc("GET /api/metrics/ai-costs/top-users", aiCostHandler.GetAICostTopUsers)
+	}
+
+	// Pricing endpoints
+	if pricingHandler != nil {
+		mux.HandleFunc("POST /api/pricing/sync", pricingHandler.SyncPricing)
+		mux.HandleFunc("GET /api/pricing", pricingHandler.ListPricing)
+		mux.HandleFunc("POST /api/pricing", pricingHandler.CreatePricing)
+		mux.HandleFunc("PUT /api/pricing/{id}", pricingHandler.UpdatePricing)
+		mux.HandleFunc("DELETE /api/pricing/{id}", pricingHandler.DeletePricing)
+	}
 
 	// Legal endpoints
 	mux.HandleFunc("GET /api/policies/{key}", handler.GetPolicy)
