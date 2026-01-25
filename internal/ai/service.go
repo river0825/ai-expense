@@ -15,10 +15,10 @@ type Service interface {
 
 // Factory creates an AI service based on the provider type
 // Note: costRepo parameter is deprecated and kept only for backward compatibility during migration
-func Factory(provider string, apiKey string, costRepo interface{}) (Service, error) {
+func Factory(provider string, apiKey string, model string, costRepo interface{}) (Service, error) {
 	switch provider {
 	case "gemini":
-		return NewGeminiAI(apiKey, nil)
+		return NewGeminiAI(apiKey, model, nil)
 	case "claude":
 		// TODO: Implement Claude AI
 		return nil, nil
@@ -26,6 +26,6 @@ func Factory(provider string, apiKey string, costRepo interface{}) (Service, err
 		// TODO: Implement OpenAI
 		return nil, nil
 	default:
-		return NewGeminiAI(apiKey, nil)
+		return NewGeminiAI(apiKey, model, nil)
 	}
 }

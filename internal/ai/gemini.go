@@ -109,12 +109,36 @@ type geminiResponse struct {
 	} `json:"usageMetadata"`
 }
 
+// cleanJSON strips Markdown code blocks from JSON string
+func cleanJSON(s string) string {
+	s = strings.TrimSpace(s)
+	if strings.HasPrefix(s, "```") {
+		if idx := strings.Index(s, "\n"); idx != -1 {
+			s = s[idx+1:]
+		}
+		if idx := strings.LastIndex(s, "```"); idx != -1 {
+			s = s[:idx]
+		}
+	}
+	return strings.TrimSpace(s)
+}
+
 func (g *GeminiAI) sendGeminiRequest(ctx context.Context, prompt string) (*geminiResponse, string, error) {
 	model := g.model
 	if model == "" {
 		model = defaultGeminiModel
 	}
 	url := "https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent?key=" + g.apiKey
+
+	// Gemma 3 models do not support "response_mime_type": "application/json"
+	useJSONMode := !strings.Contains(strings.ToLower(model), "gemma-3")
+
+	var generationConfig *geminiGenerationConfig
+	if useJSONMode {
+		generationConfig = &geminiGenerationConfig{
+			ResponseMimeType: "application/json",
+		}
+	}
 
 	reqBody := geminiRequest{
 		Contents: []geminiContent{
@@ -124,9 +148,7 @@ func (g *GeminiAI) sendGeminiRequest(ctx context.Context, prompt string) (*gemin
 				},
 			},
 		},
-		GenerationConfig: &geminiGenerationConfig{
-			ResponseMimeType: "application/json",
-		},
+		GenerationConfig: generationConfig,
 	}
 
 	jsonBody, err := json.Marshal(reqBody)
@@ -192,6 +214,8 @@ Text: %s
 	}
 
 	responseText := geminiResp.Candidates[0].Content.Parts[0].Text
+
+	responseText = cleanJSON(responseText)
 
 	// Parse the JSON array from the response text
 	var parsedItems []struct {
@@ -268,6 +292,7 @@ Return JUST the category name. Do not add any punctuation or explanation.
 	}
 
 	category := strings.TrimSpace(geminiResp.Candidates[0].Content.Parts[0].Text)
+	category = cleanJSON(category)
 
 	// Clean up category string just in case
 	category = strings.Trim(category, ".\"")

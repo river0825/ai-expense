@@ -37,7 +37,7 @@ type Config struct {
 	// AI Service
 	GeminiAPIKey string
 	AIProvider   string // "gemini", "claude", "openai"
-	AIModel      string // e.g., "gemini-2.5-lite"
+	AIModel      string // e.g., "gemini-2.5-flash-lite"
 
 	// Server
 	ServerPort string
@@ -73,7 +73,7 @@ func Load() (*Config, error) {
 		TeamsAppPassword:      getEnv("TEAMS_APP_PASSWORD", ""),
 		GeminiAPIKey:          getEnv("GEMINI_API_KEY", ""),
 		AIProvider:            getEnv("AI_PROVIDER", "gemini"),
-		AIModel:               getEnv("AI_MODEL", "gemini-2.5-lite"),
+		AIModel:               getEnv("AI_MODEL", "gemini-2.5-flash-lite"),
 		ServerPort:            getEnv("SERVER_PORT", "8080"),
 		AdminAPIKey:           getEnv("ADMIN_API_KEY", ""),
 	}

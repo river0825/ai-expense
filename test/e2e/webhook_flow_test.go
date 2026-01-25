@@ -372,16 +372,16 @@ func TestE2ENewUserWebhookFlow(t *testing.T) {
 
 	// Step 2: Parse message from new user
 	messageText := "早餐$20午餐$30"
-	parsedExpenses, err := parseUC.Execute(ctx, messageText, userID)
+	parseResult, err := parseUC.Execute(ctx, messageText, userID)
 	if err != nil {
 		t.Fatalf("Parse failed: %v", err)
 	}
-	if len(parsedExpenses) == 0 {
+	if len(parseResult.Expenses) == 0 {
 		t.Error("Should have parsed expenses from message")
 	}
 
 	// Step 3: Create expenses from parsed data
-	for _, parsedExp := range parsedExpenses {
+	for _, parsedExp := range parseResult.Expenses {
 		createReq := &usecase.CreateRequest{
 			UserID:      userID,
 			Description: parsedExp.Description,
@@ -480,17 +480,17 @@ func TestE2EMultiExpenseMessage(t *testing.T) {
 	})
 
 	// Parse message with multiple expenses
-	parsedExpenses, err := parseUC.Execute(ctx, messageText, userID)
+	parseResult, err := parseUC.Execute(ctx, messageText, userID)
 	if err != nil {
 		t.Fatalf("Parse failed: %v", err)
 	}
 
-	if len(parsedExpenses) != 3 {
-		t.Errorf("Expected 3 expenses, got %d", len(parsedExpenses))
+	if len(parseResult.Expenses) != 3 {
+		t.Errorf("Expected 3 expenses, got %d", len(parseResult.Expenses))
 	}
 
 	// Create all expenses
-	for _, parsedExp := range parsedExpenses {
+	for _, parsedExp := range parseResult.Expenses {
 		createReq := &usecase.CreateRequest{
 			UserID:      userID,
 			Description: parsedExp.Description,
