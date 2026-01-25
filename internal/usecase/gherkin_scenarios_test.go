@@ -439,14 +439,14 @@ func TestScenario_SuggestCategoryFromDescription(t *testing.T) {
 
 	for _, tc := range testCases {
 		// WHEN AI service receives expense description
-		category, err := aiService.SuggestCategory(ctx, tc.description, "")
+		resp, err := aiService.SuggestCategory(ctx, tc.description, "")
 		if err != nil {
 			t.Fatalf("category suggestion failed: %v", err)
 		}
 
 		// THEN system suggests best matching category
-		if category != tc.expectedCategory {
-			t.Errorf("category mismatch for '%s': expected %s, got %s", tc.description, tc.expectedCategory, category)
+		if resp.Category != tc.expectedCategory {
+			t.Errorf("category mismatch for '%s': expected %s, got %s", tc.description, tc.expectedCategory, resp.Category)
 		}
 	}
 }

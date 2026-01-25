@@ -8,5 +8,4 @@ server
 .lh/
 .worktrees/
 .terraform/
-.terraform/
 tech-me-river-*.json

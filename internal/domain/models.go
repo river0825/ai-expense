@@ -79,8 +79,17 @@ type AICostLog struct {
 	OutputTokens int       `db:"output_tokens"`
 	TotalTokens  int       `db:"total_tokens"`
 	Cost         float64   `db:"cost"`
-	Currency     string    `db:"currency"` // e.g., "USD"
+	Currency     string    `db:"currency"`  // e.g., "USD"
+	CostNote     *string   `db:"cost_note"` // Optional: reason for special cost (e.g., "pricing_not_configured")
 	CreatedAt    time.Time `db:"created_at"`
+}
+
+// GetCost calculates the cost based on token usage and this pricing configuration
+// Returns cost in USD (same as currency field)
+func (p *PricingConfig) GetCost(inputTokens, outputTokens int) float64 {
+	inputCost := float64(inputTokens) * p.InputTokenPrice / 1_000_000
+	outputCost := float64(outputTokens) * p.OutputTokenPrice / 1_000_000
+	return inputCost + outputCost
 }
 
 // Policy represents a legal document (Privacy Policy, Terms of Use)

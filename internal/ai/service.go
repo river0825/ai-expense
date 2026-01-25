@@ -1,25 +1,24 @@
 package ai
 
-import (
-	"context"
-
-	"github.com/riverlin/aiexpense/internal/domain"
-)
+import "context"
 
 // Service defines the AI service interface for expense parsing and categorization
 type Service interface {
 	// ParseExpense extracts expenses from natural language text
-	ParseExpense(ctx context.Context, text string, userID string) ([]*domain.ParsedExpense, error)
+	// Returns parsed expenses with actual token usage from API response
+	ParseExpense(ctx context.Context, text string, userID string) (*ParseExpenseResponse, error)
 
 	// SuggestCategory suggests a category based on description
-	SuggestCategory(ctx context.Context, description string, userID string) (string, error)
+	// Returns suggested category with actual token usage from API response
+	SuggestCategory(ctx context.Context, description string, userID string) (*SuggestCategoryResponse, error)
 }
 
 // Factory creates an AI service based on the provider type
-func Factory(provider string, apiKey string, costRepo domain.AICostRepository) (Service, error) {
+// Note: costRepo parameter is deprecated and kept only for backward compatibility during migration
+func Factory(provider string, apiKey string, costRepo interface{}) (Service, error) {
 	switch provider {
 	case "gemini":
-		return NewGeminiAI(apiKey, costRepo)
+		return NewGeminiAI(apiKey, nil)
 	case "claude":
 		// TODO: Implement Claude AI
 		return nil, nil
@@ -27,6 +26,6 @@ func Factory(provider string, apiKey string, costRepo domain.AICostRepository) (
 		// TODO: Implement OpenAI
 		return nil, nil
 	default:
-		return NewGeminiAI(apiKey, costRepo)
+		return NewGeminiAI(apiKey, nil)
 	}
 }

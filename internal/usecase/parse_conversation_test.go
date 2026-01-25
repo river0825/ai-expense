@@ -5,31 +5,47 @@ import (
 	"testing"
 	"time"
 
+	"github.com/riverlin/aiexpense/internal/ai"
 	"github.com/riverlin/aiexpense/internal/domain"
 )
 
-// MockAIService is already defined in mocks.go
-// We will reuse it or define a specific one locally if needed but with a different name to avoid collision
+// TestMockAIService for parse conversation tests
 type TestMockAIService struct {
 	shouldFail bool
 }
 
-func (m *TestMockAIService) ParseExpense(ctx context.Context, text string, userID string) ([]*domain.ParsedExpense, error) {
+var _ ai.Service = (*TestMockAIService)(nil)
+
+func (m *TestMockAIService) ParseExpense(ctx context.Context, text string, userID string) (*ai.ParseExpenseResponse, error) {
 	if m.shouldFail {
 		return nil, nil
 	}
-	return []*domain.ParsedExpense{
-		{
-			Description:       "mock expense",
-			Amount:            20,
-			SuggestedCategory: "Food",
-			Date:              time.Now(),
+	return &ai.ParseExpenseResponse{
+		Expenses: []*domain.ParsedExpense{
+			{
+				Description:       "mock expense",
+				Amount:            20,
+				SuggestedCategory: "Food",
+				Date:              time.Now(),
+			},
+		},
+		Tokens: &ai.TokenMetadata{
+			InputTokens:  10,
+			OutputTokens: 20,
+			TotalTokens:  30,
 		},
 	}, nil
 }
 
-func (m *TestMockAIService) SuggestCategory(ctx context.Context, description string, userID string) (string, error) {
-	return "Other", nil
+func (m *TestMockAIService) SuggestCategory(ctx context.Context, description string, userID string) (*ai.SuggestCategoryResponse, error) {
+	return &ai.SuggestCategoryResponse{
+		Category: "Other",
+		Tokens: &ai.TokenMetadata{
+			InputTokens:  5,
+			OutputTokens: 5,
+			TotalTokens:  10,
+		},
+	}, nil
 }
 
 func TestParseDateLogic(t *testing.T) {
@@ -76,7 +92,8 @@ func TestParseDateLogic(t *testing.T) {
 	}
 
 	aiService := &TestMockAIService{shouldFail: true} // Use regex fallback to test date logic
-	uc := NewParseConversationUseCase(aiService)
+	// Mock repositories - can be nil since we're testing date parsing with fallback
+	uc := NewParseConversationUseCase(aiService, nil, nil, "test", "test-model")
 	ctx := context.Background()
 
 	for _, tt := range tests {

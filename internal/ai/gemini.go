@@ -20,8 +20,7 @@ var _ Service = (*GeminiAI)(nil)
 
 // GeminiAI implements the AI Service using Google Gemini API
 type GeminiAI struct {
-	apiKey   string
-	costRepo domain.AICostRepository
+	apiKey string
 	// client *genai.Client // TODO: Initialize when Gemini SDK is available
 }
 
@@ -38,28 +37,38 @@ func NewGeminiAI(apiKey string, costRepo domain.AICostRepository) (*GeminiAI, er
 	// }
 
 	return &GeminiAI{
-		apiKey:   apiKey,
-		costRepo: costRepo,
+		apiKey: apiKey,
 		// client: client,
 	}, nil
 }
 
 // ParseExpense extracts expenses from natural language text
-func (g *GeminiAI) ParseExpense(ctx context.Context, text string, userID string) ([]*domain.ParsedExpense, error) {
+func (g *GeminiAI) ParseExpense(ctx context.Context, text string, userID string) (*ParseExpenseResponse, error) {
 	log.Printf("DEBUG: GeminiAI.ParseExpense called with: %s", text)
 
 	// Try Gemini API first
-	expenses, err := g.callGeminiAPI(ctx, text)
+	resp, err := g.callGeminiAPI(ctx, text)
 	if err == nil {
-		// Log cost for successful API call
-		g.logCost(userID, "parse_expense", "gemini-2.5-flash-lite", len(text), len(expenses)*50) // Estimate
-		return expenses, nil
+		// Note: Cost logging has moved to UseCase layer
+		return resp, nil
 	}
 
 	log.Printf("WARN: Gemini API failed (using regex fallback): %v", err)
 
-	// Fallback to regex
-	return g.parseExpenseRegex(text)
+	// Fallback to regex - return zero token metadata since no API call was made
+	expenses, err := g.parseExpenseRegex(text)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ParseExpenseResponse{
+		Expenses: expenses,
+		Tokens: &TokenMetadata{
+			InputTokens:  0,
+			OutputTokens: 0,
+			TotalTokens:  0,
+		},
+	}, nil
 }
 
 type geminiRequest struct {
@@ -87,9 +96,13 @@ type geminiResponse struct {
 			} `json:"parts"`
 		} `json:"content"`
 	} `json:"candidates"`
+	UsageMetadata struct {
+		PromptTokenCount   int `json:"promptTokenCount"`
+		CandidatesTokenCount int `json:"candidatesTokenCount"`
+	} `json:"usageMetadata"`
 }
 
-func (g *GeminiAI) callGeminiAPI(ctx context.Context, text string) ([]*domain.ParsedExpense, error) {
+func (g *GeminiAI) callGeminiAPI(ctx context.Context, text string) (*ParseExpenseResponse, error) {
 	url := "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=" + g.apiKey
 
 	prompt := fmt.Sprintf(`
@@ -188,31 +201,17 @@ Text: %s
 		})
 	}
 
-	return expenses, nil
-}
-
-func (g *GeminiAI) logCost(userID, operation, model string, inputTokens, outputTokens int) {
-	if g.costRepo == nil || userID == "" {
-		return
+	// Extract token metadata from Gemini API response
+	tokens := &TokenMetadata{
+		InputTokens:  geminiResp.UsageMetadata.PromptTokenCount,
+		OutputTokens: geminiResp.UsageMetadata.CandidatesTokenCount,
+		TotalTokens:  geminiResp.UsageMetadata.PromptTokenCount + geminiResp.UsageMetadata.CandidatesTokenCount,
 	}
 
-	costLog := &domain.AICostLog{
-		ID:           fmt.Sprintf("log_%d", time.Now().UnixNano()),
-		UserID:       userID,
-		Operation:    operation,
-		Provider:     "gemini",
-		Model:        model,
-		InputTokens:  inputTokens,
-		OutputTokens: outputTokens,
-		TotalTokens:  inputTokens + outputTokens,
-		Cost:         0, // TODO: Implement pricing lookup
-		Currency:     "USD",
-		CreatedAt:    time.Now(),
-	}
-
-	go func() {
-		_ = g.costRepo.Create(context.Background(), costLog)
-	}()
+	return &ParseExpenseResponse{
+		Expenses: expenses,
+		Tokens:   tokens,
+	}, nil
 }
 
 // parseExpenseRegex uses regex to extract expenses (fallback when AI unavailable)
@@ -273,34 +272,22 @@ func (g *GeminiAI) parseExpenseRegex(text string) ([]*domain.ParsedExpense, erro
 }
 
 // SuggestCategory suggests a category based on description
-// For now, uses keyword matching until Gemini SDK is fully integrated
-func (g *GeminiAI) SuggestCategory(ctx context.Context, description string, userID string) (string, error) {
+// For now, uses keyword matching (no API call, so zero tokens)
+func (g *GeminiAI) SuggestCategory(ctx context.Context, description string, userID string) (*SuggestCategoryResponse, error) {
 	// TODO: Call Gemini API with category suggestion prompt
-	// For now, use keyword-based matching
+	// For now, use keyword-based matching (free, no API call)
 	category := g.suggestCategoryKeywords(description)
 
-	// Log cost
-	if g.costRepo != nil && userID != "" {
-		costLog := &domain.AICostLog{
-			ID:           fmt.Sprintf("log_%d", time.Now().UnixNano()),
-			UserID:       userID,
-			Operation:    "suggest_category",
-			Provider:     "gemini",
-			Model:        "keyword-fallback",
-			InputTokens:  len(description), // Rough estimate
-			OutputTokens: 10,               // Result is short string
-			TotalTokens:  len(description) + 10,
-			Cost:         0, // Keyword match is free
-			Currency:     "USD",
-			CreatedAt:    time.Now(),
-		}
-		// Fire and forget cost logging to not block response
-		go func() {
-			_ = g.costRepo.Create(context.Background(), costLog)
-		}()
-	}
-
-	return category, nil
+	// Return zero tokens since no API call was made (keyword matching is free)
+	// Note: Cost logging has moved to UseCase layer
+	return &SuggestCategoryResponse{
+		Category: category,
+		Tokens: &TokenMetadata{
+			InputTokens:  0,
+			OutputTokens: 0,
+			TotalTokens:  0,
+		},
+	}, nil
 }
 
 // suggestCategoryKeywords uses keyword matching for category suggestion (fallback)

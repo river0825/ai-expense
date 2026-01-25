@@ -20,21 +20,27 @@ func NewAICostRepository(db *sql.DB) *AICostRepository {
 
 func (r *AICostRepository) Create(ctx context.Context, log *domain.AICostLog) error {
 	const query = `
-		INSERT INTO ai_cost_logs (id, user_id, model, input_tokens, output_tokens, cost, operation, created_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		INSERT INTO ai_cost_logs (
+			id, user_id, operation, provider, model,
+			input_tokens, output_tokens, total_tokens,
+			cost, currency, cost_note, created_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 	`
 
 	_, err := r.db.ExecContext(ctx, query,
-		log.ID, log.UserID, log.Model,
-		log.InputTokens, log.OutputTokens, log.Cost,
-		log.Operation, log.CreatedAt,
+		log.ID, log.UserID, log.Operation, log.Provider, log.Model,
+		log.InputTokens, log.OutputTokens, log.TotalTokens,
+		log.Cost, log.Currency, log.CostNote, log.CreatedAt,
 	)
 	return err
 }
 
 func (r *AICostRepository) GetByUserID(ctx context.Context, userID string, limit int) ([]*domain.AICostLog, error) {
 	const query = `
-		SELECT id, user_id, model, input_tokens, output_tokens, cost, operation, created_at
+		SELECT
+			id, user_id, operation, provider, model,
+			input_tokens, output_tokens, total_tokens,
+			cost, currency, cost_note, created_at
 		FROM ai_cost_logs
 		WHERE user_id = $1
 		ORDER BY created_at DESC
@@ -51,9 +57,9 @@ func (r *AICostRepository) GetByUserID(ctx context.Context, userID string, limit
 	for rows.Next() {
 		log := &domain.AICostLog{}
 		if err := rows.Scan(
-			&log.ID, &log.UserID, &log.Model,
-			&log.InputTokens, &log.OutputTokens, &log.Cost,
-			&log.Operation, &log.CreatedAt,
+			&log.ID, &log.UserID, &log.Operation, &log.Provider, &log.Model,
+			&log.InputTokens, &log.OutputTokens, &log.TotalTokens,
+			&log.Cost, &log.Currency, &log.CostNote, &log.CreatedAt,
 		); err != nil {
 			return nil, err
 		}

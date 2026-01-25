@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/riverlin/aiexpense/internal/ai"
 	"github.com/riverlin/aiexpense/internal/domain"
 	"github.com/riverlin/aiexpense/internal/usecase"
 )
@@ -144,16 +145,112 @@ func (r *BenchCategoryRepository) DeleteKeyword(ctx context.Context, id string) 
 	return nil
 }
 
+// BenchPricingRepository for benchmark tests
+type BenchPricingRepository struct {
+	pricing map[string]*domain.PricingConfig
+}
+
+func (r *BenchPricingRepository) GetByProviderAndModel(ctx context.Context, provider, model string) (*domain.PricingConfig, error) {
+	key := provider + ":" + model
+	if p, ok := r.pricing[key]; ok {
+		return p, nil
+	}
+	return nil, nil
+}
+
+func (r *BenchPricingRepository) GetAll(ctx context.Context) ([]*domain.PricingConfig, error) {
+	var result []*domain.PricingConfig
+	for _, p := range r.pricing {
+		result = append(result, p)
+	}
+	return result, nil
+}
+
+func (r *BenchPricingRepository) Create(ctx context.Context, pricing *domain.PricingConfig) error {
+	key := pricing.Provider + ":" + pricing.Model
+	r.pricing[key] = pricing
+	return nil
+}
+
+func (r *BenchPricingRepository) Update(ctx context.Context, pricing *domain.PricingConfig) error {
+	key := pricing.Provider + ":" + pricing.Model
+	r.pricing[key] = pricing
+	return nil
+}
+
+func (r *BenchPricingRepository) Deactivate(ctx context.Context, provider, model string) error {
+	key := provider + ":" + model
+	if p, ok := r.pricing[key]; ok {
+		p.IsActive = false
+	}
+	return nil
+}
+
+// BenchAICostRepository for benchmark tests
+type BenchAICostRepository struct {
+	costs map[string]*domain.AICostLog
+}
+
+func (r *BenchAICostRepository) Create(ctx context.Context, log *domain.AICostLog) error {
+	r.costs[log.ID] = log
+	return nil
+}
+
+func (r *BenchAICostRepository) GetByUserID(ctx context.Context, userID string, limit int) ([]*domain.AICostLog, error) {
+	var result []*domain.AICostLog
+	for _, log := range r.costs {
+		if log.UserID == userID {
+			result = append(result, log)
+			if len(result) >= limit {
+				break
+			}
+		}
+	}
+	return result, nil
+}
+
+func (r *BenchAICostRepository) GetSummary(ctx context.Context, from, to time.Time) (*domain.AICostSummary, error) {
+	return &domain.AICostSummary{}, nil
+}
+
+func (r *BenchAICostRepository) GetDailyStats(ctx context.Context, from, to time.Time) ([]*domain.AICostDailyStats, error) {
+	return []*domain.AICostDailyStats{}, nil
+}
+
+func (r *BenchAICostRepository) GetByOperation(ctx context.Context, from, to time.Time) ([]*domain.AICostByOperation, error) {
+	return []*domain.AICostByOperation{}, nil
+}
+
+func (r *BenchAICostRepository) GetByUserSummary(ctx context.Context, from, to time.Time, limit int) ([]*domain.AICostByUser, error) {
+	return []*domain.AICostByUser{}, nil
+}
+
 type BenchAIService struct{}
 
-func (s *BenchAIService) ParseExpense(ctx context.Context, text string, userID string) ([]*domain.ParsedExpense, error) {
-	return []*domain.ParsedExpense{
-		{Amount: 20.0, Description: "Test"},
+var _ ai.Service = (*BenchAIService)(nil)
+
+func (s *BenchAIService) ParseExpense(ctx context.Context, text string, userID string) (*ai.ParseExpenseResponse, error) {
+	return &ai.ParseExpenseResponse{
+		Expenses: []*domain.ParsedExpense{
+			{Amount: 20.0, Description: "Test"},
+		},
+		Tokens: &ai.TokenMetadata{
+			InputTokens:  10,
+			OutputTokens: 20,
+			TotalTokens:  30,
+		},
 	}, nil
 }
 
-func (s *BenchAIService) SuggestCategory(ctx context.Context, description string, userID string) (string, error) {
-	return "food", nil
+func (s *BenchAIService) SuggestCategory(ctx context.Context, description string, userID string) (*ai.SuggestCategoryResponse, error) {
+	return &ai.SuggestCategoryResponse{
+		Category: "food",
+		Tokens: &ai.TokenMetadata{
+			InputTokens:  5,
+			OutputTokens: 5,
+			TotalTokens:  10,
+		},
+	}, nil
 }
 
 // BenchmarkAutoSignup benchmarks the auto-signup use case
@@ -204,7 +301,9 @@ func BenchmarkCreateExpense(b *testing.B) {
 // BenchmarkParseConversation benchmarks conversation parsing
 func BenchmarkParseConversation(b *testing.B) {
 	aiService := &BenchAIService{}
-	uc := usecase.NewParseConversationUseCase(aiService)
+	pricingRepo := &BenchPricingRepository{pricing: make(map[string]*domain.PricingConfig)}
+	costRepo := &BenchAICostRepository{costs: make(map[string]*domain.AICostLog)}
+	uc := usecase.NewParseConversationUseCase(aiService, pricingRepo, costRepo, "gemini", "gemini-2.5-lite")
 	ctx := context.Background()
 
 	b.ResetTimer()

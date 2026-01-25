@@ -14,23 +14,44 @@ import (
 
 // ParseConversationUseCase handles parsing of conversation text to extract expenses
 type ParseConversationUseCase struct {
-	aiService ai.Service
+	aiService         ai.Service
+	pricingRepo       domain.PricingRepository
+	costRepo          domain.AICostRepository
+	provider          string // e.g., "gemini"
+	model             string // e.g., "gemini-2.5-lite"
 }
 
 // NewParseConversationUseCase creates a new parse conversation use case
-func NewParseConversationUseCase(aiService ai.Service) *ParseConversationUseCase {
+func NewParseConversationUseCase(
+	aiService ai.Service,
+	pricingRepo domain.PricingRepository,
+	costRepo domain.AICostRepository,
+	provider string,
+	model string,
+) *ParseConversationUseCase {
 	return &ParseConversationUseCase{
-		aiService: aiService,
+		aiService:   aiService,
+		pricingRepo: pricingRepo,
+		costRepo:    costRepo,
+		provider:    provider,
+		model:       model,
 	}
 }
 
-// Execute parses conversation text and extracts expenses
+// Execute parses conversation text and extracts expenses with cost tracking
 func (u *ParseConversationUseCase) Execute(ctx context.Context, text string, userID string) ([]*domain.ParsedExpense, error) {
-	// Call AI service to parse expenses
-	expenses, err := u.aiService.ParseExpense(ctx, text, userID)
-	if err != nil || len(expenses) == 0 {
+	// Call AI service to parse expenses (returns token metadata)
+	resp, err := u.aiService.ParseExpense(ctx, text, userID)
+	var expenses []*domain.ParsedExpense
+	var tokens *ai.TokenMetadata
+
+	if err != nil || resp == nil || len(resp.Expenses) == 0 {
 		// Fallback to regex parsing if AI fails or returns no expenses
 		expenses = u.parseWithRegex(text)
+		tokens = &ai.TokenMetadata{InputTokens: 0, OutputTokens: 0, TotalTokens: 0}
+	} else {
+		expenses = resp.Expenses
+		tokens = resp.Tokens
 	}
 
 	// Parse relative dates ONLY if date is zero (not set by AI)
@@ -43,7 +64,62 @@ func (u *ParseConversationUseCase) Execute(ctx context.Context, text string, use
 		}
 	}
 
+	// Log cost asynchronously (if pricing available)
+	go u.logCost(context.Background(), userID, tokens)
+
 	return expenses, nil
+}
+
+// logCost calculates and logs the cost of the AI API call
+func (u *ParseConversationUseCase) logCost(ctx context.Context, userID string, tokens *ai.TokenMetadata) {
+	if tokens == nil || u.costRepo == nil || u.pricingRepo == nil {
+		return
+	}
+
+	// Skip logging if no tokens were used (fallback parsing or zero input)
+	if tokens.TotalTokens == 0 {
+		return
+	}
+
+	// Look up pricing for provider/model
+	pricing, err := u.pricingRepo.GetByProviderAndModel(ctx, u.provider, u.model)
+	if err != nil {
+		log.Printf("ERROR: Failed to lookup pricing for %s/%s: %v", u.provider, u.model, err)
+		return
+	}
+
+	var cost float64
+	var costNote *string
+	if pricing == nil {
+		// Pricing not configured
+		cost = 0
+		msg := "pricing_not_configured"
+		costNote = &msg
+		log.Printf("WARN: Pricing not configured for %s/%s", u.provider, u.model)
+	} else {
+		// Calculate cost
+		cost = pricing.GetCost(tokens.InputTokens, tokens.OutputTokens)
+	}
+
+	// Create and persist cost log
+	costLog := &domain.AICostLog{
+		ID:           fmt.Sprintf("log_%d", time.Now().UnixNano()),
+		UserID:       userID,
+		Operation:    "parse_conversation",
+		Provider:     u.provider,
+		Model:        u.model,
+		InputTokens:  tokens.InputTokens,
+		OutputTokens: tokens.OutputTokens,
+		TotalTokens:  tokens.TotalTokens,
+		Cost:         cost,
+		Currency:     "USD",
+		CostNote:     costNote,
+		CreatedAt:    time.Now().UTC(),
+	}
+
+	if err := u.costRepo.Create(ctx, costLog); err != nil {
+		log.Printf("ERROR: Failed to log cost: %v", err)
+	}
 }
 
 // parseDate extracts relative dates from text (昨天, 上週, etc.)

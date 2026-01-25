@@ -35,8 +35,9 @@ func main() {
 	var metricsRepo domain.MetricsRepository
 	var aiCostRepo domain.AICostRepository
 	var policyRepo domain.PolicyRepository
-	var pricingRepo domain.PricingRepository
 	var dbCloser interface{ Close() error }
+
+	var pricingRepo domain.PricingRepository
 
 	if cfg.DatabaseURL != "" {
 		// Use PostgreSQL
@@ -53,7 +54,7 @@ func main() {
 		metricsRepo = postgresRepo.NewMetricsRepository(db)
 		aiCostRepo = postgresRepo.NewAICostRepository(db)
 		policyRepo = postgresRepo.NewPolicyRepository(db)
-		// PricingRepo not implemented in Postgres yet, skipping for now
+		pricingRepo = postgresRepo.NewPricingRepository(db)
 		log.Printf("Connected to PostgreSQL database")
 	} else {
 		// Use SQLite
@@ -70,8 +71,7 @@ func main() {
 		metricsRepo = sqliteRepo.NewMetricsRepository(db)
 		aiCostRepo = sqliteRepo.NewAICostRepository(db)
 		policyRepo = sqliteRepo.NewPolicyRepository(db)
-		// PricingRepo not implemented in SQLite yet, skipping for now
-		// In a real implementation we would init it here
+		pricingRepo = sqliteRepo.NewPricingRepository(db)
 		log.Printf("Connected to SQLite database")
 	}
 
@@ -90,7 +90,13 @@ func main() {
 
 	// Initialize use cases
 	autoSignupUseCase := usecase.NewAutoSignupUseCase(userRepo, categoryRepo)
-	parseConversationUseCase := usecase.NewParseConversationUseCase(aiService)
+	parseConversationUseCase := usecase.NewParseConversationUseCase(
+		aiService,
+		pricingRepo,
+		aiCostRepo,
+		cfg.AIProvider,
+		cfg.AIModel,
+	)
 	createExpenseUseCase := usecase.NewCreateExpenseUseCase(expenseRepo, categoryRepo, aiService)
 	getExpensesUseCase := usecase.NewGetExpensesUseCase(expenseRepo, categoryRepo)
 	updateExpenseUseCase := usecase.NewUpdateExpenseUseCase(expenseRepo, categoryRepo)
@@ -222,38 +228,10 @@ func main() {
 	// Initialize AI Cost handler
 	aiCostHandler := httpAdapter.NewAICostHandler(aiCostUseCase, cfg.AdminAPIKey)
 
-	// Initialize Pricing handler
-	// Assuming pricingRepo is initialized above (skipping specific repo impl for now as out of scope for this plan iteration)
-	// We need a dummy repo or actual implementation. Since the plan didn't strictly require implementing the repo adapter,
-	// we will create the handler but it might panic if repo is nil.
-	// IMPORTANT: For the code to compile and run, we need a valid PricingRepository.
-	// Since we haven't implemented Sqlite/Postgres adapters for PricingRepository in this plan (it wasn't explicitly listed in tasks, but implied),
-	// I'll skip registering the actual handler routes to avoid runtime panic, OR we need to add the repo implementation.
-	// Given "Task 8: Register PricingHandler", I'll register it.
-	// But without a repo, it will fail.
-	// I'll create a simple in-memory repo here for demonstration/compilation if needed, or leave it nil and warn.
-	// Actually, Task 8 implies we should have it. I'll add the registration code.
-
-	// Providers
-	geminiProvider := ai.NewGeminiPricingProvider(nil)
-	pricingProviders := map[string]domain.PricingProvider{
-		"gemini": geminiProvider,
-	}
-
-	pricingHandler := httpAdapter.NewPricingHandler(
-		pricingRepo, // This is nil currently!
-		cfg.AdminAPIKey,
-		pricingProviders,
-	)
-
 	// Initialize HTTP server
 	mux := http.NewServeMux()
 	httpAdapter.RegisterRoutes(mux, handler)
 	httpAdapter.RegisterAICostRoutes(mux, aiCostHandler)
-	// Only register if we have a valid repo, otherwise we risk panic on use
-	if pricingRepo != nil {
-		httpAdapter.RegisterPricingRoutes(mux, pricingHandler)
-	}
 
 	// Add LINE webhook endpoint
 	if lineHandler != nil {
