@@ -14,6 +14,7 @@ import { SpendingTrendChart } from '@/components/SpendingTrendChart';
 import { DashboardCard } from '@/components/DashboardCard';
 // Sidebar and TopBar imports removed
 import RepositoryFactory from '@/infrastructure/RepositoryFactory';
+import { HttpExpenseRepository } from '@/infrastructure/repositories/http/HttpExpenseRepository';
 import { Expense, CategoryTotal, TrendDataPoint, DatePreset } from '@/domain/models/Expense';
 import { ExpenseReport } from '@/domain/models/Report';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
@@ -71,6 +72,7 @@ export default function UserDashboardPage() {
   };
 
   // Fetch data
+
   useEffect(() => {
     const fetchData = async () => {
       const token = getToken();
@@ -83,17 +85,16 @@ export default function UserDashboardPage() {
       setLoading(true);
       try {
         const reportRepo = RepositoryFactory.getReportRepository();
-        const expenseRepo = RepositoryFactory.getExpenseRepository();
         
-        // Fetch all data in parallel
-        const [reportData, expensesData, categoryData, trendDataRaw] = await Promise.all([
-          reportRepo.getReportSummary(token, date?.from, date?.to),
-          expenseRepo.getExpenses(token, date?.from, date?.to),
-          expenseRepo.getCategoryTotals(token, date?.from, date?.to),
-          date?.from && date?.to 
-            ? expenseRepo.getTrendData(token, date.from, date.to, trendGroupBy)
-            : Promise.resolve([]),
-        ]);
+        // Fetch only the report summary once
+        const reportData = await reportRepo.getReportSummary(token, date?.from, date?.to);
+        
+        // Transform data locally using the report data
+        const expensesData = HttpExpenseRepository.mapToExpenses(reportData);
+        const categoryData = HttpExpenseRepository.mapToCategoryTotals(reportData);
+        const trendDataRaw = (date?.from && date?.to) 
+          ? HttpExpenseRepository.mapToTrendData(reportData, trendGroupBy, date.from, date.to)
+          : [];
         
         setReport(reportData);
         setExpenses(expensesData);
@@ -108,7 +109,6 @@ export default function UserDashboardPage() {
       }
     };
 
-    fetchData();
     fetchData();
   }, [date, trendGroupBy, urlToken, refreshKey]);
 

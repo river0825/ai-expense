@@ -11,6 +11,54 @@ export class HttpExpenseRepository implements ExpenseRepository {
     this.baseURL = process.env.NEXT_PUBLIC_API_URL || 'https://aiexpense-996531141309.us-central1.run.app';
   }
 
+
+  static mapToExpenses(report: ExpenseReport, categoryId?: string): Expense[] {
+      // Convert ExpenseDetail[] to Expense[]
+      let expenses: Expense[] = report.top_expenses.map((detail: ExpenseDetail) => ({
+        id: detail.id,
+        user_id: report.user_id,
+        description: detail.description,
+        amount: detail.amount,
+        category_name: detail.category,
+        expense_date: detail.date,
+      }));
+
+      // Filter by category if specified
+      if (categoryId) {
+        expenses = expenses.filter(e => e.category_id === categoryId);
+      }
+      return expenses;
+  }
+
+  static mapToCategoryTotals(report: ExpenseReport): CategoryTotal[] {
+      // Convert CategoryBreakdown[] to CategoryTotal[]
+      return report.category_breakdown.map(cb => ({
+        category_name: cb.category,
+        total: cb.total,
+        count: cb.count,
+        percentage: cb.percentage,
+      }));
+  }
+
+  static mapToTrendData(report: ExpenseReport, groupBy: 'day' | 'week' | 'month', startDate: Date, endDate: Date): TrendDataPoint[] {
+      // Use daily_breakdown from backend
+      const dailyData: TrendDataPoint[] = report.daily_breakdown.map(db => ({
+        date: format(new Date(db.date), 'yyyy-MM-dd'),
+        amount: db.total,
+        count: db.count,
+      }));
+
+      // Aggregate by week or month if needed
+      if (groupBy === 'day') {
+        return dailyData;
+      } else if (groupBy === 'week') {
+        // We need to access the private helper method or move it to static
+        return HttpExpenseRepository.aggregateByWeek(dailyData, startDate, endDate);
+      } else {
+        return HttpExpenseRepository.aggregateByMonth(dailyData, startDate, endDate);
+      }
+  }
+
   async getExpenses(
     token: string,
     startDate?: Date,
@@ -31,22 +79,7 @@ export class HttpExpenseRepository implements ExpenseRepository {
       const response = await axios.get<{ status: string; data: ExpenseReport }>(url);
       const report = response.data.data;
       
-      // Convert ExpenseDetail[] to Expense[]
-      let expenses: Expense[] = report.top_expenses.map((detail: ExpenseDetail) => ({
-        id: detail.id,
-        user_id: report.user_id,
-        description: detail.description,
-        amount: detail.amount,
-        category_name: detail.category,
-        expense_date: detail.date,
-      }));
-
-      // Filter by category if specified
-      if (categoryId) {
-        expenses = expenses.filter(e => e.category_id === categoryId);
-      }
-
-      return expenses;
+      return HttpExpenseRepository.mapToExpenses(report, categoryId);
     } catch (error) {
       console.error('Failed to fetch expenses:', error);
       throw error;
@@ -71,13 +104,7 @@ export class HttpExpenseRepository implements ExpenseRepository {
       const response = await axios.get<{ status: string; data: ExpenseReport }>(url);
       const report = response.data.data;
       
-      // Convert CategoryBreakdown[] to CategoryTotal[]
-      return report.category_breakdown.map(cb => ({
-        category_name: cb.category,
-        total: cb.total,
-        count: cb.count,
-        percentage: cb.percentage,
-      }));
+      return HttpExpenseRepository.mapToCategoryTotals(report);
     } catch (error) {
       console.error('Failed to fetch category totals:', error);
       throw error;
@@ -98,28 +125,14 @@ export class HttpExpenseRepository implements ExpenseRepository {
       const response = await axios.get<{ status: string; data: ExpenseReport }>(url);
       const report = response.data.data;
       
-      // Use daily_breakdown from backend
-      const dailyData: TrendDataPoint[] = report.daily_breakdown.map(db => ({
-        date: format(new Date(db.date), 'yyyy-MM-dd'),
-        amount: db.total,
-        count: db.count,
-      }));
-
-      // Aggregate by week or month if needed
-      if (groupBy === 'day') {
-        return dailyData;
-      } else if (groupBy === 'week') {
-        return this.aggregateByWeek(dailyData, startDate, endDate);
-      } else {
-        return this.aggregateByMonth(dailyData, startDate, endDate);
-      }
+      return HttpExpenseRepository.mapToTrendData(report, groupBy, startDate, endDate);
     } catch (error) {
       console.error('Failed to fetch trend data:', error);
       throw error;
     }
   }
 
-  private aggregateByWeek(dailyData: TrendDataPoint[], startDate: Date, endDate: Date): TrendDataPoint[] {
+  private static aggregateByWeek(dailyData: TrendDataPoint[], startDate: Date, endDate: Date): TrendDataPoint[] {
     const weeks = eachWeekOfInterval({ start: startDate, end: endDate }, { weekStartsOn: 1 });
     const weekMap = new Map<string, { amount: number; count: number }>();
 
@@ -153,7 +166,7 @@ export class HttpExpenseRepository implements ExpenseRepository {
     }));
   }
 
-  private aggregateByMonth(dailyData: TrendDataPoint[], startDate: Date, endDate: Date): TrendDataPoint[] {
+  private static aggregateByMonth(dailyData: TrendDataPoint[], startDate: Date, endDate: Date): TrendDataPoint[] {
     const months = eachMonthOfInterval({ start: startDate, end: endDate });
     const monthMap = new Map<string, { amount: number; count: number }>();
 
