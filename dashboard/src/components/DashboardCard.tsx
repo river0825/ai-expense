@@ -16,7 +16,7 @@ export function DashboardCard({ title, children, className = '', action }: Dashb
           {action && <div>{action}</div>}
         </div>
       )}
-      <div className="flex-1">
+      <div className="flex-1 min-h-0">
         {children}
       </div>
     </div>
