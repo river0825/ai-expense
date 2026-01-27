@@ -29,4 +29,12 @@ export interface ExpenseRepository {
     endDate: Date,
     groupBy: 'day' | 'week' | 'month'
   ): Promise<TrendDataPoint[]>;
+
+  /**
+   * Update an existing expense
+   */
+  updateExpense(
+    token: string,
+    expense: Expense
+  ): Promise<void>;
 }

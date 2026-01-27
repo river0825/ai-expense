@@ -286,6 +286,15 @@ Example for RENAMED:
 - TO: `### Requirement: User Authentication`
 ```
 
+## How to Debug
+*   **Validation Issues**:
+    *   Run with `--strict`: `openspec validate [change-id] --strict`
+    *   Inspect parsed structure: `openspec show [change-id] --json --deltas-only`
+    *   Check for "silent" parsing failures where scenarios are ignored (often formatting issues).
+*   **Logic/Spec Conflicts**:
+    *   Use `openspec list` to see what else is in flight.
+    *   Check `openspec spec list --long` to ensure you aren't duplicating an existing capability.
+
 ## Troubleshooting
 
 ### Common Errors
