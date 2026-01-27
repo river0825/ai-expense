@@ -143,7 +143,12 @@ Keep this managed block so 'openspec update' can refresh the instructions.
 *   **Database Inspection**:
     *   (SQLite is no longer supported)
     *   Check if data was actually written using your current database tool.
-
+*   **Report URL**:
+    ```bash
+    curl -X POST http://localhost:8080/api/chat/terminal \
+    -H "Content-Type: application/json" \
+    -d '{"user_id": "test_user", "message": "report"}'
+    ```
 ### 3. Specific Scenarios
 *   **404 on API**: Check `internal/adapter/http/handler.go` to verify route registration and method (PUT vs POST).
 *   **Frontend Data Not Updating**: Check `refreshKey` patterns or `useEffect` dependencies.

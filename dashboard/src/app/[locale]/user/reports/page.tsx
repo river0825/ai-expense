@@ -7,11 +7,12 @@ import { subDays } from 'date-fns';
 import { DateRange } from 'react-day-picker';
 import { DatePickerWithRange } from '@/components/ui/date-range-picker';
 import { DateRangePresets } from '@/components/DateRangePresets';
+import { DashboardLayout } from '@/components/DashboardLayout';
+// ... other imports remain the same, removing Sidebar and TopBar imports below
 import { ExpenseList } from '@/components/ExpenseList';
 import { SpendingTrendChart } from '@/components/SpendingTrendChart';
 import { DashboardCard } from '@/components/DashboardCard';
-import { Sidebar } from '@/components/Sidebar';
-import { TopBar } from '@/components/TopBar';
+// Sidebar and TopBar imports removed
 import RepositoryFactory from '@/infrastructure/RepositoryFactory';
 import { Expense, CategoryTotal, TrendDataPoint, DatePreset } from '@/domain/models/Expense';
 import { ExpenseReport } from '@/domain/models/Report';
@@ -158,224 +159,215 @@ export default function UserDashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background font-sans text-text selection:bg-primary/30">
-      {/* 
-         Note: We're reusing Sidebar/TopBar for now but could simplify navigation for user view 
-         if we wanted a distraction-free experience. 
-         For now, keeping consistency with admin view.
-      */}
-      <Sidebar />
-      <TopBar />
-
-      <main className="pl-64 pt-20">
-        <div className="p-8 max-w-[1800px] mx-auto space-y-6">
-          
-          {/* Header & Date Controls */}
-          <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4 mb-6">
-            <div>
-              <h1 className="text-3xl font-bold text-text tracking-tight mb-1" style={{ fontFamily: 'Fira Code, monospace' }}>
-                My Expenses
-              </h1>
-              <p className="text-text/60" style={{ fontFamily: 'Fira Sans, sans-serif' }}>
-                Personal spending overview
-              </p>
-            </div>
-            <div className="flex flex-col gap-3">
-              <DateRangePresets onSelectPreset={handlePresetSelect} currentPreset={currentPreset} />
-              <DatePickerWithRange date={date} setDate={(range) => { setDate(range); setCurrentPreset('custom'); }} />
+    <DashboardLayout>
+      <div className="p-8 max-w-[1800px] mx-auto space-y-6">
+        
+        {/* Header & Date Controls */}
+        <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4 mb-6">
+          <div>
+            <h1 className="text-3xl font-bold text-text tracking-tight mb-1" style={{ fontFamily: 'Fira Code, monospace' }}>
+              My Expenses
+            </h1>
+            <p className="text-text/60" style={{ fontFamily: 'Fira Sans, sans-serif' }}>
+              Personal spending overview
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <DateRangePresets onSelectPreset={handlePresetSelect} currentPreset={currentPreset} />
+            <div className="w-full sm:w-auto">
+              <DatePickerWithRange date={date} setDate={(range) => { setDate(range); setCurrentPreset('custom'); }} className="w-full sm:w-[260px]" />
             </div>
           </div>
-
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <DashboardCard className="relative overflow-hidden group cursor-pointer hover:border-primary/30 transition-all">
-              <div className="relative z-10">
-                <div className="flex justify-between items-start mb-3">
-                  <div className="p-2.5 rounded-lg bg-primary/10 text-primary ring-1 ring-inset ring-primary/20">
-                    <CurrencyDollarIcon className="w-5 h-5" />
-                  </div>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-text/60 text-xs font-medium uppercase tracking-wider" style={{ fontFamily: 'Fira Sans, sans-serif' }}>
-                    Total Spent
-                  </p>
-                  <h3 className="text-2xl font-bold text-text tracking-tight" style={{ fontFamily: 'Fira Code, monospace' }}>
-                    ${report?.total_expenses.toFixed(2)}
-                  </h3>
-                </div>
-              </div>
-            </DashboardCard>
-
-            <DashboardCard className="relative overflow-hidden group cursor-pointer hover:border-primary/30 transition-all">
-              <div className="relative z-10">
-                <div className="flex justify-between items-start mb-3">
-                  <div className="p-2.5 rounded-lg bg-primary/10 text-primary ring-1 ring-inset ring-primary/20">
-                    <ListBulletIcon className="w-5 h-5" />
-                  </div>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-text/60 text-xs font-medium uppercase tracking-wider" style={{ fontFamily: 'Fira Sans, sans-serif' }}>
-                    Transactions
-                  </p>
-                  <h3 className="text-2xl font-bold text-text tracking-tight" style={{ fontFamily: 'Fira Code, monospace' }}>
-                    {report?.transaction_count}
-                  </h3>
-                </div>
-              </div>
-            </DashboardCard>
-
-            <DashboardCard className="relative overflow-hidden group cursor-pointer hover:border-primary/30 transition-all">
-              <div className="relative z-10">
-                <div className="flex justify-between items-start mb-3">
-                  <div className="p-2.5 rounded-lg bg-orange-500/10 text-orange-500 ring-1 ring-inset ring-orange-500/20">
-                    <ArrowTrendingUpIcon className="w-5 h-5" />
-                  </div>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-text/60 text-xs font-medium uppercase tracking-wider" style={{ fontFamily: 'Fira Sans, sans-serif' }}>
-                    Average / Tx
-                  </p>
-                  <h3 className="text-2xl font-bold text-text tracking-tight" style={{ fontFamily: 'Fira Code, monospace' }}>
-                    ${report?.average_expense.toFixed(2)}
-                  </h3>
-                </div>
-              </div>
-            </DashboardCard>
-
-            <DashboardCard className="relative overflow-hidden group cursor-pointer hover:border-primary/30 transition-all">
-              <div className="relative z-10">
-                <div className="flex justify-between items-start mb-3">
-                  <div className="p-2.5 rounded-lg bg-primary/10 text-primary ring-1 ring-inset ring-primary/20">
-                    <TagIcon className="w-5 h-5" />
-                  </div>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-text/60 text-xs font-medium uppercase tracking-wider" style={{ fontFamily: 'Fira Sans, sans-serif' }}>
-                    Top Category
-                  </p>
-                  <h3 className="text-lg font-bold text-text tracking-tight truncate" style={{ fontFamily: 'Fira Code, monospace' }}>
-                    {categoryTotals[0]?.category_name || 'N/A'}
-                  </h3>
-                  <p className="text-xs text-text/50" style={{ fontFamily: 'Fira Sans, sans-serif' }}>
-                    ${categoryTotals[0]?.total.toFixed(2) || '0.00'}
-                  </p>
-                </div>
-              </div>
-            </DashboardCard>
-          </div>
-
-          {/* Main Content - Two Column Layout */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            
-            {/* Left Column - Expense List (60%) */}
-            <div className="lg:col-span-7">
-              <DashboardCard 
-                title={
-                  <div className="flex items-center gap-2">
-                    <ListBulletIcon className="w-5 h-5" />
-                    <span style={{ fontFamily: 'Fira Sans, sans-serif' }}>All Expenses</span>
-                  </div>
-                } 
-                className="h-[700px]"
-              >
-                <ExpenseList expenses={expenses} onUpdateExpense={handleUpdateExpense} />
-              </DashboardCard>
-            </div>
-
-            {/* Right Column - Charts (40%) */}
-            <div className="lg:col-span-5 space-y-6">
-              
-              {/* Spending Trend Chart */}
-              <DashboardCard 
-                title={
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <ChartBarIcon className="w-5 h-5" />
-                      <span style={{ fontFamily: 'Fira Sans, sans-serif' }}>Spending Trend</span>
-                    </div>
-                    <div className="flex gap-1">
-                      {(['day', 'week', 'month'] as const).map((option) => (
-                        <button
-                          key={option}
-                          onClick={() => setTrendGroupBy(option)}
-                          className={`px-2 py-1 text-xs font-medium rounded transition-all cursor-pointer
-                            ${trendGroupBy === option
-                              ? 'bg-primary text-white'
-                              : 'text-text/60 hover:text-text hover:bg-white/5'
-                            }
-                          `}
-                          style={{ fontFamily: 'Fira Sans, sans-serif' }}
-                        >
-                          {option.charAt(0).toUpperCase() + option.slice(1)}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                }
-                className="h-[350px]"
-              >
-                <SpendingTrendChart data={trendData} groupBy={trendGroupBy} className="h-[280px]" />
-              </DashboardCard>
-
-              {/* Category Breakdown */}
-              <DashboardCard 
-                title={
-                  <div className="flex items-center gap-2">
-                    <TagIcon className="w-5 h-5" />
-                    <span style={{ fontFamily: 'Fira Sans, sans-serif' }}>Category Breakdown</span>
-                  </div>
-                }
-                className="h-[320px]"
-              >
-                <div className="h-[250px] w-full flex items-center justify-center">
-                  {categoryTotals && categoryTotals.length > 0 ? (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={categoryTotals}
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={60}
-                          outerRadius={90}
-                          paddingAngle={3}
-                          dataKey="total"
-                          nameKey="category_name"
-                        >
-                          {categoryTotals.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="rgba(0,0,0,0.1)" strokeWidth={2} />
-                          ))}
-                        </Pie>
-                        <Tooltip 
-                          contentStyle={{ 
-                            backgroundColor: '#1e293b', 
-                            borderColor: '#334155', 
-                            color: '#fff', 
-                            borderRadius: '0.75rem',
-                            fontFamily: 'Fira Sans, sans-serif'
-                          }}
-                          itemStyle={{ color: '#fff', fontFamily: 'Fira Code, monospace' }}
-                          formatter={(value: number) => `$${value.toFixed(2)}`}
-                        />
-                        <Legend 
-                          layout="vertical" 
-                          verticalAlign="middle" 
-                          align="right"
-                          wrapperStyle={{ fontSize: '11px', color: '#94a3b8', fontFamily: 'Fira Sans, sans-serif' }}
-                        />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="text-text/40 text-sm" style={{ fontFamily: 'Fira Sans, sans-serif' }}>
-                      No category data available
-                    </div>
-                  )}
-                </div>
-              </DashboardCard>
-            </div>
-          </div>
-          
         </div>
-      </main>
-    </div>
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <DashboardCard className="relative overflow-hidden group cursor-pointer hover:border-primary/30 transition-all">
+            <div className="relative z-10">
+              <div className="flex justify-between items-start mb-3">
+                <div className="p-2.5 rounded-lg bg-primary/10 text-primary ring-1 ring-inset ring-primary/20">
+                  <CurrencyDollarIcon className="w-5 h-5" />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <p className="text-text/60 text-xs font-medium uppercase tracking-wider" style={{ fontFamily: 'Fira Sans, sans-serif' }}>
+                  Total Spent
+                </p>
+                <h3 className="text-2xl font-bold text-text tracking-tight" style={{ fontFamily: 'Fira Code, monospace' }}>
+                  ${report?.total_expenses.toFixed(2)}
+                </h3>
+              </div>
+            </div>
+          </DashboardCard>
+
+          <DashboardCard className="relative overflow-hidden group cursor-pointer hover:border-primary/30 transition-all">
+            <div className="relative z-10">
+              <div className="flex justify-between items-start mb-3">
+                <div className="p-2.5 rounded-lg bg-primary/10 text-primary ring-1 ring-inset ring-primary/20">
+                  <ListBulletIcon className="w-5 h-5" />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <p className="text-text/60 text-xs font-medium uppercase tracking-wider" style={{ fontFamily: 'Fira Sans, sans-serif' }}>
+                  Transactions
+                </p>
+                <h3 className="text-2xl font-bold text-text tracking-tight" style={{ fontFamily: 'Fira Code, monospace' }}>
+                  {report?.transaction_count}
+                </h3>
+              </div>
+            </div>
+          </DashboardCard>
+
+          <DashboardCard className="relative overflow-hidden group cursor-pointer hover:border-primary/30 transition-all">
+            <div className="relative z-10">
+              <div className="flex justify-between items-start mb-3">
+                <div className="p-2.5 rounded-lg bg-orange-500/10 text-orange-500 ring-1 ring-inset ring-orange-500/20">
+                  <ArrowTrendingUpIcon className="w-5 h-5" />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <p className="text-text/60 text-xs font-medium uppercase tracking-wider" style={{ fontFamily: 'Fira Sans, sans-serif' }}>
+                  Average / Tx
+                </p>
+                <h3 className="text-2xl font-bold text-text tracking-tight" style={{ fontFamily: 'Fira Code, monospace' }}>
+                  ${report?.average_expense.toFixed(2)}
+                </h3>
+              </div>
+            </div>
+          </DashboardCard>
+
+          <DashboardCard className="relative overflow-hidden group cursor-pointer hover:border-primary/30 transition-all">
+            <div className="relative z-10">
+              <div className="flex justify-between items-start mb-3">
+                <div className="p-2.5 rounded-lg bg-primary/10 text-primary ring-1 ring-inset ring-primary/20">
+                  <TagIcon className="w-5 h-5" />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <p className="text-text/60 text-xs font-medium uppercase tracking-wider" style={{ fontFamily: 'Fira Sans, sans-serif' }}>
+                  Top Category
+                </p>
+                <h3 className="text-lg font-bold text-text tracking-tight truncate" style={{ fontFamily: 'Fira Code, monospace' }}>
+                  {categoryTotals[0]?.category_name || 'N/A'}
+                </h3>
+                <p className="text-xs text-text/50" style={{ fontFamily: 'Fira Sans, sans-serif' }}>
+                  ${categoryTotals[0]?.total.toFixed(2) || '0.00'}
+                </p>
+              </div>
+            </div>
+          </DashboardCard>
+        </div>
+
+        {/* Main Content - Two Column Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          
+          {/* Left Column - Expense List (60%) */}
+          <div className="lg:col-span-7">
+            <DashboardCard 
+              title={
+                <div className="flex items-center gap-2">
+                  <ListBulletIcon className="w-5 h-5" />
+                  <span style={{ fontFamily: 'Fira Sans, sans-serif' }}>All Expenses</span>
+                </div>
+              } 
+              className="h-[700px]"
+            >
+              <ExpenseList expenses={expenses} onUpdateExpense={handleUpdateExpense} />
+            </DashboardCard>
+          </div>
+
+          {/* Right Column - Charts (40%) */}
+          <div className="lg:col-span-5 space-y-6">
+            
+            {/* Spending Trend Chart */}
+            <DashboardCard 
+              title={
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <ChartBarIcon className="w-5 h-5" />
+                    <span style={{ fontFamily: 'Fira Sans, sans-serif' }}>Spending Trend</span>
+                  </div>
+                  <div className="flex gap-1">
+                    {(['day', 'week', 'month'] as const).map((option) => (
+                      <button
+                        key={option}
+                        onClick={() => setTrendGroupBy(option)}
+                        className={`px-2 py-1 text-xs font-medium rounded transition-all cursor-pointer
+                          ${trendGroupBy === option
+                            ? 'bg-primary text-white'
+                            : 'text-text/60 hover:text-text hover:bg-white/5'
+                          }
+                        `}
+                        style={{ fontFamily: 'Fira Sans, sans-serif' }}
+                      >
+                        {option.charAt(0).toUpperCase() + option.slice(1)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              }
+              className="h-[350px]"
+            >
+              <SpendingTrendChart data={trendData} groupBy={trendGroupBy} className="h-[280px]" />
+            </DashboardCard>
+
+            {/* Category Breakdown */}
+            <DashboardCard 
+              title={
+                <div className="flex items-center gap-2">
+                  <TagIcon className="w-5 h-5" />
+                  <span style={{ fontFamily: 'Fira Sans, sans-serif' }}>Category Breakdown</span>
+                </div>
+              }
+              className="h-[320px]"
+            >
+              <div className="h-[250px] w-full flex items-center justify-center">
+                {categoryTotals && categoryTotals.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={categoryTotals}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={90}
+                        paddingAngle={3}
+                        dataKey="total"
+                        nameKey="category_name"
+                      >
+                        {categoryTotals.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="rgba(0,0,0,0.1)" strokeWidth={2} />
+                        ))}
+                      </Pie>
+                      <Tooltip 
+                        contentStyle={{ 
+                          backgroundColor: '#1e293b', 
+                          borderColor: '#334155', 
+                          color: '#fff', 
+                          borderRadius: '0.75rem',
+                          fontFamily: 'Fira Sans, sans-serif'
+                        }}
+                        itemStyle={{ color: '#fff', fontFamily: 'Fira Code, monospace' }}
+                        formatter={(value: number) => `$${value.toFixed(2)}`}
+                      />
+                      <Legend 
+                        layout="vertical" 
+                        verticalAlign="middle" 
+                        align="right"
+                        wrapperStyle={{ fontSize: '11px', color: '#94a3b8', fontFamily: 'Fira Sans, sans-serif' }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="text-text/40 text-sm" style={{ fontFamily: 'Fira Sans, sans-serif' }}>
+                    No category data available
+                  </div>
+                )}
+              </div>
+            </DashboardCard>
+          </div>
+        </div>
+      </div>
+    </DashboardLayout>
   );
 }
