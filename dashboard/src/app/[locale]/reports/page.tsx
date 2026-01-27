@@ -10,8 +10,9 @@ import { DateRangePresets } from '@/components/DateRangePresets';
 import { ExpenseList } from '@/components/ExpenseList';
 import { SpendingTrendChart } from '@/components/SpendingTrendChart';
 import { DashboardCard } from '@/components/DashboardCard';
-import { Sidebar } from '@/components/Sidebar';
-import { TopBar } from '@/components/TopBar';
+// import { Sidebar } from '@/components/Sidebar';
+// import { TopBar } from '@/components/TopBar';
+import { DashboardLayout } from '@/components/DashboardLayout';
 import RepositoryFactory from '@/infrastructure/RepositoryFactory';
 import { Expense, CategoryTotal, TrendDataPoint, DatePreset } from '@/domain/models/Expense';
 import { ExpenseReport } from '@/domain/models/Report';
@@ -149,12 +150,8 @@ export default function ReportPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background font-sans text-text selection:bg-primary/30">
-      <Sidebar />
-      <TopBar />
-
-      <main className="pl-64 pt-20">
-        <div className="p-8 max-w-[1800px] mx-auto space-y-6">
+    <DashboardLayout>
+        <div className="p-4 sm:p-8 max-w-[1800px] mx-auto space-y-6">
           
           {/* Header & Date Controls */}
           <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4 mb-6">
@@ -166,14 +163,16 @@ export default function ReportPage() {
                 Comprehensive view of your spending habits  
               </p>
             </div>
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <DateRangePresets onSelectPreset={handlePresetSelect} currentPreset={currentPreset} />
-              <DatePickerWithRange date={date} setDate={(range) => { setDate(range); setCurrentPreset('custom'); }} />
+              <div className="w-full sm:w-auto">
+                <DatePickerWithRange date={date} setDate={(range) => { setDate(range); setCurrentPreset('custom'); }} className="w-full sm:w-[260px]" />
+              </div>
             </div>
           </div>
 
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <DashboardCard className="relative overflow-hidden group cursor-pointer hover:border-primary/30 transition-all">
               <div className="relative z-10">
                 <div className="flex justify-between items-start mb-3">
@@ -361,7 +360,6 @@ export default function ReportPage() {
           </div>
           
         </div>
-      </main>
-    </div>
+      </DashboardLayout>
   );
 }

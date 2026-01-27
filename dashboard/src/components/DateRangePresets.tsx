@@ -44,23 +44,33 @@ export function DateRangePresets({ onSelectPreset, currentPreset }: DateRangePre
     },
   ];
 
+  const handleSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const selectedId = e.target.value as DatePreset;
+    const preset = presets.find(p => p.id === selectedId);
+    if (preset) {
+      onSelectPreset(preset.range(), selectedId);
+    }
+  };
+
   return (
-    <div className="flex flex-wrap gap-2">
-      {presets.map((preset) => (
-        <button
-          key={preset.id}
-          onClick={() => onSelectPreset(preset.range(), preset.id)}
-          className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 cursor-pointer
-            ${
-              currentPreset === preset.id
-                ? 'bg-primary text-white shadow-md'
-                : 'bg-white/5 text-text/70 hover:bg-white/10 hover:text-text border border-white/10'
-            }
-          `}
-        >
-          {preset.label}
-        </button>
-      ))}
+    <div className="relative">
+      <select
+        value={currentPreset || 'custom'}
+        onChange={handleSelectChange}
+        className="w-full sm:w-[180px] bg-white/5 border border-white/10 rounded-lg py-2 pl-3 pr-8 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 appearance-none cursor-pointer"
+      >
+        <option value="custom" disabled>Custom Range</option>
+        {presets.map((preset) => (
+          <option key={preset.id} value={preset.id} className="bg-surface text-text">
+            {preset.label}
+          </option>
+        ))}
+      </select>
+      <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-text/60">
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </div>
     </div>
   );
 }
