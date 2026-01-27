@@ -41,3 +41,12 @@ yarn-error.log*
 # OS
 .DS_Store
 Thumbs.db
+.vercel
+
+# Playwright
+playwright-report/
+test-results/
+
+# Local dev artifacts
+dashboard.log
+dashboard.pid

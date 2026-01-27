@@ -39,14 +39,22 @@ func (m *mockCreateExpense) Execute(ctx context.Context, req *CreateRequest) (*C
 	return args.Get(0).(*CreateResponse), args.Error(1)
 }
 
+type mockGenerateReportLink struct{ mock.Mock }
+
+func (m *mockGenerateReportLink) Execute(userID string) (string, error) {
+	args := m.Called(userID)
+	return args.String(0), args.Error(1)
+}
+
 func TestProcessMessageUseCase_Execute(t *testing.T) {
 	t.Run("Success - Single Expense", func(t *testing.T) {
 		// Setup
 		autoSignup := new(mockAutoSignup)
 		parser := new(mockParseConversation)
 		creator := new(mockCreateExpense)
+		reportLink := new(mockGenerateReportLink)
 
-		uc := NewProcessMessageUseCase(autoSignup, parser, creator, nil, nil)
+		uc := NewProcessMessageUseCase(autoSignup, parser, creator, nil, reportLink, nil)
 
 		// Expectations
 		autoSignup.On("Execute", mock.Anything, "user1", "terminal").Return(nil)
@@ -87,8 +95,9 @@ func TestProcessMessageUseCase_Execute(t *testing.T) {
 		autoSignup := new(mockAutoSignup)
 		parser := new(mockParseConversation)
 		creator := new(mockCreateExpense)
+		reportLink := new(mockGenerateReportLink)
 
-		uc := NewProcessMessageUseCase(autoSignup, parser, creator, nil, nil)
+		uc := NewProcessMessageUseCase(autoSignup, parser, creator, nil, reportLink, nil)
 
 		// Expectations
 		autoSignup.On("Execute", mock.Anything, "user1", "terminal").Return(nil)

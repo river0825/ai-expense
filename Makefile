@@ -45,3 +45,6 @@ update-price:
 	service_url=$${SERVICE_URL:-$$( $(GCLOUD) run services describe $(SERVICE) --region $(REGION) --format='value(status.url)' )}; \
 	if [ -z "$$service_url" ]; then echo "SERVICE_URL not found; set SERVICE_URL or check Cloud Run service." >&2; exit 1; fi; \
 	curl -sS -X POST "$$service_url/api/pricing/sync?provider=$(PRICING_PROVIDER)" -H "X-API-Key: $$admin_key" -H "Content-Type: application/json"
+
+deploy-fe:
+	cd dashboard && vercel --prod

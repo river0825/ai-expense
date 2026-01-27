@@ -2,9 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Import Fira fonts - ui-ux-pro-max design system */
+@import './fonts.css';
+
 @layer base {
   body {
     @apply bg-background text-text antialiased;
+    font-family: 'Fira Sans', sans-serif;
   }
 }
 
@@ -28,5 +32,28 @@
   .scrollbar-hide {
     -ms-overflow-style: none;
     scrollbar-width: none;
+  }
+
+  /* Custom scrollbar for expense list and other scrollable areas */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(59, 130, 246, 0.3);
+    border-radius: 3px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(59, 130, 246, 0.5);
+  }
+
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(59, 130, 246, 0.3) transparent;
   }
 }

@@ -659,6 +659,7 @@ func (h *Handler) ExportExpenses(w http.ResponseWriter, r *http.Request) {
 		}
 
 		w.Header().Set("Content-Type", "text/csv")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-API-Key, Authorization")
 		w.Header().Set("Content-Disposition", "attachment; filename=expenses.csv")
 		w.WriteHeader(http.StatusOK)
 		w.Write(data)
@@ -1342,6 +1343,8 @@ func RegisterRoutes(
 	handler *Handler,
 	aiCostHandler *AICostHandler,
 	pricingHandler *PricingHandler,
+	reportHandler *ReportHandler,
+	shortLinkHandler *ShortLinkHandler,
 ) {
 	// User endpoints
 	mux.HandleFunc("POST /api/users/auto-signup", handler.AutoSignup)
@@ -1390,6 +1393,14 @@ func RegisterRoutes(
 
 	// Report endpoints
 	mux.HandleFunc("POST /api/reports/generate", handler.GenerateReport)
+	if reportHandler != nil {
+		mux.HandleFunc("GET /api/reports/summary", reportHandler.GetReportSummary)
+	}
+
+	// Short link endpoint
+	if shortLinkHandler != nil {
+		mux.HandleFunc("GET /r/{id}", shortLinkHandler.HandleRedirect)
+	}
 
 	// Budget endpoints
 	mux.HandleFunc("GET /api/budgets/status", handler.GetBudgetStatus)

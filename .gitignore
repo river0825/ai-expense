@@ -9,3 +9,4 @@ server
 .worktrees/
 .terraform/
 tech-me-river-*.json
+.vercel

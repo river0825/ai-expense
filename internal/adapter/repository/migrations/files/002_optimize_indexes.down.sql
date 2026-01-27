@@ -1,0 +1,10 @@
+-- Drop performance optimization indexes
+DROP INDEX IF EXISTS idx_users_created;
+DROP INDEX IF EXISTS idx_categories_created;
+DROP INDEX IF EXISTS idx_keywords_priority;
+DROP INDEX IF EXISTS idx_expenses_user_period;
+DROP INDEX IF EXISTS idx_expenses_date;
+DROP INDEX IF EXISTS idx_expenses_category;
+DROP INDEX IF EXISTS idx_expenses_user_created;
+DROP INDEX IF EXISTS idx_expenses_user;
+DROP INDEX IF EXISTS idx_expenses_created_at;

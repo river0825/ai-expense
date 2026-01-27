@@ -39,6 +39,7 @@ func main() {
 	var dbCloser interface{ Close() error }
 
 	var pricingRepo domain.PricingRepository
+	var shortLinkRepo domain.ShortLinkRepository
 
 	if cfg.DatabaseURL != "" {
 		// Use PostgreSQL
@@ -57,6 +58,7 @@ func main() {
 		policyRepo = postgresRepo.NewPolicyRepository(db)
 		pricingRepo = postgresRepo.NewPricingRepository(db)
 		interactionLogRepo = postgresRepo.NewInteractionLogRepository(db)
+		shortLinkRepo = postgresRepo.NewShortLinkRepository(db)
 		log.Printf("Connected to PostgreSQL database")
 	} else {
 		// Use SQLite
@@ -75,6 +77,7 @@ func main() {
 		policyRepo = sqliteRepo.NewPolicyRepository(db)
 		pricingRepo = sqliteRepo.NewPricingRepository(db)
 		interactionLogRepo = sqliteRepo.NewInteractionLogRepository(db)
+		shortLinkRepo = sqliteRepo.NewShortLinkRepository(db)
 		log.Printf("Connected to SQLite database")
 	}
 
@@ -123,6 +126,7 @@ func main() {
 	searchExpenseUseCase := usecase.NewSearchExpenseUseCase(expenseRepo, categoryRepo)
 	archiveUseCase := usecase.NewArchiveUseCase(expenseRepo)
 	getPolicyUseCase := usecase.NewGetPolicyUseCase(policyRepo)
+	generateReportLinkUseCase := usecase.NewGenerateReportLinkUseCase(cfg.APIPublicURL, shortLinkRepo)
 
 	// Initialize Unified Message Processor
 	processMessageUseCase := usecase.NewProcessMessageUseCase(
@@ -130,6 +134,7 @@ func main() {
 		parseConversationUseCase,
 		createExpenseUseCase,
 		getExpensesUseCase,
+		generateReportLinkUseCase,
 		interactionLogRepo,
 	)
 
@@ -161,6 +166,10 @@ func main() {
 	// Initialize AI Cost handler
 	aiCostHandler := httpAdapter.NewAICostHandler(aiCostUseCase, cfg.AdminAPIKey)
 
+	// Initialize Report handler (Secure Link)
+	reportHandler := httpAdapter.NewReportHandler(generateReportUseCase)
+	shortLinkHandler := httpAdapter.NewShortLinkHandler(shortLinkRepo, cfg.DashboardURL)
+
 	// Providers
 	geminiProvider := ai.NewGeminiPricingProvider(nil)
 	pricingProviders := map[string]domain.PricingProvider{
@@ -176,7 +185,7 @@ func main() {
 
 	// Initialize HTTP server
 	mux := http.NewServeMux()
-	httpAdapter.RegisterRoutes(mux, handler, aiCostHandler, pricingHandler)
+	httpAdapter.RegisterRoutes(mux, handler, aiCostHandler, pricingHandler, reportHandler, shortLinkHandler)
 
 	// Initialize LINE client (if enabled)
 	var lineHandler *line.Handler
@@ -328,7 +337,7 @@ func withCORS(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-API-Key")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-API-Key, Authorization")
 		w.Header().Set("Access-Control-Max-Age", "3600")
 
 		// Handle OPTIONS requests

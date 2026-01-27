@@ -4,24 +4,33 @@ import React from 'react';
 import { usePathname } from 'next/navigation';
 import { Link } from '../i18n/routing';
 import { useTranslations } from 'next-intl';
-import { 
-  HomeIcon, 
-  ChartBarIcon, 
-  CreditCardIcon, 
+import {
+  HomeIcon,
+  ChartBarIcon,
   Cog6ToothIcon,
-  DocumentTextIcon
+  UserCircleIcon
 } from '@heroicons/react/24/outline';
 
 const NAVIGATION = [
   { name: 'dashboard', href: '/', icon: HomeIcon },
-  { name: 'analytics', href: '/analytics', icon: ChartBarIcon },
-  { name: 'expenses', href: '/expenses', icon: CreditCardIcon },
-  { name: 'reports', href: '/reports', icon: DocumentTextIcon },
+  { name: 'reports', href: '/reports', icon: ChartBarIcon },
+  { name: 'my_expenses', href: '/user/reports', icon: UserCircleIcon },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
   const t = useTranslations('Sidebar');
+  const isUserPage = pathname?.startsWith('/user');
+
+  // Filter navigation items based on current path
+  const filteredNavigation = NAVIGATION.filter(item => {
+    if (isUserPage) {
+      // In user pages, show only 'my_expenses'
+      return item.href.startsWith('/user');
+    }
+    // In admin pages, show everything (or could exclude user links if desired)
+    return true;
+  });
 
   return (
     <aside className="fixed left-0 top-0 h-full w-64 glass-panel border-r border-white/10 z-50 flex flex-col transition-all duration-300">
@@ -37,7 +46,7 @@ export function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 px-4 py-8 space-y-2">
-        {NAVIGATION.map((item) => {
+        {filteredNavigation.map((item) => {
           const isActive = pathname === item.href;
           return (
             <Link 
