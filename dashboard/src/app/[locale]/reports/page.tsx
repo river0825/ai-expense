@@ -46,6 +46,7 @@ export default function ReportPage() {
   });
   const [currentPreset, setCurrentPreset] = useState<DatePreset>('last30');
   const [trendGroupBy, setTrendGroupBy] = useState<'day' | 'week' | 'month'>('day');
+  const [refreshKey, setRefreshKey] = useState(0);
 
   // Token management
   useEffect(() => {
@@ -97,7 +98,25 @@ export default function ReportPage() {
     };
 
     fetchData();
-  }, [date, trendGroupBy]);
+    fetchData();
+  }, [date, trendGroupBy, refreshKey]);
+
+  const handleUpdateExpense = async (updatedExpense: Expense) => {
+    const token = getToken();
+    if (!token) return;
+
+    try {
+      const expenseRepo = RepositoryFactory.getExpenseRepository();
+      await expenseRepo.updateExpense(token, updatedExpense);
+      
+      // Refresh data
+      setRefreshKey(prev => prev + 1);
+    } catch (error) {
+      console.error('Failed to update expense', error);
+      // Optional: show error toast or specific error handling
+      throw error; // Re-throw to let ExpenseList handle setSaving(false) if it catches it, though ExpenseList handles error logging already
+    }
+  };
 
   const handlePresetSelect = (range: DateRange, preset: DatePreset) => {
     setDate(range);
@@ -245,7 +264,7 @@ export default function ReportPage() {
                 }
                 className="h-[700px]"
               >
-                <ExpenseList expenses={expenses} />
+                <ExpenseList expenses={expenses} onUpdateExpense={handleUpdateExpense} />
               </DashboardCard>
             </div>
 

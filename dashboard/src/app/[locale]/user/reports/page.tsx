@@ -47,6 +47,7 @@ export default function UserDashboardPage() {
   });
   const [currentPreset, setCurrentPreset] = useState<DatePreset>('last30');
   const [trendGroupBy, setTrendGroupBy] = useState<'day' | 'week' | 'month'>('day');
+  const [refreshKey, setRefreshKey] = useState(0);
 
   // Token management
   useEffect(() => {
@@ -107,7 +108,24 @@ export default function UserDashboardPage() {
     };
 
     fetchData();
-  }, [date, trendGroupBy, urlToken]); // Depend on urlToken too in case it changes
+    fetchData();
+  }, [date, trendGroupBy, urlToken, refreshKey]);
+
+  const handleUpdateExpense = async (updatedExpense: Expense) => {
+    const token = getToken();
+    if (!token) return;
+
+    try {
+      const expenseRepo = RepositoryFactory.getExpenseRepository();
+      await expenseRepo.updateExpense(token, updatedExpense);
+      
+      // Refresh data
+      setRefreshKey(prev => prev + 1);
+    } catch (error) {
+      console.error('Failed to update expense', error);
+      throw error;
+    }
+  };
 
   const handlePresetSelect = (range: DateRange, preset: DatePreset) => {
     setDate(range);
@@ -260,7 +278,7 @@ export default function UserDashboardPage() {
                 } 
                 className="h-[700px]"
               >
-                <ExpenseList expenses={expenses} />
+                <ExpenseList expenses={expenses} onUpdateExpense={handleUpdateExpense} />
               </DashboardCard>
             </div>
 

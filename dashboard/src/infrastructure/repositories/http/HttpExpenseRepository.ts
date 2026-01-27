@@ -179,4 +179,28 @@ export class HttpExpenseRepository implements ExpenseRepository {
       count: data.count,
     }));
   }
+
+  async updateExpense(token: string, expense: Expense): Promise<void> {
+    try {
+      // Backend expects ID in the body for PUT /api/expenses, not as a path parameter
+      const url = `${this.baseURL}/api/expenses?token=${token}`;
+      
+      const payload: any = {
+        id: expense.id,
+        user_id: expense.user_id,
+        description: expense.description,
+        amount: expense.amount,
+      };
+
+      // Only include category_id if it exists
+      if (expense.category_id) {
+        payload.category_id = expense.category_id;
+      }
+
+      await axios.put(url, payload);
+    } catch (error) {
+      console.error('Failed to update expense:', error);
+      throw error;
+    }
+  }
 }

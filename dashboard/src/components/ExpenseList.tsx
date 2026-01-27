@@ -10,23 +10,67 @@ import {
   ChevronDownIcon,
   TagIcon,
   CalendarIcon,
-  CurrencyDollarIcon
+  CurrencyDollarIcon,
+  PencilSquareIcon,
+  CheckIcon,
+  XMarkIcon
 } from '@heroicons/react/24/outline';
 
 interface ExpenseListProps {
   expenses: Expense[];
   onCategoryFilter?: (categoryName: string | null) => void;
+  onUpdateExpense?: (expense: Expense) => Promise<void>;
   className?: string;
 }
 
 type SortField = 'date' | 'amount' | 'category';
 type SortDirection = 'asc' | 'desc';
 
-export function ExpenseList({ expenses, onCategoryFilter, className = '' }: ExpenseListProps) {
+export function ExpenseList({ expenses, onCategoryFilter, onUpdateExpense, className = '' }: ExpenseListProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortField, setSortField] = useState<SortField>('date');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [groupBy, setGroupBy] = useState<'none' | 'category' | 'date'>('none');
+  
+  // Editing state
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<{description: string; amount: string}>({ description: '', amount: '' });
+  const [isSaving, setIsSaving] = useState(false);
+
+  const startEditing = (expense: Expense, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingId(expense.id);
+    setEditForm({
+      description: expense.description,
+      amount: expense.amount.toString()
+    });
+  };
+
+  const cancelEditing = (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setEditingId(null);
+    setEditForm({ description: '', amount: '' });
+  };
+
+  const saveEditing = async (originalExpense: Expense, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!onUpdateExpense) return;
+    
+    try {
+      setIsSaving(true);
+      const updatedExpense: Expense = {
+        ...originalExpense,
+        description: editForm.description,
+        amount: parseFloat(editForm.amount) || 0
+      };
+      await onUpdateExpense(updatedExpense);
+      setEditingId(null);
+    } catch (error) {
+      console.error('Failed to update expense', error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   // Filter and sort expenses
   const processedExpenses = useMemo(() => {
@@ -156,38 +200,91 @@ export function ExpenseList({ expenses, onCategoryFilter, className = '' }: Expe
                 {groupExpenses.map((expense) => (
                   <div
                     key={expense.id}
-                    className="group flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/5 hover:bg-white/10 hover:border-primary/30 transition-all duration-200 cursor-pointer"
+                    className="group flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/5 hover:bg-white/10 hover:border-primary/30 transition-all duration-200 cursor-default"
                   >
-                    <div className="flex items-center gap-4 flex-1 min-w-0">
-                      {/* Icon */}
-                      <div className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center bg-primary/10 text-primary group-hover:bg-primary group-hover:text-white transition-colors">
-                        <CurrencyDollarIcon className="w-5 h-5" />
+                    {editingId === expense.id ? (
+                      <div className="flex items-center gap-4 flex-1 w-full">
+                         <div className="flex-1 min-w-0 flex gap-2">
+                           <input 
+                             type="text"
+                             value={editForm.description}
+                             onChange={(e) => setEditForm({...editForm, description: e.target.value})}
+                             className="flex-1 bg-black/20 border border-white/10 rounded px-2 py-1 text-sm text-text focus:border-primary/50 outline-none"
+                             placeholder="Description"
+                             autoFocus
+                           />
+                           <input 
+                             type="number"
+                             value={editForm.amount}
+                             onChange={(e) => setEditForm({...editForm, amount: e.target.value})}
+                             className="w-24 bg-black/20 border border-white/10 rounded px-2 py-1 text-sm text-text focus:border-primary/50 outline-none text-right"
+                             placeholder="Amount"
+                             step="0.01"
+                           />
+                         </div>
+                         <div className="flex items-center gap-1">
+                           <button 
+                             onClick={(e) => saveEditing(expense, e)}
+                             disabled={isSaving}
+                             className="p-1.5 rounded-md bg-green-500/10 text-green-400 hover:bg-green-500/20 transition-colors"
+                           >
+                             <CheckIcon className="w-4 h-4" />
+                           </button>
+                           <button 
+                             onClick={(e) => cancelEditing(e)}
+                             disabled={isSaving}
+                             className="p-1.5 rounded-md bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors"
+                           >
+                             <XMarkIcon className="w-4 h-4" />
+                           </button>
+                         </div>
                       </div>
+                    ) : (
+                      <>
+                        <div className="flex items-center gap-4 flex-1 min-w-0">
+                          {/* Icon */}
+                          <div className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center bg-primary/10 text-primary group-hover:bg-primary group-hover:text-white transition-colors">
+                            <CurrencyDollarIcon className="w-5 h-5" />
+                          </div>
 
-                      {/* Details */}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-text group-hover:text-primary transition-colors truncate">
-                          {expense.description}
-                        </p>
-                        <div className="flex items-center gap-3 mt-0.5 text-xs text-text/50">
-                          <span className="flex items-center gap-1">
-                            <TagIcon className="w-3 h-3" />
-                            {expense.category_name || 'Uncategorized'}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <CalendarIcon className="w-3 h-3" />
-                            {format(new Date(expense.expense_date), 'MMM dd, yyyy')}
-                          </span>
+                          {/* Details */}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-text group-hover:text-primary transition-colors truncate">
+                              {expense.description}
+                            </p>
+                            <div className="flex items-center gap-3 mt-0.5 text-xs text-text/50">
+                              <span className="flex items-center gap-1">
+                                <TagIcon className="w-3 h-3" />
+                                {expense.category_name || 'Uncategorized'}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <CalendarIcon className="w-3 h-3" />
+                                {format(new Date(expense.expense_date), 'MMM dd, yyyy')}
+                              </span>
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    </div>
 
-                    {/* Amount */}
-                    <div className="flex-shrink-0 text-right ml-4">
-                      <p className="text-base font-mono font-bold text-text group-hover:text-primary transition-colors">
-                        ${expense.amount.toFixed(2)}
-                      </p>
-                    </div>
+                        {/* Amount & Actions */}
+                        <div className="flex items-center gap-4 ml-4">
+                          <div className="flex-shrink-0 text-right">
+                            <p className="text-base font-mono font-bold text-text group-hover:text-primary transition-colors">
+                              ${expense.amount.toFixed(2)}
+                            </p>
+                          </div>
+                          
+                          {onUpdateExpense && (
+                            <button
+                              onClick={(e) => startEditing(expense, e)}
+                              className="p-2 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-white/10 text-text/40 hover:text-primary transition-all"
+                              title="Edit expense"
+                            >
+                              <PencilSquareIcon className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      </>
+                    )}
                   </div>
                 ))}
               </div>

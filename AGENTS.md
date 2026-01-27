@@ -123,6 +123,31 @@ Keep this managed block so 'openspec update' can refresh the instructions.
 - Performance benchmarks: `PERFORMANCE.md`
 - Monitoring guide: `PHASE_20_MONITORING_GUIDE.md`
 
+## How to Debug
+
+### 1. General Workflow
+1.  **Reproduce the issue**: Use `curl` for API issues or the browser subagent for UI issues.
+2.  **Check logs**:
+    *   Backend: `go run ./cmd/server` output or `make tail` for Cloud Run.
+    *   Frontend: Browser console logs (via subagent) or terminal output.
+3.  **Isolate the layer**: Is it a frontend state issue, API mismatch, or backend logic error?
+
+### 2. Common Techniques
+*   **API Verification**:
+    ```bash
+    curl -v -X POST http://localhost:8080/api/... -d '...'
+    ```
+*   **Browser Testing**:
+    *   Use the `browser_subagent` to navigate, click, and inspect the DOM.
+    *   Capture console logs to check for JS errors or network failures.
+*   **Database Inspection**:
+    *   (SQLite is no longer supported)
+    *   Check if data was actually written using your current database tool.
+
+### 3. Specific Scenarios
+*   **404 on API**: Check `internal/adapter/http/handler.go` to verify route registration and method (PUT vs POST).
+*   **Frontend Data Not Updating**: Check `refreshKey` patterns or `useEffect` dependencies.
+
 ## Notes
 - No dedicated Go linter config found (.golangci.yml not present)
 - Prefer minimal, focused changes; avoid refactors during bugfixes
