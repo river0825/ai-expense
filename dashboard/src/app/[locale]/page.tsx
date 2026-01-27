@@ -3,8 +3,9 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { DashboardCard } from '@/components/DashboardCard';
-import { Sidebar } from '@/components/Sidebar';
-import { TopBar } from '@/components/TopBar';
+// import { Sidebar } from '@/components/Sidebar'; // Removed as it is used in DashboardLayout
+// import { TopBar } from '@/components/TopBar'; // Removed as it is used in DashboardLayout
+import { DashboardLayout } from '@/components/DashboardLayout';
 import { 
   ArrowTrendingUpIcon, 
   ArrowTrendingDownIcon,
@@ -64,12 +65,8 @@ export default function Dashboard() {
   const statKeys = ['totalBalance', 'totalIncome', 'totalExpenses'] as const;
 
   return (
-    <div className="min-h-screen bg-background font-sans text-text selection:bg-primary/30">
-      <Sidebar />
-      <TopBar />
-
-      <main className="pl-64 pt-20">
-        <div className="p-8 max-w-7xl mx-auto space-y-8">
+      <DashboardLayout>
+        <div className="p-4 sm:p-8 max-w-7xl mx-auto space-y-8">
           
           {/* Header Section */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -203,8 +200,7 @@ export default function Dashboard() {
           </div>
           
         </div>
-      </main>
-    </div>
+      </DashboardLayout>
   );
 }
 
