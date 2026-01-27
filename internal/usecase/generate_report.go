@@ -165,13 +165,9 @@ func (u *GenerateReportUseCase) Execute(ctx context.Context, req *ReportRequest)
 		dailyBreakdown = append(dailyBreakdown, *db)
 	}
 
-	// Get top expenses (limited to 10)
+	// Get all expenses (removed the 10 item limit for comprehensive expense list)
 	var topExpenses []ExpenseDetail
-	for i, expense := range expenses {
-		if i >= 10 {
-			break
-		}
-
+	for _, expense := range expenses {
 		categoryName := "Uncategorized"
 		if expense.CategoryID != nil {
 			cat, _ := u.categoryRepo.GetByID(ctx, *expense.CategoryID)

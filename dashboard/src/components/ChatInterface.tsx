@@ -20,7 +20,7 @@ export default function ChatInterface({ initialUserId }: ChatInterfaceProps) {
   const [userId, setUserId] = useState(initialUserId || '')
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://aiexpense-996531141309.us-central1.run.app'
 
   useEffect(() => {
     let storedUserId = localStorage.getItem('chat_user_id')

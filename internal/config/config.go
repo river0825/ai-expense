@@ -42,6 +42,12 @@ type Config struct {
 	// Server
 	ServerPort string
 
+	// Dashboard URL for report links
+	DashboardURL string
+
+	// API Public URL for short links
+	APIPublicURL string
+
 	// Admin API Key for metrics
 	AdminAPIKey string
 
@@ -75,6 +81,8 @@ func Load() (*Config, error) {
 		AIProvider:            getEnv("AI_PROVIDER", "gemini"),
 		AIModel:               getEnv("AI_MODEL", "gemini-2.5-flash-lite"),
 		ServerPort:            getEnv("SERVER_PORT", "8080"),
+		DashboardURL:          getEnv("DASHBOARD_URL", "http://localhost:3000"),
+		APIPublicURL:          getEnv("API_PUBLIC_URL", "http://localhost:8080"),
 		AdminAPIKey:           getEnv("ADMIN_API_KEY", ""),
 	}
 

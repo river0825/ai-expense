@@ -4,6 +4,7 @@
     "analytics": "Analytics",
     "expenses": "Expenses",
     "reports": "Reports",
+    "my_expenses": "My Expenses",
     "settings": "Settings"
   },
   "TopBar": {

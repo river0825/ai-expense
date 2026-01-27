@@ -11,11 +11,12 @@ import (
 
 // ProcessMessageUseCase handles the core logic for processing messages from any source
 type ProcessMessageUseCase struct {
-	autoSignup        AutoSignup
-	parseConversation ParseConversation
-	createExpense     CreateExpense
-	getExpenses       GetExpenses
-	interactionRepo   domain.InteractionLogRepository
+	autoSignup         AutoSignup
+	parseConversation  ParseConversation
+	createExpense      CreateExpense
+	getExpenses        GetExpenses
+	generateReportLink domain.GenerateReportLinkUseCase
+	interactionRepo    domain.InteractionLogRepository
 }
 
 // Interfaces to break dependency cycles (if needed) or mock easier
@@ -41,14 +42,16 @@ func NewProcessMessageUseCase(
 	parseConversation ParseConversation,
 	createExpense CreateExpense,
 	getExpenses GetExpenses,
+	generateReportLink domain.GenerateReportLinkUseCase,
 	interactionRepo domain.InteractionLogRepository,
 ) *ProcessMessageUseCase {
 	return &ProcessMessageUseCase{
-		autoSignup:        autoSignup,
-		parseConversation: parseConversation,
-		createExpense:     createExpense,
-		getExpenses:       getExpenses,
-		interactionRepo:   interactionRepo,
+		autoSignup:         autoSignup,
+		parseConversation:  parseConversation,
+		createExpense:      createExpense,
+		getExpenses:        getExpenses,
+		generateReportLink: generateReportLink,
+		interactionRepo:    interactionRepo,
 	}
 }
 
@@ -94,6 +97,23 @@ func (u *ProcessMessageUseCase) Execute(ctx context.Context, msg *domain.UserMes
 		return &domain.MessageResponse{
 			Text: botReply,
 		}, nil // We return success to the adapter so it can send the error message back to user
+	}
+
+	// 1.5. Check for "View Report" intent
+	msgLower := strings.ToLower(strings.TrimSpace(msg.Content))
+	if u.isReportIntent(msgLower) {
+		link, err := u.generateReportLink.Execute(msg.UserID)
+		if err != nil {
+			// Log the error for debugging
+			fmt.Printf("Error generating report link: %v\n", err)
+			botReply = "Sorry, I couldn't generate the report link. Please try again later."
+		} else {
+			botReply = fmt.Sprintf("Here is your expense report:\n%s\n(Link valid for 5 minutes)", link)
+		}
+
+		return &domain.MessageResponse{
+			Text: botReply,
+		}, nil
 	}
 
 	// 2. Parse Message
@@ -166,4 +186,14 @@ func (u *ProcessMessageUseCase) Execute(ctx context.Context, msg *domain.UserMes
 		Text: botReply,
 		Data: createdExpenses,
 	}, nil
+}
+
+func (u *ProcessMessageUseCase) isReportIntent(text string) bool {
+	keywords := []string{"report", "summary", "stats", "chart", "analysis", "expense report", "show report"}
+	for _, k := range keywords {
+		if strings.Contains(text, k) {
+			return true
+		}
+	}
+	return false
 }
