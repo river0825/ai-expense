@@ -174,6 +174,7 @@ func (h *Handler) CreateExpense(w http.ResponseWriter, r *http.Request) {
 		Description string     `json:"description"`
 		Amount      float64    `json:"amount"`
 		CategoryID  *string    `json:"category_id,omitempty"`
+		Account     string     `json:"account,omitempty"`
 		Date        *time.Time `json:"date,omitempty"`
 	}
 
@@ -194,6 +195,7 @@ func (h *Handler) CreateExpense(w http.ResponseWriter, r *http.Request) {
 		Description: req.Description,
 		Amount:      req.Amount,
 		CategoryID:  req.CategoryID,
+		Account:     req.Account,
 		Date:        date,
 	}
 
@@ -320,6 +322,7 @@ func (h *Handler) UpdateExpense(w http.ResponseWriter, r *http.Request) {
 		Description *string    `json:"description,omitempty"`
 		Amount      *float64   `json:"amount,omitempty"`
 		CategoryID  *string    `json:"category_id,omitempty"`
+		Account     *string    `json:"account,omitempty"`
 		ExpenseDate *time.Time `json:"expense_date,omitempty"`
 	}
 
@@ -340,6 +343,7 @@ func (h *Handler) UpdateExpense(w http.ResponseWriter, r *http.Request) {
 		Description: req.Description,
 		Amount:      req.Amount,
 		CategoryID:  req.CategoryID,
+		Account:     req.Account,
 		ExpenseDate: req.ExpenseDate,
 	})
 

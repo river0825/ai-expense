@@ -19,6 +19,7 @@ type Expense struct {
 	Description string    `db:"description"`
 	Amount      float64   `db:"amount"`
 	CategoryID  *string   `db:"category_id"`
+	Account     string    `db:"account"` // Default 'Cash' / specific account name
 	ExpenseDate time.Time `db:"expense_date"`
 	CreatedAt   time.Time `db:"created_at"`
 	UpdatedAt   time.Time `db:"updated_at"`
@@ -47,7 +48,9 @@ type ParsedExpense struct {
 	Description       string
 	Amount            float64
 	SuggestedCategory string
-	Date              time.Time
+	Account           string
+
+	Date time.Time
 }
 
 // ParseResult represents the result of parsing a conversation

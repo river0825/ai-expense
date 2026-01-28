@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -146,12 +147,13 @@ func (u *ProcessMessageUseCase) Execute(ctx context.Context, msg *domain.UserMes
 			UserID:      msg.UserID,
 			Description: parsedExp.Description,
 			Amount:      parsedExp.Amount,
+			Account:     parsedExp.Account,
 			Date:        parsedExp.Date,
 		}
 
 		resp, err := u.createExpense.Execute(ctx, req)
 		if err != nil {
-			// Log error but continue
+			log.Printf("ERROR: Failed to create expense for user %s: %v", msg.UserID, err)
 			continue
 		}
 
@@ -162,6 +164,7 @@ func (u *ProcessMessageUseCase) Execute(ctx context.Context, msg *domain.UserMes
 			"amount":      parsedExp.Amount,
 			"category":    resp.Category,
 			"date":        parsedExp.Date,
+			"account":     parsedExp.Account,
 		})
 	}
 
@@ -173,10 +176,11 @@ func (u *ProcessMessageUseCase) Execute(ctx context.Context, msg *domain.UserMes
 		if d, ok := exp["date"].(time.Time); ok {
 			dateStr = d.Format("2006-01-02")
 		}
-		sb.WriteString(fmt.Sprintf("\n• [%s] %s (%s): $%.2f",
+		sb.WriteString(fmt.Sprintf("\n• [%s] %s (%s) [%s]: $%.2f",
 			dateStr,
 			exp["description"],
 			exp["category"],
+			exp["account"],
 			exp["amount"]))
 	}
 

@@ -13,7 +13,10 @@ import {
   CurrencyDollarIcon,
   PencilSquareIcon,
   CheckIcon,
-  XMarkIcon
+  XMarkIcon,
+  CreditCardIcon,
+  BanknotesIcon,
+  WalletIcon
 } from '@heroicons/react/24/outline';
 
 interface ExpenseListProps {
@@ -34,7 +37,11 @@ export function ExpenseList({ expenses, onCategoryFilter, onUpdateExpense, class
   
   // Editing state
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState<{description: string; amount: string}>({ description: '', amount: '' });
+  const [editForm, setEditForm] = useState<{description: string; amount: string; account: string}>({ 
+    description: '', 
+    amount: '',
+    account: ''
+  });
   const [isSaving, setIsSaving] = useState(false);
 
   const startEditing = (expense: Expense, e: React.MouseEvent) => {
@@ -42,14 +49,15 @@ export function ExpenseList({ expenses, onCategoryFilter, onUpdateExpense, class
     setEditingId(expense.id);
     setEditForm({
       description: expense.description,
-      amount: expense.amount.toString()
+      amount: expense.amount.toString(),
+      account: expense.account || ''
     });
   };
 
   const cancelEditing = (e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     setEditingId(null);
-    setEditForm({ description: '', amount: '' });
+    setEditForm({ description: '', amount: '', account: '' });
   };
 
   const saveEditing = async (originalExpense: Expense, e: React.MouseEvent) => {
@@ -61,7 +69,8 @@ export function ExpenseList({ expenses, onCategoryFilter, onUpdateExpense, class
       const updatedExpense: Expense = {
         ...originalExpense,
         description: editForm.description,
-        amount: parseFloat(editForm.amount) || 0
+        amount: parseFloat(editForm.amount) || 0,
+        account: editForm.account
       };
       await onUpdateExpense(updatedExpense);
       setEditingId(null);
@@ -203,70 +212,99 @@ export function ExpenseList({ expenses, onCategoryFilter, onUpdateExpense, class
                     className="group flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/5 hover:bg-white/10 hover:border-primary/30 transition-all duration-200 cursor-default"
                   >
                     {editingId === expense.id ? (
-                      <div className="flex items-center gap-4 flex-1 w-full">
-                         <div className="flex-1 min-w-0 flex gap-2">
-                           <input 
-                             type="text"
-                             value={editForm.description}
-                             onChange={(e) => setEditForm({...editForm, description: e.target.value})}
-                             className="flex-1 bg-black/20 border border-white/10 rounded px-2 py-1 text-sm text-text focus:border-primary/50 outline-none"
-                             placeholder="Description"
-                             autoFocus
-                           />
-                           <input 
-                             type="number"
-                             value={editForm.amount}
-                             onChange={(e) => setEditForm({...editForm, amount: e.target.value})}
-                             className="w-24 bg-black/20 border border-white/10 rounded px-2 py-1 text-sm text-text focus:border-primary/50 outline-none text-right"
-                             placeholder="Amount"
-                             step="0.01"
-                           />
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full">
+                         <div className="flex flex-col gap-2 flex-1 w-full">
+                            <input 
+                              type="text"
+                              value={editForm.description}
+                              onChange={(e) => setEditForm({...editForm, description: e.target.value})}
+                              className="w-full bg-black/20 border border-white/10 rounded px-2 py-1.5 text-sm text-text focus:border-primary/50 outline-none"
+                              placeholder="Description"
+                              autoFocus
+                            />
+                            <div className="flex gap-2 w-full">
+                               <input 
+                                 type="number"
+                                 value={editForm.amount}
+                                 onChange={(e) => setEditForm({...editForm, amount: e.target.value})}
+                                 className="flex-1 bg-black/20 border border-white/10 rounded px-2 py-1.5 text-sm text-text focus:border-primary/50 outline-none"
+                                 placeholder="Amount"
+                                 step="0.01"
+                               />
+                               <input 
+                                 type="text"
+                                 value={editForm.account}
+                                 onChange={(e) => setEditForm({...editForm, account: e.target.value})}
+                                 className="flex-1 bg-black/20 border border-white/10 rounded px-2 py-1.5 text-sm text-text/70 focus:border-primary/50 outline-none"
+                                 placeholder="Account"
+                               />
+                            </div>
                          </div>
-                         <div className="flex items-center gap-1">
+                         <div className="flex sm:flex-col items-center gap-1 w-full sm:w-auto pt-2 sm:pt-0">
                            <button 
                              onClick={(e) => saveEditing(expense, e)}
                              disabled={isSaving}
-                             className="p-1.5 rounded-md bg-green-500/10 text-green-400 hover:bg-green-500/20 transition-colors"
+                             className="flex-1 sm:flex-none p-2 rounded-md bg-green-500/10 text-green-400 hover:bg-green-500/20 transition-colors flex items-center justify-center"
                            >
-                             <CheckIcon className="w-4 h-4" />
+                             <CheckIcon className="w-5 h-5 sm:w-4 sm:h-4" />
+                             <span className="sm:hidden ml-2 text-xs font-medium">Save</span>
                            </button>
                            <button 
                              onClick={(e) => cancelEditing(e)}
                              disabled={isSaving}
-                             className="p-1.5 rounded-md bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors"
+                             className="flex-1 sm:flex-none p-2 rounded-md bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors flex items-center justify-center"
                            >
-                             <XMarkIcon className="w-4 h-4" />
+                             <XMarkIcon className="w-5 h-5 sm:w-4 sm:h-4" />
+                             <span className="sm:hidden ml-2 text-xs font-medium">Cancel</span>
                            </button>
                          </div>
                       </div>
                     ) : (
                       <>
-                        <div className="flex items-center gap-4 flex-1 min-w-0">
+                        <div className="flex items-start gap-3 sm:gap-4 flex-1 min-w-0">
                           {/* Icon */}
-                          <div className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center bg-primary/10 text-primary group-hover:bg-primary group-hover:text-white transition-colors">
-                            <CurrencyDollarIcon className="w-5 h-5" />
+                          <div className="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center bg-primary/10 text-primary group-hover:bg-primary group-hover:text-white transition-colors mt-0.5">
+                            <CurrencyDollarIcon className="w-4 h-4 sm:w-5 h-5" />
                           </div>
 
-                          {/* Details */}
+                          {/* Details Container */}
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-text group-hover:text-primary transition-colors truncate">
-                              {expense.description}
-                            </p>
-                            <div className="flex items-center gap-3 mt-0.5 text-xs text-text/50">
-                              <span className="flex items-center gap-1">
-                                <TagIcon className="w-3 h-3" />
+                            {/* Top Row: Description & Amount (Mobile) */}
+                            <div className="flex justify-between items-start gap-2">
+                              <p className="text-sm font-medium text-text group-hover:text-primary transition-colors truncate">
+                                {expense.description}
+                              </p>
+                              <p className="sm:hidden text-sm font-mono font-bold text-text group-hover:text-primary transition-colors shrink-0">
+                                ${expense.amount.toFixed(2)}
+                              </p>
+                            </div>
+                            
+                            {/* Metadata Row */}
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 sm:mt-0.5 text-[10px] sm:text-xs text-text/50">
+                              <span className="flex items-center gap-1 shrink-0">
+                                <TagIcon className="w-2.5 h-2.5 sm:w-3 h-3" />
                                 {expense.category_name || 'Uncategorized'}
                               </span>
-                              <span className="flex items-center gap-1">
-                                <CalendarIcon className="w-3 h-3" />
+                              <span className="flex items-center gap-1 shrink-0">
+                                <CalendarIcon className="w-2.5 h-2.5 sm:w-3 h-3" />
                                 {format(new Date(expense.expense_date), 'MMM dd, yyyy')}
                               </span>
+                              {expense.account && (
+                                <span className="flex items-center gap-1 bg-white/10 px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] uppercase tracking-wider font-bold text-primary/80 shrink-0">
+                                  {expense.account.toLowerCase().includes('card') ? (
+                                    <CreditCardIcon className="w-2.5 h-2.5" />
+                                  ) : (
+                                    <BanknotesIcon className="w-2.5 h-2.5" />
+                                  )}
+                                  {expense.account}
+                                </span>
+                              )}
                             </div>
                           </div>
                         </div>
 
-                        {/* Amount & Actions */}
-                        <div className="flex items-center gap-4 ml-4">
+                        {/* Amount & Actions (Desktop) */}
+                        <div className="hidden sm:flex items-center gap-4 ml-4">
                           <div className="flex-shrink-0 text-right">
                             <p className="text-base font-mono font-bold text-text group-hover:text-primary transition-colors">
                               ${expense.amount.toFixed(2)}
@@ -283,6 +321,16 @@ export function ExpenseList({ expenses, onCategoryFilter, onUpdateExpense, class
                             </button>
                           )}
                         </div>
+                        
+                        {/* Mobile Edit Trigger - Entire item could be edit trigger on mobile or we add a hidden/visible button */}
+                        {onUpdateExpense && (
+                          <button
+                            onClick={(e) => startEditing(expense, e)}
+                            className="sm:hidden p-2 -mr-2 text-text/30 hover:text-primary transition-colors"
+                          >
+                            <PencilSquareIcon className="w-4 h-4" />
+                          </button>
+                        )}
                       </>
                     )}
                   </div>

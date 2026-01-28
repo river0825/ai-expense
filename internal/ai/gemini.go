@@ -130,6 +130,8 @@ func (g *GeminiAI) sendGeminiRequest(ctx context.Context, prompt string) (*gemin
 	}
 	url := "https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent?key=" + g.apiKey
 
+	log.Printf("DEBUG: Sending request to Gemini API. Model: %s, URL: %s", model, "https://generativelanguage.googleapis.com/v1beta/models/"+model+":generateContent?key=***")
+
 	// Gemma 3 models do not support "response_mime_type": "application/json"
 	useJSONMode := !strings.Contains(strings.ToLower(model), "gemma-3")
 
@@ -176,8 +178,11 @@ func (g *GeminiAI) sendGeminiRequest(ctx context.Context, prompt string) (*gemin
 	rawResponse := string(bodyBytes)
 
 	if resp.StatusCode != http.StatusOK {
+		log.Printf("ERROR: Gemini API returned status %d. Response: %s", resp.StatusCode, rawResponse)
 		return nil, rawResponse, fmt.Errorf("API error %d: %s", resp.StatusCode, rawResponse)
 	}
+
+	log.Printf("DEBUG: Gemini API raw response: %s", rawResponse)
 
 	var geminiResp geminiResponse
 	if err := json.Unmarshal(bodyBytes, &geminiResp); err != nil {
@@ -197,6 +202,7 @@ Return a JSON array of objects with these fields:
 - amount: number (price)
 - suggested_category: string (Food, Transport, Shopping, Entertainment, Other)
 - date: string (ISO 8601 format YYYY-MM-DD, resolve relative dates like "yesterday" based on today's date)
+- account: string (optional, the specific account/card used, e.g. "台新信用卡", "西瓜卡", "中信銀行", or null if not specified)
 
 If the currency is not specified, assume TWD.
 If no expenses are found, return an empty array [].
@@ -204,6 +210,7 @@ If no expenses are found, return an empty array [].
 Text: %s
 `, time.Now().Format("2006-01-02"), text)
 
+	log.Printf("DEBUG: Gemini AI Parse Prompt: %s", prompt)
 	geminiResp, rawResp, err := g.sendGeminiRequest(ctx, prompt)
 	if err != nil {
 		return nil, err
@@ -215,14 +222,36 @@ Text: %s
 
 	responseText := geminiResp.Candidates[0].Content.Parts[0].Text
 
+	// Parse the JSON array from the response text
+	expenses, err := parseGeminiResponseText(responseText)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse Gemini response: %w", err)
+	}
+
+	// Extract token metadata from Gemini API response
+	tokens := &TokenMetadata{
+		InputTokens:  geminiResp.UsageMetadata.PromptTokenCount,
+		OutputTokens: geminiResp.UsageMetadata.CandidatesTokenCount,
+		TotalTokens:  geminiResp.UsageMetadata.PromptTokenCount + geminiResp.UsageMetadata.CandidatesTokenCount,
+	}
+
+	return &ParseExpenseResponse{
+		Expenses:     expenses,
+		Tokens:       tokens,
+		SystemPrompt: prompt,
+		RawResponse:  rawResp,
+	}, nil
+}
+
+func parseGeminiResponseText(responseText string) ([]*domain.ParsedExpense, error) {
 	responseText = cleanJSON(responseText)
 
-	// Parse the JSON array from the response text
 	var parsedItems []struct {
 		Description       string  `json:"description"`
 		Amount            float64 `json:"amount"`
 		SuggestedCategory string  `json:"suggested_category"`
 		Date              string  `json:"date"`
+		Account           string  `json:"account"` // Renamed from payment_method
 	}
 
 	if err := json.Unmarshal([]byte(responseText), &parsedItems); err != nil {
@@ -246,23 +275,11 @@ Text: %s
 			Description:       item.Description,
 			Amount:            item.Amount,
 			SuggestedCategory: item.SuggestedCategory,
+			Account:           item.Account,
 			Date:              expenseDate,
 		})
 	}
-
-	// Extract token metadata from Gemini API response
-	tokens := &TokenMetadata{
-		InputTokens:  geminiResp.UsageMetadata.PromptTokenCount,
-		OutputTokens: geminiResp.UsageMetadata.CandidatesTokenCount,
-		TotalTokens:  geminiResp.UsageMetadata.PromptTokenCount + geminiResp.UsageMetadata.CandidatesTokenCount,
-	}
-
-	return &ParseExpenseResponse{
-		Expenses:     expenses,
-		Tokens:       tokens,
-		SystemPrompt: prompt,
-		RawResponse:  rawResp,
-	}, nil
+	return expenses, nil
 }
 
 func (g *GeminiAI) callGeminiCategoryAPI(ctx context.Context, description string) (*SuggestCategoryResponse, error) {
@@ -282,6 +299,7 @@ Description: %s
 Return JUST the category name. Do not add any punctuation or explanation.
 `, description)
 
+	log.Printf("DEBUG: Gemini AI Category Prompt: %s", prompt)
 	geminiResp, rawResp, err := g.sendGeminiRequest(ctx, prompt)
 	if err != nil {
 		return nil, err

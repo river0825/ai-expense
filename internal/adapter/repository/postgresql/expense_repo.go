@@ -21,13 +21,13 @@ func NewExpenseRepository(db *sql.DB) *ExpenseRepository {
 
 func (r *ExpenseRepository) Create(ctx context.Context, expense *domain.Expense) error {
 	const query = `
-		INSERT INTO expenses (id, user_id, description, amount, category_id, expense_date, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		INSERT INTO expenses (id, user_id, description, amount, category_id, account, expense_date, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 	`
 
 	_, err := r.db.ExecContext(ctx, query,
 		expense.ID, expense.UserID, expense.Description,
-		expense.Amount, expense.CategoryID, expense.ExpenseDate,
+		expense.Amount, expense.CategoryID, expense.Account, expense.ExpenseDate,
 		expense.CreatedAt, expense.UpdatedAt,
 	)
 	return err
@@ -35,7 +35,7 @@ func (r *ExpenseRepository) Create(ctx context.Context, expense *domain.Expense)
 
 func (r *ExpenseRepository) GetByID(ctx context.Context, id string) (*domain.Expense, error) {
 	const query = `
-		SELECT id, user_id, description, amount, category_id, expense_date, created_at, updated_at
+		SELECT id, user_id, description, amount, category_id, account, expense_date, created_at, updated_at
 		FROM expenses
 		WHERE id = $1
 	`
@@ -43,7 +43,7 @@ func (r *ExpenseRepository) GetByID(ctx context.Context, id string) (*domain.Exp
 	expense := &domain.Expense{}
 	err := r.db.QueryRowContext(ctx, query, id).Scan(
 		&expense.ID, &expense.UserID, &expense.Description,
-		&expense.Amount, &expense.CategoryID, &expense.ExpenseDate,
+		&expense.Amount, &expense.CategoryID, &expense.Account, &expense.ExpenseDate,
 		&expense.CreatedAt, &expense.UpdatedAt,
 	)
 	if err != nil {
@@ -57,7 +57,7 @@ func (r *ExpenseRepository) GetByID(ctx context.Context, id string) (*domain.Exp
 
 func (r *ExpenseRepository) GetByUserID(ctx context.Context, userID string) ([]*domain.Expense, error) {
 	const query = `
-		SELECT id, user_id, description, amount, category_id, expense_date, created_at, updated_at
+		SELECT id, user_id, description, amount, category_id, account, expense_date, created_at, updated_at
 		FROM expenses
 		WHERE user_id = $1
 		ORDER BY expense_date DESC, created_at DESC
@@ -74,7 +74,7 @@ func (r *ExpenseRepository) GetByUserID(ctx context.Context, userID string) ([]*
 		expense := &domain.Expense{}
 		if err := rows.Scan(
 			&expense.ID, &expense.UserID, &expense.Description,
-			&expense.Amount, &expense.CategoryID, &expense.ExpenseDate,
+			&expense.Amount, &expense.CategoryID, &expense.Account, &expense.ExpenseDate,
 			&expense.CreatedAt, &expense.UpdatedAt,
 		); err != nil {
 			return nil, err
@@ -87,13 +87,13 @@ func (r *ExpenseRepository) GetByUserID(ctx context.Context, userID string) ([]*
 func (r *ExpenseRepository) Update(ctx context.Context, expense *domain.Expense) error {
 	const query = `
 		UPDATE expenses
-		SET description = $2, amount = $3, category_id = $4, expense_date = $5, updated_at = $6
+		SET description = $2, amount = $3, category_id = $4, account = $5, expense_date = $6, updated_at = $7
 		WHERE id = $1
 	`
 
 	_, err := r.db.ExecContext(ctx, query,
 		expense.ID,
-		expense.Description, expense.Amount, expense.CategoryID,
+		expense.Description, expense.Amount, expense.CategoryID, expense.Account,
 		expense.ExpenseDate, time.Now(),
 	)
 	return err
@@ -101,7 +101,7 @@ func (r *ExpenseRepository) Update(ctx context.Context, expense *domain.Expense)
 
 func (r *ExpenseRepository) GetByUserIDAndDateRange(ctx context.Context, userID string, from, to time.Time) ([]*domain.Expense, error) {
 	const query = `
-		SELECT id, user_id, description, amount, category_id, expense_date, created_at, updated_at
+		SELECT id, user_id, description, amount, category_id, account, expense_date, created_at, updated_at
 		FROM expenses
 		WHERE user_id = $1 AND expense_date BETWEEN $2 AND $3
 		ORDER BY expense_date DESC, created_at DESC
@@ -118,7 +118,7 @@ func (r *ExpenseRepository) GetByUserIDAndDateRange(ctx context.Context, userID 
 		expense := &domain.Expense{}
 		if err := rows.Scan(
 			&expense.ID, &expense.UserID, &expense.Description,
-			&expense.Amount, &expense.CategoryID, &expense.ExpenseDate,
+			&expense.Amount, &expense.CategoryID, &expense.Account, &expense.ExpenseDate,
 			&expense.CreatedAt, &expense.UpdatedAt,
 		); err != nil {
 			return nil, err
@@ -130,7 +130,7 @@ func (r *ExpenseRepository) GetByUserIDAndDateRange(ctx context.Context, userID 
 
 func (r *ExpenseRepository) GetByUserIDAndCategory(ctx context.Context, userID, categoryID string) ([]*domain.Expense, error) {
 	const query = `
-		SELECT id, user_id, description, amount, category_id, expense_date, created_at, updated_at
+		SELECT id, user_id, description, amount, category_id, account, expense_date, created_at, updated_at
 		FROM expenses
 		WHERE user_id = $1 AND category_id = $2
 		ORDER BY expense_date DESC, created_at DESC
@@ -147,7 +147,7 @@ func (r *ExpenseRepository) GetByUserIDAndCategory(ctx context.Context, userID, 
 		expense := &domain.Expense{}
 		if err := rows.Scan(
 			&expense.ID, &expense.UserID, &expense.Description,
-			&expense.Amount, &expense.CategoryID, &expense.ExpenseDate,
+			&expense.Amount, &expense.CategoryID, &expense.Account, &expense.ExpenseDate,
 			&expense.CreatedAt, &expense.UpdatedAt,
 		); err != nil {
 			return nil, err

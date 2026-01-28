@@ -73,6 +73,7 @@ type CreateRequest struct {
 	Description string
 	Amount      float64
 	CategoryID  *string
+	Account     string
 	Date        time.Time
 }
 
@@ -154,6 +155,12 @@ func (u *CreateExpenseUseCase) Execute(ctx context.Context, req *CreateRequest) 
 		}
 	}
 
+	// Handle default account
+	account := req.Account
+	if account == "" {
+		account = "Cash"
+	}
+
 	// Create expense
 	expense := &domain.Expense{
 		ID:          uuid.New().String(),
@@ -161,6 +168,7 @@ func (u *CreateExpenseUseCase) Execute(ctx context.Context, req *CreateRequest) 
 		Description: req.Description,
 		Amount:      req.Amount,
 		CategoryID:  categoryID,
+		Account:     account,
 		ExpenseDate: req.Date,
 		CreatedAt:   time.Now(),
 		UpdatedAt:   time.Now(),

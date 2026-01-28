@@ -23,17 +23,17 @@ func NewExpenseRepository(db *sql.DB) *ExpenseRepository {
 // Create creates a new expense
 func (r *ExpenseRepository) Create(ctx context.Context, expense *domain.Expense) error {
 	const query = `
-		INSERT INTO expenses (id, user_id, description, amount, category_id, expense_date, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+		INSERT INTO expenses (id, user_id, description, amount, category_id, account, expense_date, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
-	_, err := r.db.ExecContext(ctx, query, expense.ID, expense.UserID, expense.Description, expense.Amount, expense.CategoryID, expense.ExpenseDate, expense.CreatedAt, expense.UpdatedAt)
+	_, err := r.db.ExecContext(ctx, query, expense.ID, expense.UserID, expense.Description, expense.Amount, expense.CategoryID, expense.Account, expense.ExpenseDate, expense.CreatedAt, expense.UpdatedAt)
 	return err
 }
 
 // GetByID retrieves an expense by ID
 func (r *ExpenseRepository) GetByID(ctx context.Context, id string) (*domain.Expense, error) {
 	const query = `
-		SELECT id, user_id, description, amount, category_id, expense_date, created_at, updated_at
+		SELECT id, user_id, description, amount, category_id, account, expense_date, created_at, updated_at
 		FROM expenses
 		WHERE id = ?
 	`
@@ -44,6 +44,7 @@ func (r *ExpenseRepository) GetByID(ctx context.Context, id string) (*domain.Exp
 		&expense.Description,
 		&expense.Amount,
 		&expense.CategoryID,
+		&expense.Account,
 		&expense.ExpenseDate,
 		&expense.CreatedAt,
 		&expense.UpdatedAt,
@@ -60,7 +61,7 @@ func (r *ExpenseRepository) GetByID(ctx context.Context, id string) (*domain.Exp
 // GetByUserID retrieves all expenses for a user
 func (r *ExpenseRepository) GetByUserID(ctx context.Context, userID string) ([]*domain.Expense, error) {
 	const query = `
-		SELECT id, user_id, description, amount, category_id, expense_date, created_at, updated_at
+		SELECT id, user_id, description, amount, category_id, account, expense_date, created_at, updated_at
 		FROM expenses
 		WHERE user_id = ?
 		ORDER BY expense_date DESC, created_at DESC
@@ -80,6 +81,7 @@ func (r *ExpenseRepository) GetByUserID(ctx context.Context, userID string) ([]*
 			&expense.Description,
 			&expense.Amount,
 			&expense.CategoryID,
+			&expense.Account,
 			&expense.ExpenseDate,
 			&expense.CreatedAt,
 			&expense.UpdatedAt,
@@ -94,7 +96,7 @@ func (r *ExpenseRepository) GetByUserID(ctx context.Context, userID string) ([]*
 // GetByUserIDAndDateRange retrieves expenses for a user within a date range
 func (r *ExpenseRepository) GetByUserIDAndDateRange(ctx context.Context, userID string, from, to time.Time) ([]*domain.Expense, error) {
 	const query = `
-		SELECT id, user_id, description, amount, category_id, expense_date, created_at, updated_at
+		SELECT id, user_id, description, amount, category_id, account, expense_date, created_at, updated_at
 		FROM expenses
 		WHERE user_id = ? AND expense_date >= ? AND expense_date <= ?
 		ORDER BY expense_date DESC, created_at DESC
@@ -114,6 +116,7 @@ func (r *ExpenseRepository) GetByUserIDAndDateRange(ctx context.Context, userID 
 			&expense.Description,
 			&expense.Amount,
 			&expense.CategoryID,
+			&expense.Account,
 			&expense.ExpenseDate,
 			&expense.CreatedAt,
 			&expense.UpdatedAt,
@@ -128,7 +131,7 @@ func (r *ExpenseRepository) GetByUserIDAndDateRange(ctx context.Context, userID 
 // GetByUserIDAndCategory retrieves expenses for a user in a category
 func (r *ExpenseRepository) GetByUserIDAndCategory(ctx context.Context, userID, categoryID string) ([]*domain.Expense, error) {
 	const query = `
-		SELECT id, user_id, description, amount, category_id, expense_date, created_at, updated_at
+		SELECT id, user_id, description, amount, category_id, account, expense_date, created_at, updated_at
 		FROM expenses
 		WHERE user_id = ? AND category_id = ?
 		ORDER BY expense_date DESC, created_at DESC
@@ -148,6 +151,7 @@ func (r *ExpenseRepository) GetByUserIDAndCategory(ctx context.Context, userID, 
 			&expense.Description,
 			&expense.Amount,
 			&expense.CategoryID,
+			&expense.Account,
 			&expense.ExpenseDate,
 			&expense.CreatedAt,
 			&expense.UpdatedAt,
@@ -163,10 +167,10 @@ func (r *ExpenseRepository) GetByUserIDAndCategory(ctx context.Context, userID, 
 func (r *ExpenseRepository) Update(ctx context.Context, expense *domain.Expense) error {
 	const query = `
 		UPDATE expenses
-		SET description = ?, amount = ?, category_id = ?, expense_date = ?, updated_at = ?
+		SET description = ?, amount = ?, category_id = ?, account = ?, expense_date = ?, updated_at = ?
 		WHERE id = ?
 	`
-	_, err := r.db.ExecContext(ctx, query, expense.Description, expense.Amount, expense.CategoryID, expense.ExpenseDate, time.Now(), expense.ID)
+	_, err := r.db.ExecContext(ctx, query, expense.Description, expense.Amount, expense.CategoryID, expense.Account, expense.ExpenseDate, time.Now(), expense.ID)
 	return err
 }
 
