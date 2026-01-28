@@ -54,6 +54,7 @@ type ExpenseDTO struct {
 	CategoryID     *string
 	CategoryName   *string
 	Date           time.Time
+	Account        string
 }
 
 // GetAllResponse represents the response for getting all expenses
@@ -118,6 +119,7 @@ func (u *GetExpensesUseCase) buildResponse(ctx context.Context, expenses []*doma
 			CategoryID:     expense.CategoryID,
 			CategoryName:   categoryName,
 			Date:           expense.ExpenseDate,
+			Account:        expense.Account,
 		}
 		dtos = append(dtos, dto)
 		total += expense.Amount

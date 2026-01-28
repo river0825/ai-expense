@@ -32,6 +32,7 @@ type UpdateRequest struct {
 	Description *string
 	Amount      *float64
 	CategoryID  *string
+	Account     *string
 	ExpenseDate *time.Time
 }
 
@@ -75,6 +76,10 @@ func (u *UpdateExpenseUseCase) Execute(ctx context.Context, req *UpdateRequest) 
 
 	if req.ExpenseDate != nil {
 		expense.ExpenseDate = *req.ExpenseDate
+	}
+
+	if req.Account != nil {
+		expense.Account = *req.Account
 	}
 
 	// Handle category update

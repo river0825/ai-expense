@@ -60,14 +60,14 @@ func TestProcessMessageUseCase_Execute(t *testing.T) {
 		autoSignup.On("Execute", mock.Anything, "user1", "terminal").Return(nil)
 
 		parsedExpenses := []*domain.ParsedExpense{
-			{Description: "Lunch", Amount: 100, Date: time.Now()},
+			{Description: "Lunch", Amount: 100, Date: time.Now(), Account: "Taishin"},
 		}
 		parseResult := &domain.ParseResult{
 			Expenses:     parsedExpenses,
 			SystemPrompt: "prompt",
 			RawResponse:  "response",
 		}
-		parser.On("Execute", mock.Anything, "Lunch 100", "user1").Return(parseResult, nil)
+		parser.On("Execute", mock.Anything, "Lunch 100 Taishin", "user1").Return(parseResult, nil)
 
 		createResp := &CreateResponse{
 			ID:             "1",
@@ -86,7 +86,7 @@ func TestProcessMessageUseCase_Execute(t *testing.T) {
 		// Execute
 		msg := &domain.UserMessage{
 			UserID:  "user1",
-			Content: "Lunch 100",
+			Content: "Lunch 100 Taishin",
 			Source:  "terminal",
 		}
 		resp, err := uc.Execute(context.Background(), msg)
@@ -96,6 +96,9 @@ func TestProcessMessageUseCase_Execute(t *testing.T) {
 		assert.Contains(t, resp.Text, "Recorded 1 expense")
 		assert.Contains(t, resp.Text, "Lunch")
 		assert.Contains(t, resp.Text, "100 TWD")
+		assert.Contains(t, resp.Text, "Taishin")
+		assert.Contains(t, resp.Text, "100 TWD")
+		assert.Contains(t, resp.Text, "Taishin")
 	})
 
 	t.Run("Failure - Parse Error", func(t *testing.T) {

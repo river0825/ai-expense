@@ -5,6 +5,7 @@ export interface Expense {
   amount: number;
   category_id?: string;
   category_name?: string;
+  account?: string;
   expense_date: string;  // ISO date string
   created_at?: string;
 }

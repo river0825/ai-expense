@@ -90,6 +90,7 @@ type CreateRequest struct {
 	HomeCurrency     string
 	ExchangeRate     float64
 	CategoryID       *string
+	Account          string
 	Date             time.Time
 }
 
@@ -103,6 +104,7 @@ type CreateResponse struct {
 	HomeAmount     float64
 	HomeCurrency   string
 	ExchangeRate   float64
+	Account        string
 }
 
 // Execute creates a new expense
@@ -176,6 +178,12 @@ func (u *CreateExpenseUseCase) Execute(ctx context.Context, req *CreateRequest) 
 		}
 	}
 
+	// Handle default account
+	account := req.Account
+	if account == "" {
+		account = "Cash"
+	}
+
 	// Create expense
 	originalAmount := req.Amount
 	homeCurrency := u.resolveHomeCurrency(ctx, req.UserID, normalizeCurrency(req.HomeCurrency))
@@ -217,6 +225,7 @@ func (u *CreateExpenseUseCase) Execute(ctx context.Context, req *CreateRequest) 
 		HomeCurrency:   homeCurrency,
 		ExchangeRate:   exchangeRate,
 		CategoryID:     categoryID,
+		Account:        account,
 		ExpenseDate:    req.Date,
 		CreatedAt:      time.Now(),
 		UpdatedAt:      time.Now(),
@@ -239,6 +248,7 @@ func (u *CreateExpenseUseCase) Execute(ctx context.Context, req *CreateRequest) 
 		HomeAmount:     homeAmount,
 		HomeCurrency:   homeCurrency,
 		ExchangeRate:   exchangeRate,
+		Account:        account,
 	}, nil
 }
 

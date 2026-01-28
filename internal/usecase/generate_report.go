@@ -43,6 +43,7 @@ type ExpenseDetail struct {
 	Amount      float64   `json:"amount"`
 	Category    string    `json:"category"`
 	Date        time.Time `json:"date"`
+	Account     string    `json:"account"`
 }
 
 // CategoryBreakdown represents spending by category
@@ -182,6 +183,7 @@ func (u *GenerateReportUseCase) Execute(ctx context.Context, req *ReportRequest)
 			Amount:      expense.Amount,
 			Category:    categoryName,
 			Date:        expense.ExpenseDate,
+			Account:     expense.Account,
 		})
 	}
 

@@ -3,13 +3,15 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { subDays } from 'date-fns';
+import { subDays, format } from 'date-fns';
 import { DateRange } from 'react-day-picker';
 import { DatePickerWithRange } from '@/components/ui/date-range-picker';
 import { DateRangePresets } from '@/components/DateRangePresets';
 import { DashboardLayout } from '@/components/DashboardLayout';
 // ... other imports remain the same, removing Sidebar and TopBar imports below
 import { ExpenseList } from '@/components/ExpenseList';
+import { AccountFilter } from '@/components/AccountFilter';
+import { AccountBreakdown } from '@/components/AccountBreakdown';
 import { SpendingTrendChart } from '@/components/SpendingTrendChart';
 import { DashboardCard } from '@/components/DashboardCard';
 // Sidebar and TopBar imports removed
@@ -38,9 +40,8 @@ export default function UserDashboardPage() {
   
   // State
   const [report, setReport] = useState<ExpenseReport | null>(null);
-  const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [categoryTotals, setCategoryTotals] = useState<CategoryTotal[]>([]);
-  const [trendData, setTrendData] = useState<TrendDataPoint[]>([]);
+  const [allExpenses, setAllExpenses] = useState<Expense[]>([]);
+  const [selectedAccount, setSelectedAccount] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [date, setDate] = useState<DateRange | undefined>({
@@ -96,10 +97,9 @@ export default function UserDashboardPage() {
           ? HttpExpenseRepository.mapToTrendData(reportData, trendGroupBy, date.from, date.to)
           : [];
         
+        
         setReport(reportData);
-        setExpenses(expensesData);
-        setCategoryTotals(categoryData);
-        setTrendData(trendDataRaw);
+        setAllExpenses(expensesData);
         setError(null);
       } catch (err) {
         console.error('Failed to fetch report', err);
@@ -132,6 +132,58 @@ export default function UserDashboardPage() {
     setDate(range);
     setCurrentPreset(preset);
   };
+
+
+  const filteredExpenses = React.useMemo(() => {
+    if (!selectedAccount) return allExpenses;
+    return allExpenses.filter(e => e.account === selectedAccount);
+  }, [allExpenses, selectedAccount]);
+
+  const categoryTotals = React.useMemo(() => {
+    const totals: Record<string, { amount: number; count: number }> = {};
+    filteredExpenses.forEach(e => {
+        const cat = e.category_name || 'Uncategorized';
+        if (!totals[cat]) totals[cat] = { amount: 0, count: 0 };
+        totals[cat].amount += e.amount;
+        totals[cat].count += 1;
+    });
+
+    const totalAmount = filteredExpenses.reduce((sum, e) => sum + e.amount, 0);
+
+    return Object.entries(totals).map(([name, data]) => ({
+        category_name: name,
+        total: data.amount,
+        count: data.count,
+        percentage: totalAmount > 0 ? (data.amount / totalAmount) * 100 : 0
+    })).sort((a, b) => b.total - a.total);
+  }, [filteredExpenses]);
+
+  const trendData = React.useMemo(() => {
+    if (!date?.from || !date?.to) return [];
+    
+    const resultMap = new Map<string, number>();
+    
+    filteredExpenses.forEach(e => {
+        const d = new Date(e.expense_date);
+        let key = '';
+        if (trendGroupBy === 'day') key = format(d, 'yyyy-MM-dd');
+        else if (trendGroupBy === 'week') {
+             const day = d.getDay();
+             const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+             const monday = new Date(d);
+             monday.setDate(diff);
+             key = format(monday, 'yyyy-MM-dd');
+        } else {
+             key = format(d, 'yyyy-MM-01');
+        }
+        
+        resultMap.set(key, (resultMap.get(key) || 0) + e.amount);
+    });
+
+    return Array.from(resultMap.entries())
+        .map(([dateStr, amount]) => ({ date: dateStr, amount, count: 0 }))
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  }, [filteredExpenses, trendGroupBy, date]);
 
   if (loading && !report) {
     return (
@@ -173,6 +225,11 @@ export default function UserDashboardPage() {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
+            <AccountFilter 
+               accounts={Array.from(new Set(allExpenses.map(e => e.account).filter(Boolean) as string[]))}
+               selectedAccount={selectedAccount}
+               onSelectAccount={setSelectedAccount}
+             />
             <DateRangePresets onSelectPreset={handlePresetSelect} currentPreset={currentPreset} />
             <div className="w-full sm:w-auto">
               <DatePickerWithRange date={date} setDate={(range) => { setDate(range); setCurrentPreset('custom'); }} className="w-full sm:w-[260px]" />
@@ -194,7 +251,7 @@ export default function UserDashboardPage() {
                   Total Spent
                 </p>
                 <h3 className="text-2xl font-bold text-text tracking-tight" style={{ fontFamily: 'Fira Code, monospace' }}>
-                  ${report?.total_expenses.toFixed(2)}
+                  ${filteredExpenses.reduce((sum, e) => sum + e.amount, 0).toFixed(2)}
                 </h3>
               </div>
             </div>
@@ -212,7 +269,7 @@ export default function UserDashboardPage() {
                   Transactions
                 </p>
                 <h3 className="text-2xl font-bold text-text tracking-tight" style={{ fontFamily: 'Fira Code, monospace' }}>
-                  {report?.transaction_count}
+                  {filteredExpenses.length}
                 </h3>
               </div>
             </div>
@@ -230,7 +287,7 @@ export default function UserDashboardPage() {
                   Average / Tx
                 </p>
                 <h3 className="text-2xl font-bold text-text tracking-tight" style={{ fontFamily: 'Fira Code, monospace' }}>
-                  ${report?.average_expense.toFixed(2)}
+                  ${(filteredExpenses.length > 0 ? filteredExpenses.reduce((sum, e) => sum + e.amount, 0) / filteredExpenses.length : 0).toFixed(2)}
                 </h3>
               </div>
             </div>
@@ -257,6 +314,13 @@ export default function UserDashboardPage() {
             </div>
           </DashboardCard>
         </div>
+        
+        {/* Account Breakdown */}
+        {allExpenses.length > 0 && (
+          <div className="mb-6">
+              <AccountBreakdown expenses={allExpenses} />
+          </div>
+        )}
 
         {/* Main Content - Two Column Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -272,7 +336,7 @@ export default function UserDashboardPage() {
               } 
               className="h-[700px]"
             >
-              <ExpenseList expenses={expenses} onUpdateExpense={handleUpdateExpense} />
+              <ExpenseList expenses={filteredExpenses} onUpdateExpense={handleUpdateExpense} />
             </DashboardCard>
           </div>
 

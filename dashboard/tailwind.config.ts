@@ -30,8 +30,8 @@ const config: Config = {
         border: 'rgba(255, 255, 255, 0.1)',
       },
       fontFamily: {
-        sans: ['var(--font-fira-sans)', 'sans-serif'],
-        mono: ['var(--font-fira-code)', 'monospace'],
+        sans: ['"IBM Plex Sans"', 'sans-serif'],
+        mono: ['"Fira Code"', 'monospace'],
       },
       boxShadow: {
         'glass-sm': '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',

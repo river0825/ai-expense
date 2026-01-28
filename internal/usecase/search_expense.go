@@ -47,6 +47,7 @@ type SearchResult struct {
 	Amount      float64   `json:"amount"`
 	Category    string    `json:"category"`
 	Date        time.Time `json:"date"`
+	Account     string    `json:"account"`
 }
 
 // SearchResponse represents the response from a search
@@ -159,6 +160,7 @@ func (u *SearchExpenseUseCase) Search(ctx context.Context, req *SearchRequest) (
 			Amount:      exp.Amount,
 			Category:    categoryName,
 			Date:        exp.ExpenseDate,
+			Account:     exp.Account,
 		})
 	}
 
@@ -323,6 +325,7 @@ func (u *SearchExpenseUseCase) Filter(ctx context.Context, req *FilterRequest) (
 			Amount:      exp.Amount,
 			Category:    categoryName,
 			Date:        exp.ExpenseDate,
+			Account:     exp.Account,
 		})
 	}
 

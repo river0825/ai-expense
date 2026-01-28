@@ -26,6 +26,9 @@ func normalizeExpenseForWrite(expense *domain.Expense) {
 	if expense == nil {
 		return
 	}
+	if expense.Account == "" {
+		expense.Account = "Cash"
+	}
 	if expense.OriginalAmount == 0 && expense.Amount != 0 {
 		expense.OriginalAmount = expense.Amount
 	}
@@ -75,11 +78,12 @@ func (r *ExpenseRepository) Create(ctx context.Context, expense *domain.Expense)
 			home_currency,
 			exchange_rate,
 			category_id,
+			account,
 			expense_date,
 			created_at,
 			updated_at
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
 	`
 
 	normalizeExpenseForWrite(expense)
@@ -95,6 +99,7 @@ func (r *ExpenseRepository) Create(ctx context.Context, expense *domain.Expense)
 		expense.HomeCurrency,
 		expense.ExchangeRate,
 		expense.CategoryID,
+		expense.Account,
 		expense.ExpenseDate,
 		expense.CreatedAt,
 		expense.UpdatedAt,
@@ -104,7 +109,7 @@ func (r *ExpenseRepository) Create(ctx context.Context, expense *domain.Expense)
 
 func (r *ExpenseRepository) GetByID(ctx context.Context, id string) (*domain.Expense, error) {
 	const query = `
-		SELECT id, user_id, description, original_amount, currency, home_amount, home_currency, exchange_rate, category_id, expense_date, created_at, updated_at
+		SELECT id, user_id, description, original_amount, currency, home_amount, home_currency, exchange_rate, category_id, account, expense_date, created_at, updated_at
 		FROM expenses
 		WHERE id = $1
 	`
@@ -120,6 +125,7 @@ func (r *ExpenseRepository) GetByID(ctx context.Context, id string) (*domain.Exp
 		&expense.HomeCurrency,
 		&expense.ExchangeRate,
 		&expense.CategoryID,
+		&expense.Account,
 		&expense.ExpenseDate,
 		&expense.CreatedAt,
 		&expense.UpdatedAt,
@@ -136,7 +142,7 @@ func (r *ExpenseRepository) GetByID(ctx context.Context, id string) (*domain.Exp
 
 func (r *ExpenseRepository) GetByUserID(ctx context.Context, userID string) ([]*domain.Expense, error) {
 	const query = `
-		SELECT id, user_id, description, original_amount, currency, home_amount, home_currency, exchange_rate, category_id, expense_date, created_at, updated_at
+		SELECT id, user_id, description, original_amount, currency, home_amount, home_currency, exchange_rate, category_id, account, expense_date, created_at, updated_at
 		FROM expenses
 		WHERE user_id = $1
 		ORDER BY expense_date DESC, created_at DESC
@@ -161,6 +167,7 @@ func (r *ExpenseRepository) GetByUserID(ctx context.Context, userID string) ([]*
 			&expense.HomeCurrency,
 			&expense.ExchangeRate,
 			&expense.CategoryID,
+			&expense.Account,
 			&expense.ExpenseDate,
 			&expense.CreatedAt,
 			&expense.UpdatedAt,
@@ -176,7 +183,7 @@ func (r *ExpenseRepository) GetByUserID(ctx context.Context, userID string) ([]*
 func (r *ExpenseRepository) Update(ctx context.Context, expense *domain.Expense) error {
 	const query = `
 		UPDATE expenses
-		SET description = $2, original_amount = $3, currency = $4, home_amount = $5, home_currency = $6, exchange_rate = $7, category_id = $8, expense_date = $9, updated_at = $10
+		SET description = $2, original_amount = $3, currency = $4, home_amount = $5, home_currency = $6, exchange_rate = $7, category_id = $8, account = $9, expense_date = $10, updated_at = $11
 		WHERE id = $1
 	`
 
@@ -190,6 +197,7 @@ func (r *ExpenseRepository) Update(ctx context.Context, expense *domain.Expense)
 		expense.HomeCurrency,
 		expense.ExchangeRate,
 		expense.CategoryID,
+		expense.Account,
 		expense.ExpenseDate,
 		time.Now(),
 	)
@@ -198,7 +206,7 @@ func (r *ExpenseRepository) Update(ctx context.Context, expense *domain.Expense)
 
 func (r *ExpenseRepository) GetByUserIDAndDateRange(ctx context.Context, userID string, from, to time.Time) ([]*domain.Expense, error) {
 	const query = `
-		SELECT id, user_id, description, original_amount, currency, home_amount, home_currency, exchange_rate, category_id, expense_date, created_at, updated_at
+		SELECT id, user_id, description, original_amount, currency, home_amount, home_currency, exchange_rate, category_id, account, expense_date, created_at, updated_at
 		FROM expenses
 		WHERE user_id = $1 AND expense_date BETWEEN $2 AND $3
 		ORDER BY expense_date DESC, created_at DESC
@@ -223,6 +231,7 @@ func (r *ExpenseRepository) GetByUserIDAndDateRange(ctx context.Context, userID 
 			&expense.HomeCurrency,
 			&expense.ExchangeRate,
 			&expense.CategoryID,
+			&expense.Account,
 			&expense.ExpenseDate,
 			&expense.CreatedAt,
 			&expense.UpdatedAt,
@@ -237,7 +246,7 @@ func (r *ExpenseRepository) GetByUserIDAndDateRange(ctx context.Context, userID 
 
 func (r *ExpenseRepository) GetByUserIDAndCategory(ctx context.Context, userID, categoryID string) ([]*domain.Expense, error) {
 	const query = `
-		SELECT id, user_id, description, original_amount, currency, home_amount, home_currency, exchange_rate, category_id, expense_date, created_at, updated_at
+		SELECT id, user_id, description, original_amount, currency, home_amount, home_currency, exchange_rate, category_id, account, expense_date, created_at, updated_at
 		FROM expenses
 		WHERE user_id = $1 AND category_id = $2
 		ORDER BY expense_date DESC, created_at DESC
@@ -262,6 +271,7 @@ func (r *ExpenseRepository) GetByUserIDAndCategory(ctx context.Context, userID, 
 			&expense.HomeCurrency,
 			&expense.ExchangeRate,
 			&expense.CategoryID,
+			&expense.Account,
 			&expense.ExpenseDate,
 			&expense.CreatedAt,
 			&expense.UpdatedAt,

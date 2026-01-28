@@ -65,6 +65,11 @@ func (u *ParseConversationUseCase) Execute(ctx context.Context, text, userID str
 		} else {
 			log.Printf("DEBUG: Expense date already set (by AI?): %v", expense.Date)
 		}
+
+		// Set default account if not set
+		if expense.Account == "" {
+			expense.Account = "Cash"
+		}
 	}
 
 	// Log cost asynchronously (if pricing available)
