@@ -21,6 +21,7 @@ export class HttpExpenseRepository implements ExpenseRepository {
         amount: detail.amount,
         category_name: detail.category,
         expense_date: detail.date,
+        account: detail.account,
       }));
 
       // Filter by category if specified
@@ -205,9 +206,9 @@ export class HttpExpenseRepository implements ExpenseRepository {
         amount: expense.amount,
       };
 
-      // Only include category_id if it exists
-      if (expense.category_id) {
-        payload.category_id = expense.category_id;
+      // Only include account if it exists
+      if (expense.account) {
+        payload.account = expense.account;
       }
 
       await axios.put(url, payload);

@@ -18,6 +18,7 @@ export interface ExpenseDetail {
   amount: number;
   category: string;
   date: string;
+  account?: string;
 }
 
 export interface ExpenseReport {

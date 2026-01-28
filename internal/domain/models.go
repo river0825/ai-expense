@@ -25,6 +25,7 @@ type Expense struct {
 	HomeCurrency   string    `db:"home_currency"`
 	ExchangeRate   float64   `db:"exchange_rate"`
 	CategoryID     *string   `db:"category_id"`
+	Account        string    `db:"account"` // Default 'Cash' / specific account name
 	ExpenseDate    time.Time `db:"expense_date"`
 	CreatedAt      time.Time `db:"created_at"`
 	UpdatedAt      time.Time `db:"updated_at"`
@@ -86,7 +87,9 @@ type ParsedExpense struct {
 	Currency          string
 	CurrencyOriginal  string
 	SuggestedCategory string
-	Date              time.Time
+	Account           string
+
+	Date time.Time
 }
 
 // ParseResult represents the result of parsing a conversation

@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -148,16 +149,21 @@ func (u *ProcessMessageUseCase) Execute(ctx context.Context, msg *domain.UserMes
 			Amount:           parsedExp.Amount,
 			Currency:         parsedExp.Currency,
 			CurrencyOriginal: parsedExp.CurrencyOriginal,
+			Account:          parsedExp.Account,
 			Date:             parsedExp.Date,
 		}
 
 		resp, err := u.createExpense.Execute(ctx, req)
 		if err != nil {
-			// Log error but continue
+			log.Printf("ERROR: Failed to create expense for user %s: %v", msg.UserID, err)
 			continue
 		}
 
 		totalAmount += resp.HomeAmount
+		account := resp.Account
+		if account == "" {
+			account = parsedExp.Account
+		}
 		createdExpenses = append(createdExpenses, map[string]interface{}{
 			"id":              resp.ID,
 			"description":     parsedExp.Description,
@@ -167,6 +173,7 @@ func (u *ProcessMessageUseCase) Execute(ctx context.Context, msg *domain.UserMes
 			"home_currency":   resp.HomeCurrency,
 			"category":        resp.Category,
 			"date":            parsedExp.Date,
+			"account":         account,
 		})
 	}
 
@@ -181,13 +188,18 @@ func (u *ProcessMessageUseCase) Execute(ctx context.Context, msg *domain.UserMes
 		}
 		homeAmount := asFloat(exp["home_amount"])
 		homeCurrency, _ := exp["home_currency"].(string)
-		line := fmt.Sprintf("\n• [%s] %s (%s): %s %s",
-			dateStr,
-			exp["description"],
-			exp["category"],
-			formatAmount(homeAmount),
-			homeCurrency,
-		)
+		account, _ := exp["account"].(string)
+		if homeCurrency == "" {
+			homeCurrency = "TWD"
+		}
+		if homeAmount == 0 {
+			homeAmount = asFloat(exp["original_amount"])
+		}
+		line := fmt.Sprintf("\n• [%s] %s (%s)", dateStr, exp["description"], exp["category"])
+		if account != "" {
+			line = fmt.Sprintf("%s [%s]", line, account)
+		}
+		line = fmt.Sprintf("%s: %s %s", line, formatAmount(homeAmount), homeCurrency)
 		if orig := asFloat(exp["original_amount"]); orig > 0 {
 			if curr, _ := exp["currency"].(string); curr != "" && curr != homeCurrency {
 				line = fmt.Sprintf("%s (≈ %s %s)", line, formatAmount(orig), curr)

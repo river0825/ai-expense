@@ -43,6 +43,7 @@ type ExportedExpense struct {
 	Description string  `json:"description" csv:"Description"`
 	Amount      float64 `json:"amount" csv:"Amount"`
 	Category    string  `json:"category" csv:"Category"`
+	Account     string  `json:"account" csv:"Account"`
 	CreatedAt   string  `json:"created_at" csv:"CreatedAt"`
 	UpdatedAt   string  `json:"updated_at" csv:"UpdatedAt"`
 }
@@ -91,6 +92,7 @@ func (u *DataExportUseCase) Execute(ctx context.Context, req *ExportRequest) (*E
 			Description: expense.Description,
 			Amount:      expense.Amount,
 			Category:    categoryName,
+			Account:     expense.Account,
 			CreatedAt:   expense.CreatedAt.Format("2006-01-02 15:04:05"),
 			UpdatedAt:   expense.UpdatedAt.Format("2006-01-02 15:04:05"),
 		})
@@ -130,7 +132,7 @@ func (u *DataExportUseCase) ExportAsCSV(ctx context.Context, req *ExportRequest)
 	defer writer.Flush()
 
 	// Write header
-	headers := []string{"ID", "Date", "Description", "Amount", "Category", "CreatedAt", "UpdatedAt"}
+	headers := []string{"ID", "Date", "Description", "Amount", "Category", "Account", "CreatedAt", "UpdatedAt"}
 	if err := writer.Write(headers); err != nil {
 		return nil, fmt.Errorf("failed to write CSV header: %w", err)
 	}
@@ -143,6 +145,7 @@ func (u *DataExportUseCase) ExportAsCSV(ctx context.Context, req *ExportRequest)
 			exp.Description,
 			fmt.Sprintf("%.2f", exp.Amount),
 			exp.Category,
+			exp.Account,
 			exp.CreatedAt,
 			exp.UpdatedAt,
 		}

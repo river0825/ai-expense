@@ -5,4 +5,5 @@ export interface Transaction {
   date: string;
   amount: string; // Keeping as string for now to match current mock data format (e.g. "-$240.00")
   status: 'Completed' | 'Pending';
+  account: string;
 }
