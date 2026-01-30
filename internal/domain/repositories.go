@@ -41,6 +41,21 @@ type ExpenseRepository interface {
 	Delete(ctx context.Context, id string) error
 }
 
+// CurrencyRepository defines operations for reference currency data
+type CurrencyRepository interface {
+	GetAll(ctx context.Context) ([]*Currency, error)
+	GetByCode(ctx context.Context, code string) (*Currency, error)
+	GetName(ctx context.Context, code, locale string) (string, error)
+	Upsert(ctx context.Context, currency *Currency) error
+}
+
+// ExchangeRateRepository defines operations for caching exchange rates
+type ExchangeRateRepository interface {
+	SaveRate(ctx context.Context, rate *ExchangeRate) error
+	GetRate(ctx context.Context, baseCurrency, targetCurrency string, rateDate time.Time) (*ExchangeRate, error)
+	GetMostRecentRate(ctx context.Context, baseCurrency, targetCurrency string, before time.Time) (*ExchangeRate, error)
+}
+
 // CategoryRepository defines operations for category data
 type CategoryRepository interface {
 	// Create creates a new category
