@@ -19,8 +19,9 @@ func TestParseExpenseRegex(t *testing.T) {
 			input:       "早餐$20",
 			expectCount: 1,
 			expectFirst: &domain.ParsedExpense{
-				Description: "早餐",
-				Amount:      20,
+				Description:      "早餐",
+				Amount:           20,
+				CurrencyOriginal: "$",
 			},
 		},
 		{
@@ -28,8 +29,9 @@ func TestParseExpenseRegex(t *testing.T) {
 			input:       "早餐$20午餐$30加油$200",
 			expectCount: 3,
 			expectFirst: &domain.ParsedExpense{
-				Description: "早餐",
-				Amount:      20,
+				Description:      "早餐",
+				Amount:           20,
+				CurrencyOriginal: "$",
 			},
 		},
 		{
@@ -37,8 +39,9 @@ func TestParseExpenseRegex(t *testing.T) {
 			input:       "咖啡$3.50",
 			expectCount: 1,
 			expectFirst: &domain.ParsedExpense{
-				Description: "咖啡",
-				Amount:      3.50,
+				Description:      "咖啡",
+				Amount:           3.50,
+				CurrencyOriginal: "$",
 			},
 		},
 		{
@@ -51,8 +54,9 @@ func TestParseExpenseRegex(t *testing.T) {
 			input:       "早餐 $20 午餐 $30",
 			expectCount: 2,
 			expectFirst: &domain.ParsedExpense{
-				Description: "早餐",
-				Amount:      20,
+				Description:      "早餐",
+				Amount:           20,
+				CurrencyOriginal: "$",
 			},
 		},
 	}
@@ -76,6 +80,9 @@ func TestParseExpenseRegex(t *testing.T) {
 				}
 				if expenses[0].Amount != tt.expectFirst.Amount {
 					t.Errorf("expected amount %f, got %f", tt.expectFirst.Amount, expenses[0].Amount)
+				}
+				if expenses[0].CurrencyOriginal != tt.expectFirst.CurrencyOriginal {
+					t.Errorf("expected currency original %q, got %q", tt.expectFirst.CurrencyOriginal, expenses[0].CurrencyOriginal)
 				}
 			}
 		})
@@ -187,6 +194,10 @@ func TestParseExpense(t *testing.T) {
 
 	if resp.Expenses[0].Amount != 20 {
 		t.Errorf("expected first amount 20, got %f", resp.Expenses[0].Amount)
+	}
+
+	if resp.Expenses[0].CurrencyOriginal == "" {
+		t.Errorf("expected currency_original to be captured")
 	}
 
 	// Fallback (regex) should return zero tokens
