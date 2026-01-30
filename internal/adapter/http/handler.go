@@ -27,6 +27,7 @@ type Handler struct {
 	archiveUC           *usecase.ArchiveUseCase
 	metricsUC           *usecase.MetricsUseCase
 	getPolicyUC         *usecase.GetPolicyUseCase
+	exchangeRateSvc     domain.ExchangeRateService
 	userRepo            domain.UserRepository
 	categoryRepo        domain.CategoryRepository
 	expenseRepo         domain.ExpenseRepository
@@ -52,6 +53,7 @@ func NewHandler(
 	archiveUC *usecase.ArchiveUseCase,
 	metricsUC *usecase.MetricsUseCase,
 	getPolicyUC *usecase.GetPolicyUseCase,
+	exchangeRateSvc domain.ExchangeRateService,
 	userRepo domain.UserRepository,
 	categoryRepo domain.CategoryRepository,
 	expenseRepo domain.ExpenseRepository,
@@ -75,6 +77,7 @@ func NewHandler(
 		archiveUC:           archiveUC,
 		metricsUC:           metricsUC,
 		getPolicyUC:         getPolicyUC,
+		exchangeRateSvc:     exchangeRateSvc,
 		userRepo:            userRepo,
 		categoryRepo:        categoryRepo,
 		expenseRepo:         expenseRepo,
@@ -170,11 +173,16 @@ func (h *Handler) CreateExpense(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	type CreateRequest struct {
-		UserID      string     `json:"user_id"`
-		Description string     `json:"description"`
-		Amount      float64    `json:"amount"`
-		CategoryID  *string    `json:"category_id,omitempty"`
-		Date        *time.Time `json:"date,omitempty"`
+		UserID           string     `json:"user_id"`
+		Description      string     `json:"description"`
+		Amount           float64    `json:"amount"`
+		Currency         string     `json:"currency,omitempty"`
+		CurrencyOriginal string     `json:"currency_original,omitempty"`
+		ConvertedAmount  float64    `json:"converted_amount,omitempty"`
+		HomeCurrency     string     `json:"home_currency,omitempty"`
+		ExchangeRate     float64    `json:"exchange_rate,omitempty"`
+		CategoryID       *string    `json:"category_id,omitempty"`
+		Date             *time.Time `json:"date,omitempty"`
 	}
 
 	var req CreateRequest
@@ -190,11 +198,16 @@ func (h *Handler) CreateExpense(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ucReq := &usecase.CreateRequest{
-		UserID:      req.UserID,
-		Description: req.Description,
-		Amount:      req.Amount,
-		CategoryID:  req.CategoryID,
-		Date:        date,
+		UserID:           req.UserID,
+		Description:      req.Description,
+		Amount:           req.Amount,
+		Currency:         req.Currency,
+		CurrencyOriginal: req.CurrencyOriginal,
+		ConvertedAmount:  req.ConvertedAmount,
+		HomeCurrency:     req.HomeCurrency,
+		ExchangeRate:     req.ExchangeRate,
+		CategoryID:       req.CategoryID,
+		Date:             date,
 	}
 
 	resp, err := h.createExpenseUC.Execute(ctx, ucReq)
@@ -298,6 +311,27 @@ func (h *Handler) GetMetricsGrowth(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.WriteJSON(w, http.StatusOK, &Response{Status: "success", Data: resp})
+}
+
+// RefreshExchangeRates triggers a manual exchange rate refresh
+func (h *Handler) RefreshExchangeRates(w http.ResponseWriter, r *http.Request) {
+	if !h.authenticateAdmin(r) {
+		h.WriteJSON(w, http.StatusUnauthorized, &Response{Status: "error", Error: "Unauthorized"})
+		return
+	}
+
+	if h.exchangeRateSvc == nil {
+		h.WriteJSON(w, http.StatusServiceUnavailable, &Response{Status: "error", Error: "Exchange rate service not configured"})
+		return
+	}
+
+	ctx := r.Context()
+	if err := h.exchangeRateSvc.RefreshRates(ctx); err != nil {
+		h.WriteJSON(w, http.StatusInternalServerError, &Response{Status: "error", Error: err.Error()})
+		return
+	}
+
+	h.WriteJSON(w, http.StatusOK, &Response{Status: "success", Message: "Exchange rates refreshed"})
 }
 
 // authenticateAdmin checks if request has valid admin API key
@@ -1414,6 +1448,7 @@ func RegisterRoutes(
 	mux.HandleFunc("GET /api/metrics/dau", handler.GetMetricsDAU)
 	mux.HandleFunc("GET /api/metrics/expenses-summary", handler.GetMetricsExpenses)
 	mux.HandleFunc("GET /api/metrics/growth", handler.GetMetricsGrowth)
+	mux.HandleFunc("POST /api/exchange-rates/refresh", handler.RefreshExchangeRates)
 
 	// AI Cost endpoints
 	if aiCostHandler != nil {
