@@ -75,7 +75,7 @@ func (r *MetricsRepository) GetCategoryTrends(ctx context.Context, userID string
 		SELECT
 			COALESCE(c.name, 'Uncategorized') as category_name,
 			COUNT(e.id) as expense_count,
-			SUM(e.amount) as total_amount
+			COALESCE(SUM(e.home_amount), 0) as total_amount
 		FROM expenses e
 		LEFT JOIN categories c ON e.category_id = c.id
 		WHERE e.user_id = $1 AND e.expense_date >= $2 AND e.expense_date <= $3

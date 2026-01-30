@@ -10,18 +10,55 @@ type User struct {
 	UserID        string    `db:"user_id"`
 	MessengerType string    `db:"messenger_type"`
 	CreatedAt     time.Time `db:"created_at"`
+	HomeCurrency  string    `db:"home_currency"`
+	Locale        string    `db:"locale"`
 }
 
 // Expense represents a single expense record
 type Expense struct {
-	ID          string    `db:"id"`
-	UserID      string    `db:"user_id"`
-	Description string    `db:"description"`
-	Amount      float64   `db:"amount"`
-	CategoryID  *string   `db:"category_id"`
-	ExpenseDate time.Time `db:"expense_date"`
-	CreatedAt   time.Time `db:"created_at"`
-	UpdatedAt   time.Time `db:"updated_at"`
+	ID             string    `db:"id"`
+	UserID         string    `db:"user_id"`
+	Description    string    `db:"description"`
+	OriginalAmount float64   `db:"original_amount"`
+	Currency       string    `db:"currency"`
+	HomeAmount     float64   `db:"home_amount"`
+	HomeCurrency   string    `db:"home_currency"`
+	ExchangeRate   float64   `db:"exchange_rate"`
+	CategoryID     *string   `db:"category_id"`
+	ExpenseDate    time.Time `db:"expense_date"`
+	CreatedAt      time.Time `db:"created_at"`
+	UpdatedAt      time.Time `db:"updated_at"`
+	Amount         float64   `db:"-"` // Deprecated: kept for backward compatibility until callers migrate to HomeAmount
+}
+
+// Currency represents a supported currency definition
+type Currency struct {
+	Code      string    `db:"code"`
+	Symbol    string    `db:"symbol"`
+	Aliases   []string  `db:"aliases"`
+	IsActive  bool      `db:"is_active"`
+	CreatedAt time.Time `db:"created_at"`
+	UpdatedAt time.Time `db:"updated_at"`
+}
+
+// CurrencyTranslation stores localized currency names
+type CurrencyTranslation struct {
+	ID           int       `db:"id"`
+	CurrencyCode string    `db:"currency_code"`
+	Locale       string    `db:"locale"`
+	Name         string    `db:"name"`
+	CreatedAt    time.Time `db:"created_at"`
+}
+
+// ExchangeRate stores a cached conversion rate for a given day
+type ExchangeRate struct {
+	ID             int64     `db:"id"`
+	Provider       string    `db:"provider"`
+	BaseCurrency   string    `db:"base_currency"`
+	TargetCurrency string    `db:"target_currency"`
+	Rate           float64   `db:"rate"`
+	RateDate       time.Time `db:"rate_date"`
+	FetchedAt      time.Time `db:"fetched_at"`
 }
 
 // Category represents an expense category
@@ -46,6 +83,8 @@ type CategoryKeyword struct {
 type ParsedExpense struct {
 	Description       string
 	Amount            float64
+	Currency          string
+	CurrencyOriginal  string
 	SuggestedCategory string
 	Date              time.Time
 }
