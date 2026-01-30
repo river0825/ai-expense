@@ -13,7 +13,7 @@ func TestCreateExpenseSuccess(t *testing.T) {
 	categoryRepo := NewMockCategoryRepository()
 	aiService := &MockAIService{}
 
-	uc := NewCreateExpenseUseCase(expenseRepo, categoryRepo, nil, nil, aiService)
+	uc := NewCreateExpenseUseCase(expenseRepo, categoryRepo, nil, nil, nil, nil, aiService)
 
 	ctx := context.Background()
 	userID := "test_user"
@@ -58,7 +58,7 @@ func TestCreateExpenseWithCategory(t *testing.T) {
 	categoryRepo := NewMockCategoryRepository()
 	aiService := &MockAIService{}
 
-	uc := NewCreateExpenseUseCase(expenseRepo, categoryRepo, nil, nil, aiService)
+	uc := NewCreateExpenseUseCase(expenseRepo, categoryRepo, nil, nil, nil, nil, aiService)
 
 	ctx := context.Background()
 	userID := "test_user"
@@ -100,7 +100,7 @@ func TestCreateExpenseWithAICategory(t *testing.T) {
 
 	aiService := &MockAIService{}
 
-	uc := NewCreateExpenseUseCase(expenseRepo, categoryRepo, nil, nil, aiService)
+	uc := NewCreateExpenseUseCase(expenseRepo, categoryRepo, nil, nil, nil, nil, aiService)
 
 	ctx := context.Background()
 	userID := "test_user"
@@ -129,7 +129,7 @@ func TestCreateExpenseMessage(t *testing.T) {
 	categoryRepo := NewMockCategoryRepository()
 	aiService := &MockAIService{}
 
-	uc := NewCreateExpenseUseCase(expenseRepo, categoryRepo, nil, nil, aiService)
+	uc := NewCreateExpenseUseCase(expenseRepo, categoryRepo, nil, nil, nil, nil, aiService)
 
 	ctx := context.Background()
 	req := &CreateRequest{
@@ -164,7 +164,7 @@ func TestCreateExpenseDecimalAmount(t *testing.T) {
 	categoryRepo := NewMockCategoryRepository()
 	aiService := &MockAIService{}
 
-	uc := NewCreateExpenseUseCase(expenseRepo, categoryRepo, nil, nil, aiService)
+	uc := NewCreateExpenseUseCase(expenseRepo, categoryRepo, nil, nil, nil, nil, aiService)
 
 	ctx := context.Background()
 	req := &CreateRequest{

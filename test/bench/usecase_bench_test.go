@@ -285,7 +285,7 @@ func BenchmarkCreateExpense(b *testing.B) {
 		Name:   "Food",
 	})
 
-	uc := usecase.NewCreateExpenseUseCase(expenseRepo, categoryRepo, nil, nil, aiService)
+	uc := usecase.NewCreateExpenseUseCase(expenseRepo, categoryRepo, nil, nil, nil, nil, aiService)
 	ctx := context.Background()
 
 	b.ResetTimer()
@@ -351,7 +351,7 @@ func BenchmarkMultipleCreateExpenses(b *testing.B) {
 		CreatedAt:     time.Now(),
 	})
 
-	uc := usecase.NewCreateExpenseUseCase(expenseRepo, categoryRepo, nil, nil, aiService)
+	uc := usecase.NewCreateExpenseUseCase(expenseRepo, categoryRepo, nil, nil, nil, nil, aiService)
 	ctx := context.Background()
 
 	b.ResetTimer()
@@ -427,7 +427,7 @@ func BenchmarkExpenseCreationWithCategoryLookup(b *testing.B) {
 		})
 	}
 
-	uc := usecase.NewCreateExpenseUseCase(expenseRepo, categoryRepo, nil, nil, aiService)
+	uc := usecase.NewCreateExpenseUseCase(expenseRepo, categoryRepo, nil, nil, nil, nil, aiService)
 	ctx := context.Background()
 
 	b.ResetTimer()
