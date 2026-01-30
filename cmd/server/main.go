@@ -102,7 +102,7 @@ func main() {
 	autoSignupUseCase := usecase.NewAutoSignupUseCase(userRepo, categoryRepo)
 
 	// Initialize exchange rate service
-	exchangeRateProvider := exchangerate.NewFrankfurterProvider(nil)
+	exchangeRateProvider := exchangerate.NewExchangeRateAPIProvider(cfg.ExchangeRateAPIKey, nil)
 	exchangeRateSvc := usecase.NewExchangeRateService(exchangeRateRepo, exchangeRateProvider)
 
 	parseConversationUseCase := usecase.NewParseConversationUseCase(

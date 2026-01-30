@@ -39,6 +39,9 @@ type Config struct {
 	AIProvider   string // "gemini", "claude", "openai"
 	AIModel      string // e.g., "gemini-2.5-flash-lite"
 
+	// Exchange Rate API
+	ExchangeRateAPIKey string
+
 	// Server
 	ServerPort string
 
@@ -80,6 +83,7 @@ func Load() (*Config, error) {
 		GeminiAPIKey:          getEnv("GEMINI_API_KEY", ""),
 		AIProvider:            getEnv("AI_PROVIDER", "gemini"),
 		AIModel:               getEnv("AI_MODEL", "gemini-2.5-flash-lite"),
+		ExchangeRateAPIKey:    getEnv("EXCHANGERATE_API_API_KEY", ""),
 		ServerPort:            getEnv("SERVER_PORT", "8080"),
 		DashboardURL:          getEnv("DASHBOARD_URL", "http://localhost:3000"),
 		APIPublicURL:          getEnv("API_PUBLIC_URL", "http://localhost:8080"),
@@ -104,6 +108,10 @@ func Load() (*Config, error) {
 
 	if cfg.GeminiAPIKey == "" && cfg.AIProvider == "gemini" {
 		return nil, fmt.Errorf("GEMINI_API_KEY is required when using gemini AI provider")
+	}
+
+	if cfg.ExchangeRateAPIKey == "" {
+		return nil, fmt.Errorf("EXCHANGERATE_API_API_KEY is required for exchange rate lookups")
 	}
 
 	// Validate database configuration - mutually exclusive for SQLite and PostgreSQL

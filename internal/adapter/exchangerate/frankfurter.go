@@ -18,32 +18,40 @@ type Provider interface {
 	Fetch(ctx context.Context, baseCurrency string, symbols []string) ([]*domain.ExchangeRate, error)
 }
 
-// FrankfurterProvider fetches rates from frankfurter.app
-type FrankfurterProvider struct {
+// ExchangeRateAPIProvider fetches rates from exchangerate-api.com
+type ExchangeRateAPIProvider struct {
 	httpClient *http.Client
 	baseURL    string
+	apiKey     string
 }
 
-// NewFrankfurterProvider creates a new provider
-func NewFrankfurterProvider(client *http.Client) *FrankfurterProvider {
+// NewExchangeRateAPIProvider creates a new provider
+func NewExchangeRateAPIProvider(apiKey string, client *http.Client) *ExchangeRateAPIProvider {
 	if client == nil {
 		client = &http.Client{Timeout: 10 * time.Second}
 	}
-	return &FrankfurterProvider{httpClient: client, baseURL: "https://open.er-api.com/v6"}
+	return &ExchangeRateAPIProvider{
+		httpClient: client,
+		baseURL:    "https://v6.exchangerate-api.com/v6",
+		apiKey:     apiKey,
+	}
 }
 
 // Name returns provider identifier
-func (p *FrankfurterProvider) Name() string {
-	return "frankfurter"
+func (p *ExchangeRateAPIProvider) Name() string {
+	return "exchange-rate-api"
 }
 
 // Fetch retrieves latest rates for base currency
-func (p *FrankfurterProvider) Fetch(ctx context.Context, baseCurrency string, symbols []string) ([]*domain.ExchangeRate, error) {
+func (p *ExchangeRateAPIProvider) Fetch(ctx context.Context, baseCurrency string, symbols []string) ([]*domain.ExchangeRate, error) {
+	if p.apiKey == "" {
+		return nil, fmt.Errorf("exchange rate API key is not configured")
+	}
 	base := strings.TrimSpace(strings.ToUpper(baseCurrency))
 	if base == "" {
-		base = "EUR"
+		base = "USD"
 	}
-	endpoint := fmt.Sprintf("%s/latest/%s", p.baseURL, base)
+	endpoint := fmt.Sprintf("%s/%s/latest/%s", p.baseURL, p.apiKey, base)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
 		return nil, err
@@ -61,17 +69,17 @@ func (p *FrankfurterProvider) Fetch(ctx context.Context, baseCurrency string, sy
 		Result             string             `json:"result"`
 		BaseCode           string             `json:"base_code"`
 		TimeLastUpdateUnix int64              `json:"time_last_update_unix"`
-		Rates              map[string]float64 `json:"rates"`
+		ConversionRates    map[string]float64 `json:"conversion_rates"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
 		return nil, err
 	}
-	if payload.Result != "success" {
-		return nil, fmt.Errorf("exchange API returned result=%s", payload.Result)
+	if strings.ToLower(payload.Result) != "success" {
+		return nil, fmt.Errorf("exchange rate API returned result=%s", payload.Result)
 	}
 	rateDate := time.Unix(payload.TimeLastUpdateUnix, 0).UTC()
 	var rates []*domain.ExchangeRate
-	for code, rate := range payload.Rates {
+	for code, rate := range payload.ConversionRates {
 		upperCode := strings.ToUpper(code)
 		if strings.EqualFold(upperCode, payload.BaseCode) {
 			continue

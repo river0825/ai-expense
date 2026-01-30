@@ -15,6 +15,7 @@ func TestLoad_EnabledMessengers(t *testing.T) {
 	// Set minimal required fields for other parts (Gemini is required by default if provider is gemini)
 	// But provider defaults to gemini. Let's set provider to something else or provide key to avoid that error masking our test.
 	os.Setenv("GEMINI_API_KEY", "dummy_key")
+	os.Setenv("EXCHANGERATE_API_API_KEY", "test-key")
 
 	t.Run("Default to terminal", func(t *testing.T) {
 		os.Unsetenv("ENABLED_MESSENGERS")
