@@ -58,9 +58,9 @@ func (r *MetricsRepository) GetExpensesSummary(ctx context.Context, from, to tim
 		SELECT
 			expense_date,
 			0 as active_users,
-			SUM(amount) as total_expense,
+			SUM(home_amount) as total_expense,
 			COUNT(*) as expense_count,
-			AVG(amount) as average_expense
+			AVG(home_amount) as average_expense
 		FROM expenses
 		WHERE expense_date >= ? AND expense_date <= ?
 		GROUP BY expense_date
@@ -89,7 +89,7 @@ func (r *MetricsRepository) GetCategoryTrends(ctx context.Context, userID string
 		SELECT
 			c.id,
 			c.name,
-			COALESCE(SUM(e.amount), 0) as total,
+			COALESCE(SUM(e.home_amount), 0) as total,
 			COUNT(e.id) as count
 		FROM categories c
 		LEFT JOIN expenses e ON c.id = e.category_id AND e.user_id = ? AND e.expense_date >= ? AND e.expense_date <= ?
@@ -163,7 +163,7 @@ func (r *MetricsRepository) GetGrowthMetrics(ctx context.Context, days int) (map
 
 	// Get total expenses
 	var totalExpenses float64
-	err = r.db.QueryRowContext(ctx, "SELECT COALESCE(SUM(amount), 0) FROM expenses").Scan(&totalExpenses)
+	err = r.db.QueryRowContext(ctx, "SELECT COALESCE(SUM(home_amount), 0) FROM expenses").Scan(&totalExpenses)
 	if err != nil {
 		return nil, err
 	}
