@@ -173,6 +173,27 @@ func (s *TestAIService) ParseExpense(ctx context.Context, text string, userID st
 	}, nil
 }
 
+// TestExchangeRateService is a stub for triggering refresh
+type TestExchangeRateService struct {
+	refreshCalled bool
+	refreshErr    error
+}
+
+var _ domain.ExchangeRateService = (*TestExchangeRateService)(nil)
+
+func (s *TestExchangeRateService) Convert(ctx context.Context, amount float64, fromCurrency, toCurrency string, txTime time.Time) (float64, float64, error) {
+	return amount, 1.0, nil
+}
+
+func (s *TestExchangeRateService) RefreshRates(ctx context.Context) error {
+	s.refreshCalled = true
+	return s.refreshErr
+}
+
+func (s *TestExchangeRateService) GetRate(ctx context.Context, fromCurrency, toCurrency string, txTime time.Time) (*domain.ExchangeRate, error) {
+	return nil, nil
+}
+
 func (s *TestAIService) SuggestCategory(ctx context.Context, description string, userID string) (*ai.SuggestCategoryResponse, error) {
 	return &ai.SuggestCategoryResponse{
 		Category: "food",
@@ -309,6 +330,7 @@ func TestAPIAutoSignupFlow(t *testing.T) {
 		usecase.NewAutoSignupUseCase(userRepo, categoryRepo),
 		nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
 		usecase.NewGetPolicyUseCase(policyRepo),
+		nil,
 		userRepo, categoryRepo, nil, nil, "",
 	)
 
@@ -346,6 +368,7 @@ func TestAPIAutoSignup(t *testing.T) {
 		usecase.NewAutoSignupUseCase(userRepo, categoryRepo),
 		nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
 		usecase.NewGetPolicyUseCase(policyRepo),
+		nil,
 		userRepo, categoryRepo, nil, nil, "",
 	)
 
@@ -392,6 +415,7 @@ func TestAPIParseExpenses(t *testing.T) {
 		usecase.NewParseConversationUseCase(aiService, pricingRepo, costRepo, "gemini", "gemini-2.5-lite"),
 		nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
 		usecase.NewGetPolicyUseCase(policyRepo),
+		nil,
 		userRepo, categoryRepo, nil, nil, "",
 	)
 
@@ -433,9 +457,10 @@ func TestAPICreateExpense(t *testing.T) {
 	handler := NewHandler(
 		usecase.NewAutoSignupUseCase(userRepo, categoryRepo),
 		usecase.NewParseConversationUseCase(aiService, pricingRepo, costRepo, "gemini", "gemini-2.5-lite"),
-		usecase.NewCreateExpenseUseCase(expenseRepo, categoryRepo, nil, nil, aiService),
+		usecase.NewCreateExpenseUseCase(expenseRepo, categoryRepo, nil, nil, nil, nil, aiService),
 		nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
 		usecase.NewGetPolicyUseCase(policyRepo),
+		nil,
 		userRepo, categoryRepo, expenseRepo, nil, "",
 	)
 
@@ -493,6 +518,7 @@ func TestAPIGetExpenses(t *testing.T) {
 		usecase.NewGetExpensesUseCase(expenseRepo, categoryRepo),
 		nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
 		usecase.NewGetPolicyUseCase(policyRepo),
+		nil,
 		userRepo, categoryRepo, expenseRepo, nil, "",
 	)
 
@@ -524,6 +550,7 @@ func TestAPIMissingRequired(t *testing.T) {
 		),
 		nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
 		usecase.NewGetPolicyUseCase(policyRepo),
+		nil,
 		nil, nil, nil, nil, "",
 	)
 
@@ -558,6 +585,7 @@ func TestAPINotFound(t *testing.T) {
 		usecase.NewGetExpensesUseCase(expenseRepo, categoryRepo),
 		nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
 		usecase.NewGetPolicyUseCase(policyRepo),
+		nil,
 		userRepo, categoryRepo, expenseRepo, nil, "",
 	)
 
@@ -594,6 +622,7 @@ func TestAPICategoryManagement(t *testing.T) {
 		usecase.NewManageCategoryUseCase(categoryRepo),
 		nil, nil, nil, nil, nil, nil, nil, nil,
 		usecase.NewGetPolicyUseCase(policyRepo),
+		nil,
 		userRepo, categoryRepo, nil, nil, "",
 	)
 
@@ -639,9 +668,10 @@ func TestAPIMultipleExpenses(t *testing.T) {
 	handler := NewHandler(
 		usecase.NewAutoSignupUseCase(userRepo, categoryRepo),
 		nil,
-		usecase.NewCreateExpenseUseCase(expenseRepo, categoryRepo, nil, nil, aiService),
+		usecase.NewCreateExpenseUseCase(expenseRepo, categoryRepo, nil, nil, nil, nil, aiService),
 		nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
 		usecase.NewGetPolicyUseCase(policyRepo),
+		nil,
 		userRepo, categoryRepo, expenseRepo, nil, "",
 	)
 
@@ -692,6 +722,7 @@ func TestAPIConcurrentRequests(t *testing.T) {
 		usecase.NewAutoSignupUseCase(userRepo, categoryRepo),
 		nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
 		usecase.NewGetPolicyUseCase(policyRepo),
+		nil,
 		userRepo, categoryRepo, nil, nil, "",
 	)
 
@@ -725,4 +756,73 @@ func TestAPIConcurrentRequests(t *testing.T) {
 	for i := 0; i < 3; i++ {
 		<-done
 	}
+}
+
+func TestRefreshExchangeRates(t *testing.T) {
+	newHandler := func(svc domain.ExchangeRateService, adminKey string) *Handler {
+		policyRepo := &TestPolicyRepository{policies: make(map[string]*domain.Policy)}
+		return NewHandler(
+			nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
+			usecase.NewGetPolicyUseCase(policyRepo),
+			svc,
+			nil, nil, nil, nil,
+			adminKey,
+		)
+	}
+
+	t.Run("Success", func(t *testing.T) {
+		svc := &TestExchangeRateService{}
+		handler := newHandler(svc, "secret")
+		req := httptest.NewRequest("POST", "/api/exchange-rates/refresh", nil)
+		req.Header.Set("X-API-Key", "secret")
+		w := httptest.NewRecorder()
+		handler.RefreshExchangeRates(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected %d, got %d", http.StatusOK, w.Code)
+		}
+		if !svc.refreshCalled {
+			t.Fatal("expected refresh to be called")
+		}
+	})
+
+	t.Run("Unauthorized", func(t *testing.T) {
+		svc := &TestExchangeRateService{}
+		handler := newHandler(svc, "secret")
+		req := httptest.NewRequest("POST", "/api/exchange-rates/refresh", nil)
+		w := httptest.NewRecorder()
+		handler.RefreshExchangeRates(w, req)
+
+		if w.Code != http.StatusUnauthorized {
+			t.Fatalf("expected %d, got %d", http.StatusUnauthorized, w.Code)
+		}
+		if svc.refreshCalled {
+			t.Fatal("expected refresh not to be called")
+		}
+	})
+
+	t.Run("RefreshError", func(t *testing.T) {
+		svc := &TestExchangeRateService{refreshErr: errors.New("boom")}
+		handler := newHandler(svc, "secret")
+		req := httptest.NewRequest("POST", "/api/exchange-rates/refresh", nil)
+		req.Header.Set("X-API-Key", "secret")
+		w := httptest.NewRecorder()
+		handler.RefreshExchangeRates(w, req)
+
+		if w.Code != http.StatusInternalServerError {
+			t.Fatalf("expected %d, got %d", http.StatusInternalServerError, w.Code)
+		}
+	})
+
+	t.Run("ServiceUnavailable", func(t *testing.T) {
+		handler := newHandler(nil, "secret")
+		req := httptest.NewRequest("POST", "/api/exchange-rates/refresh", nil)
+		req.Header.Set("X-API-Key", "secret")
+		w := httptest.NewRecorder()
+		handler.RefreshExchangeRates(w, req)
+
+		if w.Code != http.StatusServiceUnavailable {
+			t.Fatalf("expected %d, got %d", http.StatusServiceUnavailable, w.Code)
+		}
+	})
 }

@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/riverlin/aiexpense/internal/adapter/exchangerate"
 	httpAdapter "github.com/riverlin/aiexpense/internal/adapter/http"
 	"github.com/riverlin/aiexpense/internal/adapter/messenger/discord"
 	"github.com/riverlin/aiexpense/internal/adapter/messenger/line"
@@ -40,6 +41,7 @@ func main() {
 
 	var pricingRepo domain.PricingRepository
 	var shortLinkRepo domain.ShortLinkRepository
+	var exchangeRateRepo domain.ExchangeRateRepository
 
 	if cfg.DatabaseURL != "" {
 		// Use PostgreSQL
@@ -59,6 +61,7 @@ func main() {
 		pricingRepo = postgresRepo.NewPricingRepository(db)
 		interactionLogRepo = postgresRepo.NewInteractionLogRepository(db)
 		shortLinkRepo = postgresRepo.NewShortLinkRepository(db)
+		exchangeRateRepo = postgresRepo.NewExchangeRateRepository(db)
 		log.Printf("Connected to PostgreSQL database")
 	} else {
 		// Use SQLite
@@ -78,6 +81,7 @@ func main() {
 		pricingRepo = sqliteRepo.NewPricingRepository(db)
 		interactionLogRepo = sqliteRepo.NewInteractionLogRepository(db)
 		shortLinkRepo = sqliteRepo.NewShortLinkRepository(db)
+		exchangeRateRepo = sqliteRepo.NewExchangeRateRepository(db)
 		log.Printf("Connected to SQLite database")
 	}
 
@@ -96,6 +100,11 @@ func main() {
 
 	// Initialize use cases
 	autoSignupUseCase := usecase.NewAutoSignupUseCase(userRepo, categoryRepo)
+
+	// Initialize exchange rate service
+	exchangeRateProvider := exchangerate.NewFrankfurterProvider(nil)
+	exchangeRateSvc := usecase.NewExchangeRateService(exchangeRateRepo, exchangeRateProvider)
+
 	parseConversationUseCase := usecase.NewParseConversationUseCase(
 		aiService,
 		pricingRepo,
@@ -106,6 +115,8 @@ func main() {
 	createExpenseUseCase := usecase.NewCreateExpenseUseCaseWithAIConfig(
 		expenseRepo,
 		categoryRepo,
+		userRepo,
+		exchangeRateSvc,
 		aiCostRepo,
 		pricingRepo,
 		aiService,
@@ -156,6 +167,7 @@ func main() {
 		archiveUseCase,
 		metricsUseCase,
 		getPolicyUseCase,
+		exchangeRateSvc,
 		userRepo,
 		categoryRepo,
 		expenseRepo,
