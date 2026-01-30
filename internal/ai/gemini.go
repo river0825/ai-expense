@@ -192,14 +192,16 @@ func (g *GeminiAI) callGeminiAPI(ctx context.Context, text string) (*ParseExpens
 You are an expense tracking assistant. Extract expenses from the following text.
 Today is %s.
 
-Return a JSON array of objects with these fields:
-- description: string (what was bought)
-- amount: number (price)
-- suggested_category: string (Food, Transport, Shopping, Entertainment, Other)
-- date: string (ISO 8601 format YYYY-MM-DD, resolve relative dates like "yesterday" based on today's date)
-
-If the currency is not specified, assume TWD.
-If no expenses are found, return an empty array [].
+	Return a JSON array of objects with these fields:
+	- description: string (what was bought)
+	- amount: number (price)
+	- currency: string (ISO 4217 code like TWD, JPY, USD; use uppercase; leave empty if ambiguous)
+	- currency_original: string (exact word or symbol the user typed for currency, e.g., "$", "日幣")
+	- suggested_category: string (Food, Transport, Shopping, Entertainment, Other)
+	- date: string (ISO 8601 format YYYY-MM-DD, resolve relative dates like "yesterday" based on today's date)
+	
+	If the currency is not specified, assume TWD for calculations but still set currency to "TWD" and currency_original to the best hint (or "" if none).
+	If no expenses are found, return an empty array [].
 
 Text: %s
 `, time.Now().Format("2006-01-02"), text)
@@ -221,6 +223,8 @@ Text: %s
 	var parsedItems []struct {
 		Description       string  `json:"description"`
 		Amount            float64 `json:"amount"`
+		Currency          string  `json:"currency"`
+		CurrencyOriginal  string  `json:"currency_original"`
 		SuggestedCategory string  `json:"suggested_category"`
 		Date              string  `json:"date"`
 	}
@@ -242,9 +246,13 @@ Text: %s
 			expenseDate = time.Now()
 		}
 
+		currencyCode := strings.ToUpper(strings.TrimSpace(item.Currency))
+		currencyOriginal := strings.TrimSpace(item.CurrencyOriginal)
 		expenses = append(expenses, &domain.ParsedExpense{
 			Description:       item.Description,
 			Amount:            item.Amount,
+			Currency:          currencyCode,
+			CurrencyOriginal:  currencyOriginal,
 			SuggestedCategory: item.SuggestedCategory,
 			Date:              expenseDate,
 		})
@@ -312,11 +320,12 @@ Return JUST the category name. Do not add any punctuation or explanation.
 }
 
 // parseExpenseRegex uses regex to extract expenses (fallback when AI unavailable)
+
 func (g *GeminiAI) parseExpenseRegex(text string) ([]*domain.ParsedExpense, error) {
 	var expenses []*domain.ParsedExpense
 
 	// Helper to add expense
-	addExpense := func(desc, amtStr string) {
+	addExpense := func(desc, amtStr, context string) {
 		description := strings.TrimSpace(desc)
 		if description == "" {
 			return
@@ -328,10 +337,12 @@ func (g *GeminiAI) parseExpenseRegex(text string) ([]*domain.ParsedExpense, erro
 		if err != nil {
 			return
 		}
-
+		currencyCode, currencyOriginal := detectCurrencyFromContext(context + " " + description)
 		expense := &domain.ParsedExpense{
 			Description:       description,
 			Amount:            amount,
+			Currency:          currencyCode,
+			CurrencyOriginal:  currencyOriginal,
 			SuggestedCategory: "Other", // Default category
 			// Date is left zero to let usecase handle relative date parsing
 		}
@@ -350,10 +361,10 @@ func (g *GeminiAI) parseExpenseRegex(text string) ([]*domain.ParsedExpense, erro
 
 	if len(dollarMatches) > 0 || len(yuanMatches) > 0 {
 		for _, match := range dollarMatches {
-			addExpense(match[1], match[2])
+			addExpense(match[1], match[2], match[0])
 		}
 		for _, match := range yuanMatches {
-			addExpense(match[1], match[2])
+			addExpense(match[1], match[2], match[0])
 		}
 	} else {
 		// Fallback: Loose space matching (e.g., "lunch 10")
@@ -361,11 +372,44 @@ func (g *GeminiAI) parseExpenseRegex(text string) ([]*domain.ParsedExpense, erro
 		reSpace := regexp.MustCompile(`([^\d]+?)\s+(\d+(?:\.\d{2})?)(?:\s|$)`)
 		matches := reSpace.FindAllStringSubmatch(text, -1)
 		for _, match := range matches {
-			addExpense(match[1], match[2])
+			addExpense(match[1], match[2], match[0])
 		}
 	}
 
 	return expenses, nil
+}
+
+var currencyAliasMap = []struct {
+	code    string
+	aliases []string
+}{
+	{code: "USD", aliases: []string{"usd", "us$", "dollar", "美金", "美元"}},
+	{code: "TWD", aliases: []string{"twd", "nt$", "ntd", "台幣", "新台幣"}},
+	{code: "JPY", aliases: []string{"jpy", "yen", "日幣", "日元", "円"}},
+	{code: "EUR", aliases: []string{"eur", "euro", "歐元"}},
+	{code: "CNY", aliases: []string{"cny", "rmb", "人民幣", "人民币"}},
+}
+
+func detectCurrencyFromContext(text string) (string, string) {
+	lower := strings.ToLower(text)
+	for _, entry := range currencyAliasMap {
+		for _, alias := range entry.aliases {
+			aliasLower := strings.ToLower(alias)
+			if strings.Contains(lower, aliasLower) || strings.Contains(text, alias) {
+				return entry.code, alias
+			}
+		}
+	}
+	if strings.Contains(text, "¥") {
+		return "", "¥"
+	}
+	if strings.Contains(text, "$") {
+		return "", "$"
+	}
+	if strings.Contains(text, "元") {
+		return "", "元"
+	}
+	return "", ""
 }
 
 // SuggestCategory suggests a category based on description

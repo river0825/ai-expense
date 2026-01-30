@@ -20,26 +20,42 @@ func NewUserRepository(db *sql.DB) *UserRepository {
 
 func (r *UserRepository) Create(ctx context.Context, user *domain.User) error {
 	const query = `
-		INSERT INTO users (user_id, messenger_type, created_at)
-		VALUES ($1, $2, $3)
+		INSERT INTO users (user_id, messenger_type, created_at, home_currency, locale)
+		VALUES ($1, $2, $3, $4, $5)
 	`
 
+	homeCurrency := user.HomeCurrency
+	if homeCurrency == "" {
+		homeCurrency = "TWD"
+	}
+	locale := user.Locale
+	if locale == "" {
+		locale = "zh-TW"
+	}
 	_, err := r.db.ExecContext(ctx, query,
-		user.UserID, user.MessengerType, user.CreatedAt,
+		user.UserID,
+		user.MessengerType,
+		user.CreatedAt,
+		homeCurrency,
+		locale,
 	)
 	return err
 }
 
 func (r *UserRepository) GetByID(ctx context.Context, userID string) (*domain.User, error) {
 	const query = `
-		SELECT user_id, messenger_type, created_at
+		SELECT user_id, messenger_type, created_at, home_currency, locale
 		FROM users
 		WHERE user_id = $1
 	`
 
 	user := &domain.User{}
 	err := r.db.QueryRowContext(ctx, query, userID).Scan(
-		&user.UserID, &user.MessengerType, &user.CreatedAt,
+		&user.UserID,
+		&user.MessengerType,
+		&user.CreatedAt,
+		&user.HomeCurrency,
+		&user.Locale,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {

@@ -65,7 +65,12 @@ func (u *UpdateExpenseUseCase) Execute(ctx context.Context, req *UpdateRequest) 
 	}
 
 	if req.Amount != nil {
-		expense.Amount = *req.Amount
+		expense.OriginalAmount = *req.Amount
+		expense.HomeAmount = *req.Amount
+		expense.Amount = expense.HomeAmount
+		if expense.ExchangeRate == 0 {
+			expense.ExchangeRate = 1.0
+		}
 	}
 
 	if req.ExpenseDate != nil {

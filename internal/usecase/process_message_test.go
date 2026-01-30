@@ -69,8 +69,16 @@ func TestProcessMessageUseCase_Execute(t *testing.T) {
 		}
 		parser.On("Execute", mock.Anything, "Lunch 100", "user1").Return(parseResult, nil)
 
-		// CreateResponse only has ID, Category, Message based on file inspection
-		createResp := &CreateResponse{ID: "1", Category: "Food", Message: "Saved"}
+		createResp := &CreateResponse{
+			ID:             "1",
+			Category:       "Food",
+			Message:        "Saved",
+			OriginalAmount: 100,
+			Currency:       "TWD",
+			HomeAmount:     100,
+			HomeCurrency:   "TWD",
+			ExchangeRate:   1,
+		}
 		creator.On("Execute", mock.Anything, mock.MatchedBy(func(req *CreateRequest) bool {
 			return req.UserID == "user1" && req.Amount == 100
 		})).Return(createResp, nil)
@@ -87,7 +95,7 @@ func TestProcessMessageUseCase_Execute(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Contains(t, resp.Text, "Recorded 1 expense")
 		assert.Contains(t, resp.Text, "Lunch")
-		assert.Contains(t, resp.Text, "100.00")
+		assert.Contains(t, resp.Text, "100 TWD")
 	})
 
 	t.Run("Failure - Parse Error", func(t *testing.T) {

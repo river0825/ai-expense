@@ -1,6 +1,9 @@
 package domain
 
-import "context"
+import (
+	"context"
+	"time"
+)
 
 // AIService defines operations for AI-powered services
 type AIService interface {
@@ -33,4 +36,11 @@ type MessengerService interface {
 
 	// HandleWebhook handles incoming webhook events
 	HandleWebhook(ctx context.Context, body []byte) error
+}
+
+// ExchangeRateService defines operations for currency conversion and rate refresh
+type ExchangeRateService interface {
+	Convert(ctx context.Context, amount float64, fromCurrency, toCurrency string, txTime time.Time) (convertedAmount float64, rate float64, err error)
+	RefreshRates(ctx context.Context) error
+	GetRate(ctx context.Context, fromCurrency, toCurrency string, txTime time.Time) (*ExchangeRate, error)
 }

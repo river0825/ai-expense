@@ -143,10 +143,12 @@ func (u *ProcessMessageUseCase) Execute(ctx context.Context, msg *domain.UserMes
 
 	for _, parsedExp := range expenses {
 		req := &CreateRequest{
-			UserID:      msg.UserID,
-			Description: parsedExp.Description,
-			Amount:      parsedExp.Amount,
-			Date:        parsedExp.Date,
+			UserID:           msg.UserID,
+			Description:      parsedExp.Description,
+			Amount:           parsedExp.Amount,
+			Currency:         parsedExp.Currency,
+			CurrencyOriginal: parsedExp.CurrencyOriginal,
+			Date:             parsedExp.Date,
 		}
 
 		resp, err := u.createExpense.Execute(ctx, req)
@@ -155,29 +157,43 @@ func (u *ProcessMessageUseCase) Execute(ctx context.Context, msg *domain.UserMes
 			continue
 		}
 
-		totalAmount += parsedExp.Amount
+		totalAmount += resp.HomeAmount
 		createdExpenses = append(createdExpenses, map[string]interface{}{
-			"id":          resp.ID,
-			"description": parsedExp.Description,
-			"amount":      parsedExp.Amount,
-			"category":    resp.Category,
-			"date":        parsedExp.Date,
+			"id":              resp.ID,
+			"description":     parsedExp.Description,
+			"original_amount": resp.OriginalAmount,
+			"currency":        resp.Currency,
+			"home_amount":     resp.HomeAmount,
+			"home_currency":   resp.HomeCurrency,
+			"category":        resp.Category,
+			"date":            parsedExp.Date,
 		})
 	}
 
 	// 4. Format Response
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("✓ Recorded %d expense(s), total: $%.2f", len(createdExpenses), totalAmount))
+	primaryCurrency := getPrimaryCurrency(createdExpenses)
+	sb.WriteString(fmt.Sprintf("✓ Recorded %d expense(s), total: %s %s", len(createdExpenses), formatAmount(totalAmount), primaryCurrency))
 	for _, exp := range createdExpenses {
 		dateStr := ""
 		if d, ok := exp["date"].(time.Time); ok {
 			dateStr = d.Format("2006-01-02")
 		}
-		sb.WriteString(fmt.Sprintf("\n• [%s] %s (%s): $%.2f",
+		homeAmount := asFloat(exp["home_amount"])
+		homeCurrency, _ := exp["home_currency"].(string)
+		line := fmt.Sprintf("\n• [%s] %s (%s): %s %s",
 			dateStr,
 			exp["description"],
 			exp["category"],
-			exp["amount"]))
+			formatAmount(homeAmount),
+			homeCurrency,
+		)
+		if orig := asFloat(exp["original_amount"]); orig > 0 {
+			if curr, _ := exp["currency"].(string); curr != "" && curr != homeCurrency {
+				line = fmt.Sprintf("%s (≈ %s %s)", line, formatAmount(orig), curr)
+			}
+		}
+		sb.WriteString(line)
 	}
 
 	botReply = sb.String()
@@ -196,4 +212,24 @@ func (u *ProcessMessageUseCase) isReportIntent(text string) bool {
 		}
 	}
 	return false
+}
+
+func getPrimaryCurrency(expenses []map[string]interface{}) string {
+	for _, exp := range expenses {
+		if currency, ok := exp["home_currency"].(string); ok && currency != "" {
+			return currency
+		}
+	}
+	return "TWD"
+}
+
+func asFloat(v interface{}) float64 {
+	switch val := v.(type) {
+	case float64:
+		return val
+	case float32:
+		return float64(val)
+	default:
+		return 0
+	}
 }

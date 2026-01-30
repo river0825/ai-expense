@@ -44,12 +44,16 @@ type GetByCategoryRequest struct {
 
 // ExpenseDTO represents an expense in responses
 type ExpenseDTO struct {
-	ID           string
-	Description  string
-	Amount       float64
-	CategoryID   *string
-	CategoryName *string
-	Date         time.Time
+	ID             string
+	Description    string
+	Amount         float64
+	OriginalAmount float64
+	Currency       string
+	HomeCurrency   string
+	ExchangeRate   float64
+	CategoryID     *string
+	CategoryName   *string
+	Date           time.Time
 }
 
 // GetAllResponse represents the response for getting all expenses
@@ -104,12 +108,16 @@ func (u *GetExpensesUseCase) buildResponse(ctx context.Context, expenses []*doma
 		}
 
 		dto := &ExpenseDTO{
-			ID:           expense.ID,
-			Description:  expense.Description,
-			Amount:       expense.Amount,
-			CategoryID:   expense.CategoryID,
-			CategoryName: categoryName,
-			Date:         expense.ExpenseDate,
+			ID:             expense.ID,
+			Description:    expense.Description,
+			Amount:         expense.Amount,
+			OriginalAmount: expense.OriginalAmount,
+			Currency:       expense.Currency,
+			HomeCurrency:   expense.HomeCurrency,
+			ExchangeRate:   expense.ExchangeRate,
+			CategoryID:     expense.CategoryID,
+			CategoryName:   categoryName,
+			Date:           expense.ExpenseDate,
 		}
 		dtos = append(dtos, dto)
 		total += expense.Amount

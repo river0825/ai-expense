@@ -8,10 +8,10 @@ import (
 
 // PreparedStatementCache caches frequently used prepared statements for performance
 type PreparedStatementCache struct {
-	db        *sql.DB
-	stmts     map[string]*sql.Stmt
-	mu        sync.RWMutex
-	maxStmts  int
+	db       *sql.DB
+	stmts    map[string]*sql.Stmt
+	mu       sync.RWMutex
+	maxStmts int
 }
 
 // NewPreparedStatementCache creates a new prepared statement cache
@@ -87,32 +87,32 @@ func (c *PreparedStatementCache) Size() int {
 const (
 	// User queries
 	QueryUserExists = "SELECT 1 FROM users WHERE user_id = ? LIMIT 1"
-	QueryUserByID   = "SELECT user_id, messenger_type, created_at FROM users WHERE user_id = ?"
-	QueryCreateUser = "INSERT INTO users (user_id, messenger_type, created_at) VALUES (?, ?, ?)"
+	QueryUserByID   = "SELECT user_id, messenger_type, created_at, home_currency, locale FROM users WHERE user_id = ?"
+	QueryCreateUser = "INSERT INTO users (user_id, messenger_type, created_at, home_currency, locale) VALUES (?, ?, ?, ?, ?)"
 
 	// Expense queries
-	QueryExpenseByUserID           = "SELECT id, user_id, description, amount, category_id, expense_date, created_at, updated_at FROM expenses WHERE user_id = ?"
-	QueryExpenseByUserIDDateRange  = "SELECT id, user_id, description, amount, category_id, expense_date, created_at, updated_at FROM expenses WHERE user_id = ? AND expense_date >= ? AND expense_date <= ?"
-	QueryExpenseByUserIDAndCategory = "SELECT id, user_id, description, amount, category_id, expense_date, created_at, updated_at FROM expenses WHERE user_id = ? AND category_id = ?"
-	QueryExpenseByID               = "SELECT id, user_id, description, amount, category_id, expense_date, created_at, updated_at FROM expenses WHERE id = ?"
-	QueryCreateExpense             = "INSERT INTO expenses (id, user_id, description, amount, category_id, expense_date, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
-	QueryUpdateExpense             = "UPDATE expenses SET description = ?, amount = ?, category_id = ?, expense_date = ?, updated_at = ? WHERE id = ?"
-	QueryDeleteExpense             = "DELETE FROM expenses WHERE id = ?"
+	QueryExpenseByUserID            = "SELECT id, user_id, description, original_amount, currency, home_amount, home_currency, exchange_rate, category_id, expense_date, created_at, updated_at FROM expenses WHERE user_id = ?"
+	QueryExpenseByUserIDDateRange   = "SELECT id, user_id, description, original_amount, currency, home_amount, home_currency, exchange_rate, category_id, expense_date, created_at, updated_at FROM expenses WHERE user_id = ? AND expense_date >= ? AND expense_date <= ?"
+	QueryExpenseByUserIDAndCategory = "SELECT id, user_id, description, original_amount, currency, home_amount, home_currency, exchange_rate, category_id, expense_date, created_at, updated_at FROM expenses WHERE user_id = ? AND category_id = ?"
+	QueryExpenseByID                = "SELECT id, user_id, description, original_amount, currency, home_amount, home_currency, exchange_rate, category_id, expense_date, created_at, updated_at FROM expenses WHERE id = ?"
+	QueryCreateExpense              = "INSERT INTO expenses (id, user_id, description, original_amount, currency, home_amount, home_currency, exchange_rate, category_id, expense_date, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+	QueryUpdateExpense              = "UPDATE expenses SET description = ?, original_amount = ?, currency = ?, home_amount = ?, home_currency = ?, exchange_rate = ?, category_id = ?, expense_date = ?, updated_at = ? WHERE id = ?"
+	QueryDeleteExpense              = "DELETE FROM expenses WHERE id = ?"
 
 	// Category queries
-	QueryCategoriesByUserID        = "SELECT id, user_id, name, is_default, created_at FROM categories WHERE user_id = ?"
-	QueryCategoryByUserIDAndName   = "SELECT id, user_id, name, is_default, created_at FROM categories WHERE user_id = ? AND name = ?"
-	QueryCategoryByID              = "SELECT id, user_id, name, is_default, created_at FROM categories WHERE id = ?"
-	QueryCreateCategory            = "INSERT INTO categories (id, user_id, name, is_default, created_at) VALUES (?, ?, ?, ?, ?)"
-	QueryUpdateCategory            = "UPDATE categories SET name = ?, is_default = ? WHERE id = ?"
-	QueryDeleteCategory            = "DELETE FROM categories WHERE id = ?"
+	QueryCategoriesByUserID      = "SELECT id, user_id, name, is_default, created_at FROM categories WHERE user_id = ?"
+	QueryCategoryByUserIDAndName = "SELECT id, user_id, name, is_default, created_at FROM categories WHERE user_id = ? AND name = ?"
+	QueryCategoryByID            = "SELECT id, user_id, name, is_default, created_at FROM categories WHERE id = ?"
+	QueryCreateCategory          = "INSERT INTO categories (id, user_id, name, is_default, created_at) VALUES (?, ?, ?, ?, ?)"
+	QueryUpdateCategory          = "UPDATE categories SET name = ?, is_default = ? WHERE id = ?"
+	QueryDeleteCategory          = "DELETE FROM categories WHERE id = ?"
 
 	// Metrics queries
 	QueryGetMetrics = "SELECT " +
 		"COUNT(DISTINCT user_id) as active_users, " +
 		"COUNT(*) as total_expenses, " +
-		"SUM(amount) as total_amount, " +
-		"AVG(amount) as avg_amount " +
+		"SUM(home_amount) as total_amount, " +
+		"AVG(home_amount) as avg_amount " +
 		"FROM expenses WHERE DATE(created_at) = ?"
 )
 
