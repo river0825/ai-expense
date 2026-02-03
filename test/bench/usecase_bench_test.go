@@ -88,6 +88,11 @@ func (r *BenchUserRepository) Exists(ctx context.Context, userID string) (bool, 
 	return ok, nil
 }
 
+func (r *BenchUserRepository) Update(ctx context.Context, user *domain.User) error {
+	r.users[user.UserID] = user
+	return nil
+}
+
 type BenchCategoryRepository struct {
 	categories map[string]*domain.Category
 }

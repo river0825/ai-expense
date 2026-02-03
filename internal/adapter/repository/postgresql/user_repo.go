@@ -78,3 +78,13 @@ func (r *UserRepository) Exists(ctx context.Context, userID string) (bool, error
 	}
 	return true, nil
 }
+
+func (r *UserRepository) Update(ctx context.Context, user *domain.User) error {
+	const query = `
+		UPDATE users
+		SET home_currency = $2, locale = $3
+		WHERE user_id = $1
+	`
+	_, err := r.db.ExecContext(ctx, query, user.UserID, user.HomeCurrency, user.Locale)
+	return err
+}

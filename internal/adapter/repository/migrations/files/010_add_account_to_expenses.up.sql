@@ -1,1 +1,0 @@
-ALTER TABLE expenses ADD COLUMN account TEXT DEFAULT 'Cash';

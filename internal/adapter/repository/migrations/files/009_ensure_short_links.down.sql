@@ -1,2 +1,0 @@
--- No-op or drop if testing strict rollback
--- DROP TABLE IF EXISTS short_links;

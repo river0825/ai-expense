@@ -43,6 +43,11 @@ func (m *MockUserRepository) GetAll(ctx context.Context) ([]*domain.User, error)
 	return users, nil
 }
 
+func (m *MockUserRepository) Update(ctx context.Context, user *domain.User) error {
+	m.users[user.UserID] = user
+	return nil
+}
+
 // MockCategoryRepository is a mock implementation for testing
 type MockCategoryRepository struct {
 	categories map[string]*domain.Category

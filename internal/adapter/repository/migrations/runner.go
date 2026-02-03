@@ -8,7 +8,6 @@ import (
 
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
-	"github.com/golang-migrate/migrate/v4/database/sqlite3"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 )
 
@@ -18,27 +17,13 @@ func RunMigrations(db *sql.DB, dbType string) error {
 	var m *migrate.Migrate
 	var err error
 
-	path := "file://internal/adapter/repository/migrations/files"
-	if _, err := os.Stat("/app/migrations"); err == nil {
-		path = "file:///app/migrations"
+	if _, err := os.Stat("migrations"); err != nil {
+		log.Fatal("migrations not found", err)
 	}
+	path := "file://migrations"
 
 	// Initialize migrator with appropriate driver based on database type
 	switch dbType {
-	case "sqlite3":
-		driver, err := sqlite3.WithInstance(db, &sqlite3.Config{})
-		if err != nil {
-			return fmt.Errorf("failed to create SQLite migrate driver: %w", err)
-		}
-		m, err = migrate.NewWithDatabaseInstance(
-			path,
-			"sqlite3",
-			driver,
-		)
-		if err != nil {
-			return fmt.Errorf("failed to initialize migrator for SQLite: %w", err)
-		}
-
 	case "postgres":
 		driver, err := postgres.WithInstance(db, &postgres.Config{})
 		if err != nil {

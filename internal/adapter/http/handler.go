@@ -2,9 +2,12 @@ package http
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"os"
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/riverlin/aiexpense/internal/domain"
 	"github.com/riverlin/aiexpense/internal/usecase"
 )
@@ -33,6 +36,7 @@ type Handler struct {
 	expenseRepo         domain.ExpenseRepository
 	metricsRepo         domain.MetricsRepository
 	adminAPIKey         string
+	jwtSecret           []byte
 }
 
 // NewHandler creates a new HTTP handler
@@ -60,7 +64,7 @@ func NewHandler(
 	metricsRepo domain.MetricsRepository,
 	adminAPIKey string,
 ) *Handler {
-	return &Handler{
+	h := &Handler{
 		autoSignupUC:        autoSignupUC,
 		parseConversationUC: parseConversationUC,
 		createExpenseUC:     createExpenseUC,
@@ -83,7 +87,12 @@ func NewHandler(
 		expenseRepo:         expenseRepo,
 		metricsRepo:         metricsRepo,
 		adminAPIKey:         adminAPIKey,
+		jwtSecret:           []byte(os.Getenv("JWT_SECRET")),
 	}
+	if len(h.jwtSecret) == 0 {
+		h.jwtSecret = []byte("default-secret-do-not-use-in-prod")
+	}
+	return h
 }
 
 // JSON response wrapper
@@ -1370,9 +1379,160 @@ func (h *Handler) ExportArchive(w http.ResponseWriter, r *http.Request) {
 	h.WriteJSON(w, http.StatusOK, &Response{Status: "success", Data: resp})
 }
 
+// GetUser godoc
+func (h *Handler) GetUser(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	// In a real app, we get userID from auth context.
+	// For this demo/MVP, we accept it as query param or header, or assume a default test user if we are in dev mode.
+	// However, the dashboard sends ?token=... which we treat as user_id for now.
+	userID := r.URL.Query().Get("user_id")
+	token := r.URL.Query().Get("token")
+
+	if userID == "" && token != "" {
+		var err error
+		userID, err = h.validateToken(token)
+		if err != nil {
+			h.WriteJSON(w, http.StatusUnauthorized, &Response{Status: "error", Error: "Invalid token: " + err.Error()})
+			return
+		}
+	}
+
+	if userID == "" {
+		h.WriteJSON(w, http.StatusBadRequest, &Response{Status: "error", Error: "user_id or token is required"})
+		return
+	}
+
+	user, err := h.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		h.WriteJSON(w, http.StatusInternalServerError, &Response{Status: "error", Error: err.Error()})
+		return
+	}
+	if user == nil {
+		h.WriteJSON(w, http.StatusNotFound, &Response{Status: "error", Error: "User not found"})
+		return
+	}
+
+	h.WriteJSON(w, http.StatusOK, &Response{Status: "success", Data: user})
+}
+
+// UpdateUserSettings godoc
+func (h *Handler) UpdateUserSettings(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	userID := r.URL.Query().Get("user_id")
+	token := r.URL.Query().Get("token")
+
+	if userID == "" && token != "" {
+		var err error
+		userID, err = h.validateToken(token)
+		if err != nil {
+			h.WriteJSON(w, http.StatusUnauthorized, &Response{Status: "error", Error: "Invalid token: " + err.Error()})
+			return
+		}
+	}
+
+	if userID == "" {
+		h.WriteJSON(w, http.StatusBadRequest, &Response{Status: "error", Error: "user_id or token is required"})
+		return
+	}
+
+	type UpdateSettingsRequest struct {
+		HomeCurrency string `json:"home_currency"`
+		Locale       string `json:"locale"`
+	}
+
+	var req UpdateSettingsRequest
+	if err := h.ReadJSON(r, &req); err != nil {
+		h.WriteJSON(w, http.StatusBadRequest, &Response{Status: "error", Error: "Invalid request"})
+		return
+	}
+
+	user, err := h.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		h.WriteJSON(w, http.StatusInternalServerError, &Response{Status: "error", Error: err.Error()})
+		return
+	}
+	if user == nil {
+		h.WriteJSON(w, http.StatusNotFound, &Response{Status: "error", Error: "User not found"})
+		return
+	}
+
+	if req.HomeCurrency != "" {
+		user.HomeCurrency = req.HomeCurrency
+	}
+	if req.Locale != "" {
+		user.Locale = req.Locale
+	}
+
+	if err := h.userRepo.Update(ctx, user); err != nil {
+		h.WriteJSON(w, http.StatusInternalServerError, &Response{Status: "error", Error: err.Error()})
+		return
+	}
+
+	h.WriteJSON(w, http.StatusOK, &Response{Status: "success", Message: "Settings updated"})
+}
+
+// GetCurrencies godoc
+func (h *Handler) GetCurrencies(w http.ResponseWriter, r *http.Request) {
+	// Assuming we have a standard list of currencies.
+	// We can add a specialized CurrencyRepository later if needed for dynamic lists.
+	// For now, let's return a hardcoded list or fetch from DB if available.
+	// Checking the Handler struct, we have exchangeRateSvc but no specific CurrencyRepo exposed (Wait, NewHandler had categoryRepo, etc).
+	// Checking line 38, NewHandler arguments includes generic repos.
+	// Wait, line 59 has expenseRepo.
+	// Let's check NewHandler definition again. Does it have CurrencyRepo?
+	// No, it doesn't seem to have CurrencyRepo in the struct (lines 13-36).
+	// But `domain/repositories.go` defined `CurrencyRepository`.
+	// I should probably add CurrencyRepository to Handler struct if I want to use it.
+	// Or I can just return the hardcoded list supported by Frankfurter for now.
+
+	// Quick fix: Return a static list of common currencies.
+	currencies := []domain.Currency{
+		{Code: "USD", Name: "United States Dollar", Symbol: "$", IsActive: true},
+		{Code: "EUR", Name: "Euro", Symbol: "€", IsActive: true},
+		{Code: "GBP", Name: "British Pound", Symbol: "£", IsActive: true},
+		{Code: "JPY", Name: "Japanese Yen", Symbol: "¥", IsActive: true},
+		{Code: "TWD", Name: "New Taiwan Dollar", Symbol: "NT$", IsActive: true},
+		{Code: "CNY", Name: "Chinese Yuan", Symbol: "¥", IsActive: true},
+		{Code: "KRW", Name: "South Korean Won", Symbol: "₩", IsActive: true},
+		{Code: "AUD", Name: "Australian Dollar", Symbol: "$", IsActive: true},
+		{Code: "CAD", Name: "Canadian Dollar", Symbol: "$", IsActive: true},
+	}
+
+	h.WriteJSON(w, http.StatusOK, &Response{Status: "success", Data: currencies})
+}
+
 // Health check
 func (h *Handler) Health(w http.ResponseWriter, r *http.Request) {
 	h.WriteJSON(w, http.StatusOK, &Response{Status: "ok"})
+}
+
+func (h *Handler) validateToken(tokenString string) (string, error) {
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return h.jwtSecret, nil
+	})
+
+	if err != nil {
+		return "", err
+	}
+
+	if !token.Valid {
+		return "", fmt.Errorf("invalid token")
+	}
+
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return "", fmt.Errorf("invalid token claims")
+	}
+
+	userID, ok := claims["sub"].(string)
+	if !ok || userID == "" {
+		return "", fmt.Errorf("invalid user ID in token")
+	}
+
+	return userID, nil
 }
 
 // RegisterRoutes registers all HTTP routes
@@ -1386,6 +1546,11 @@ func RegisterRoutes(
 ) {
 	// User endpoints
 	mux.HandleFunc("POST /api/users/auto-signup", handler.AutoSignup)
+	mux.HandleFunc("GET /api/user", handler.GetUser)
+	mux.HandleFunc("PUT /api/user/settings", handler.UpdateUserSettings)
+
+	// Currency endpoints
+	mux.HandleFunc("GET /api/currencies", handler.GetCurrencies)
 
 	// Expense endpoints
 	mux.HandleFunc("POST /api/expenses/parse", handler.ParseExpenses)

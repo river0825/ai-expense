@@ -29,7 +29,13 @@
       "Bash(git check-ignore:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(git worktree:*)"
+      "Bash(git worktree:*)",
+      "Bash(gcloud run domain-mappings describe:*)",
+      "Bash(gcloud beta run domain-mappings describe:*)",
+      "Bash(gcloud beta run domain-mappings create:*)",
+      "Bash(dig:*)",
+      "Bash(gcloud beta run domain-mappings delete:*)",
+      "Bash(gcloud run services list:*)"
     ]
   }
 }

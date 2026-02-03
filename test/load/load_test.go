@@ -114,6 +114,13 @@ func (r *LoadTestUserRepository) Exists(ctx context.Context, userID string) (boo
 	return ok, nil
 }
 
+func (r *LoadTestUserRepository) Update(ctx context.Context, user *domain.User) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.users[user.UserID] = user
+	return nil
+}
+
 // LoadTestCategoryRepository implements in-memory category repository for load testing
 type LoadTestCategoryRepository struct {
 	categories map[string]*domain.Category

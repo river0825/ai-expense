@@ -153,6 +153,23 @@ Keep this managed block so 'openspec update' can refresh the instructions.
 *   **404 on API**: Check `internal/adapter/http/handler.go` to verify route registration and method (PUT vs POST).
 *   **Frontend Data Not Updating**: Check `refreshKey` patterns or `useEffect` dependencies.
 
+### 4. Cheat Sheet
+**Start Servers:**
+```bash
+# Backend
+set -a; source .env; set +a; go run ./cmd/server
+
+# Frontend (in /dashboard)
+bun dev
+```
+
+**Get User Dashboard Link:**
+```bash
+curl -X POST http://localhost:8080/api/chat/terminal \
+  -H "Content-Type: application/json" \
+  -d '{"user_id": "test_user_2", "message": "report"}'
+```
+
 ## Notes
 - No dedicated Go linter config found (.golangci.yml not present)
 - Prefer minimal, focused changes; avoid refactors during bugfixes

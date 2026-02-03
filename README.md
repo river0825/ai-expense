@@ -155,8 +155,25 @@ Pull Request Close → Preview Environment Destroyed
    - Add all required secrets listed above
 
 4. **Test Deploy** (optional but recommended)
-   - Create a test PR
-   - Verify preview and production deployments work correctly
+*   **Frontend Data Not Updating**: Check `refreshKey` patterns or `useEffect` dependencies.
+
+### 4. Quick Start & Dashboard Access
+**Start Servers:**
+```bash
+# Backend
+set -a; source .env; set +a; go run ./cmd/server
+
+# Frontend (in /dashboard)
+bun dev
+```
+
+**Get User Dashboard Link (Bypass Auth):**
+```bash
+curl -X POST http://localhost:8080/api/chat/terminal \
+  -H "Content-Type: application/json" \
+  -d '{"user_id": "test_user_2", "message": "report"}'
+```
+This returns a magic link. Follow it to get the authenticated dashboard URL. work correctly
 
 5. **Start Production Deploy** (when ready)
    - Merge to main branch
