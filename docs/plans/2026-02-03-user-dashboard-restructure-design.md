@@ -18,6 +18,7 @@
 
 - `src/app/[locale]/page.tsx` - Admin overview page
 - `src/app/[locale]/reports/` - Admin reports page
+- `src/app/[locale]/chat/` - Chat page (admin feature)
 
 ### Pages to Move
 
@@ -29,10 +30,27 @@
 ### Folders to Delete
 
 - `src/app/[locale]/user/` - After moving contents
+- `src/app/[locale]/reports/` - Admin reports
+- `src/app/[locale]/chat/` - Admin chat interface
 
 ### Root Redirect
 
 Create `src/app/[locale]/page.tsx` that redirects to `/dashboard`.
+
+### Implementation Checklist
+
+- [x] Create `src/app/[locale]/dashboard/` folder
+- [x] Move `user/reports/page.tsx` to `dashboard/page.tsx`
+- [x] Create `src/app/[locale]/dashboard/settings/` folder
+- [x] Move `user/settings/page.tsx` to `dashboard/settings/page.tsx`
+- [x] Replace root `page.tsx` with redirect to `/dashboard`
+- [x] Delete `reports/` folder
+- [x] Delete `chat/` folder
+- [x] Delete `user/` folder
+- [x] Update `Sidebar.tsx` navigation and settings link
+- [x] Remove path-based filtering logic from Sidebar
+- [x] Update any other internal links
+- [x] Run lint to verify no errors
 
 ### Sidebar Updates
 

@@ -6,18 +6,14 @@ import { Link } from '../i18n/routing';
 import { useTranslations } from 'next-intl';
 import {
   HomeIcon,
-  ChartBarIcon,
   Cog6ToothIcon,
-  UserCircleIcon,
   XMarkIcon,
   ChevronLeftIcon,
   ChevronRightIcon
 } from '@heroicons/react/24/outline';
 
 const NAVIGATION = [
-  { name: 'dashboard', href: '/', icon: HomeIcon },
-  { name: 'reports', href: '/reports', icon: ChartBarIcon },
-  { name: 'my_expenses', href: '/user/reports', icon: UserCircleIcon },
+  { name: 'my_expenses', href: '/dashboard', icon: HomeIcon },
 ];
 
 interface SidebarProps {
@@ -31,17 +27,6 @@ interface SidebarProps {
 export function Sidebar({ isMobile, isOpen, isCollapsed, onClose, onToggleCollapse }: SidebarProps) {
   const pathname = usePathname();
   const t = useTranslations('Sidebar');
-  const isUserPage = pathname?.startsWith('/user');
-
-  // Filter navigation items based on current path
-  const filteredNavigation = NAVIGATION.filter(item => {
-    if (isUserPage) {
-      // In user pages, show only 'my_expenses'
-      return item.href.startsWith('/user');
-    }
-    // In admin pages, show everything (or could exclude user links if desired)
-    return true;
-  });
 
   // Calculate classes based on state
   const sidebarClasses = `
@@ -74,8 +59,8 @@ export function Sidebar({ isMobile, isOpen, isCollapsed, onClose, onToggleCollap
 
       {/* Navigation */}
       <nav className="flex-1 px-4 py-8 space-y-2 overflow-y-auto">
-        {filteredNavigation.map((item) => {
-          const isActive = pathname === item.href;
+        {NAVIGATION.map((item) => {
+          const isActive = pathname?.startsWith(item.href);
           return (
             <Link 
               key={item.name} 
@@ -112,7 +97,7 @@ export function Sidebar({ isMobile, isOpen, isCollapsed, onClose, onToggleCollap
         )}
 
         <Link 
-          href="/user/settings"
+          href="/dashboard/settings"
           className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-text/60 hover:text-text hover:bg-white/5 transition-all duration-200 ${isCollapsed && !isMobile ? 'justify-center px-2' : ''}`}
           title={isCollapsed && !isMobile ? t('settings') : undefined}
         >
