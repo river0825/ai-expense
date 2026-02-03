@@ -129,7 +129,6 @@ func (u *DataExportUseCase) ExportAsCSV(ctx context.Context, req *ExportRequest)
 
 	var buf bytes.Buffer
 	writer := csv.NewWriter(&buf)
-	defer writer.Flush()
 
 	// Write header
 	headers := []string{"ID", "Date", "Description", "Amount", "Category", "Account", "CreatedAt", "UpdatedAt"}
@@ -152,6 +151,12 @@ func (u *DataExportUseCase) ExportAsCSV(ctx context.Context, req *ExportRequest)
 		if err := writer.Write(record); err != nil {
 			return nil, fmt.Errorf("failed to write CSV row: %w", err)
 		}
+	}
+
+	// Flush must happen before returning buf.Bytes()
+	writer.Flush()
+	if err := writer.Error(); err != nil {
+		return nil, fmt.Errorf("failed to flush CSV writer: %w", err)
 	}
 
 	return buf.Bytes(), nil

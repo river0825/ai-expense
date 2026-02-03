@@ -15,7 +15,6 @@ import (
 	"github.com/riverlin/aiexpense/internal/adapter/messenger/terminal"
 	"github.com/riverlin/aiexpense/internal/adapter/messenger/whatsapp"
 	postgresRepo "github.com/riverlin/aiexpense/internal/adapter/repository/postgresql"
-	sqliteRepo "github.com/riverlin/aiexpense/internal/adapter/repository/sqlite"
 	"github.com/riverlin/aiexpense/internal/ai"
 	"github.com/riverlin/aiexpense/internal/config"
 	"github.com/riverlin/aiexpense/internal/domain"
@@ -43,47 +42,28 @@ func main() {
 	var shortLinkRepo domain.ShortLinkRepository
 	var exchangeRateRepo domain.ExchangeRateRepository
 
-	if cfg.DatabaseURL != "" {
-		// Use PostgreSQL
-		log.Printf("Connecting to PostgreSQL: %s", cfg.DatabaseURL)
-		db, err := postgresRepo.OpenDB(cfg.DatabaseURL)
-		if err != nil {
-			log.Fatalf("Failed to open PostgreSQL database: %v", err)
-		}
-		dbCloser = db
-
-		userRepo = postgresRepo.NewUserRepository(db)
-		categoryRepo = postgresRepo.NewCategoryRepository(db)
-		expenseRepo = postgresRepo.NewExpenseRepository(db)
-		metricsRepo = postgresRepo.NewMetricsRepository(db)
-		aiCostRepo = postgresRepo.NewAICostRepository(db)
-		policyRepo = postgresRepo.NewPolicyRepository(db)
-		pricingRepo = postgresRepo.NewPricingRepository(db)
-		interactionLogRepo = postgresRepo.NewInteractionLogRepository(db)
-		shortLinkRepo = postgresRepo.NewShortLinkRepository(db)
-		exchangeRateRepo = postgresRepo.NewExchangeRateRepository(db)
-		log.Printf("Connected to PostgreSQL database")
-	} else {
-		// Use SQLite
-		log.Printf("Opening SQLite database: %s", cfg.DatabasePath)
-		db, err := sqliteRepo.OpenDB(cfg.DatabasePath)
-		if err != nil {
-			log.Fatalf("Failed to open SQLite database: %v", err)
-		}
-		dbCloser = db
-
-		userRepo = sqliteRepo.NewUserRepository(db)
-		categoryRepo = sqliteRepo.NewCategoryRepository(db)
-		expenseRepo = sqliteRepo.NewExpenseRepository(db)
-		metricsRepo = sqliteRepo.NewMetricsRepository(db)
-		aiCostRepo = sqliteRepo.NewAICostRepository(db)
-		policyRepo = sqliteRepo.NewPolicyRepository(db)
-		pricingRepo = sqliteRepo.NewPricingRepository(db)
-		interactionLogRepo = sqliteRepo.NewInteractionLogRepository(db)
-		shortLinkRepo = sqliteRepo.NewShortLinkRepository(db)
-		exchangeRateRepo = sqliteRepo.NewExchangeRateRepository(db)
-		log.Printf("Connected to SQLite database")
+	if cfg.DatabaseURL == "" {
+		log.Fatal("Database URL is not configured")
 	}
+	// Use PostgreSQL
+	log.Printf("Connecting to PostgreSQL: %s", cfg.DatabaseURL)
+	db, err := postgresRepo.OpenDB(cfg.DatabaseURL)
+	if err != nil {
+		log.Fatalf("Failed to open PostgreSQL database: %v", err)
+	}
+	dbCloser = db
+
+	userRepo = postgresRepo.NewUserRepository(db)
+	categoryRepo = postgresRepo.NewCategoryRepository(db)
+	expenseRepo = postgresRepo.NewExpenseRepository(db)
+	metricsRepo = postgresRepo.NewMetricsRepository(db)
+	aiCostRepo = postgresRepo.NewAICostRepository(db)
+	policyRepo = postgresRepo.NewPolicyRepository(db)
+	pricingRepo = postgresRepo.NewPricingRepository(db)
+	interactionLogRepo = postgresRepo.NewInteractionLogRepository(db)
+	shortLinkRepo = postgresRepo.NewShortLinkRepository(db)
+	exchangeRateRepo = postgresRepo.NewExchangeRateRepository(db)
+	log.Printf("Connected to PostgreSQL database")
 
 	// Ensure database is closed on exit
 	defer func() {

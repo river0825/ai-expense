@@ -114,6 +114,13 @@ func (r *E2EUserRepository) Exists(ctx context.Context, userID string) (bool, er
 	return ok, nil
 }
 
+func (r *E2EUserRepository) Update(ctx context.Context, user *domain.User) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.users[user.UserID] = user
+	return nil
+}
+
 type E2ECategoryRepository struct {
 	categories map[string]*domain.Category
 	mu         sync.RWMutex

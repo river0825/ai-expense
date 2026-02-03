@@ -7,39 +7,40 @@ import (
 
 // User represents a user in the system
 type User struct {
-	UserID        string    `db:"user_id"`
-	MessengerType string    `db:"messenger_type"`
-	CreatedAt     time.Time `db:"created_at"`
-	HomeCurrency  string    `db:"home_currency"`
-	Locale        string    `db:"locale"`
+	UserID        string    `db:"user_id" json:"user_id"`
+	MessengerType string    `db:"messenger_type" json:"messenger_type"`
+	CreatedAt     time.Time `db:"created_at" json:"created_at"`
+	HomeCurrency  string    `db:"home_currency" json:"home_currency"`
+	Locale        string    `db:"locale" json:"locale"`
 }
 
 // Expense represents a single expense record
 type Expense struct {
-	ID             string    `db:"id"`
-	UserID         string    `db:"user_id"`
-	Description    string    `db:"description"`
-	OriginalAmount float64   `db:"original_amount"`
-	Currency       string    `db:"currency"`
-	HomeAmount     float64   `db:"home_amount"`
-	HomeCurrency   string    `db:"home_currency"`
-	ExchangeRate   float64   `db:"exchange_rate"`
-	CategoryID     *string   `db:"category_id"`
-	Account        string    `db:"account"` // Default 'Cash' / specific account name
-	ExpenseDate    time.Time `db:"expense_date"`
-	CreatedAt      time.Time `db:"created_at"`
-	UpdatedAt      time.Time `db:"updated_at"`
-	Amount         float64   `db:"-"` // Deprecated: kept for backward compatibility until callers migrate to HomeAmount
+	ID             string    `db:"id" json:"id"`
+	UserID         string    `db:"user_id" json:"user_id"`
+	Description    string    `db:"description" json:"description"`
+	OriginalAmount float64   `db:"original_amount" json:"original_amount"`
+	Currency       string    `db:"currency" json:"currency"`
+	HomeAmount     float64   `db:"home_amount" json:"home_amount"`
+	HomeCurrency   string    `db:"home_currency" json:"home_currency"`
+	ExchangeRate   float64   `db:"exchange_rate" json:"exchange_rate"`
+	CategoryID     *string   `db:"category_id" json:"category_id"`
+	Account        string    `db:"account" json:"account"` // Default 'Cash' / specific account name
+	ExpenseDate    time.Time `db:"expense_date" json:"expense_date"`
+	CreatedAt      time.Time `db:"created_at" json:"created_at"`
+	UpdatedAt      time.Time `db:"updated_at" json:"updated_at"`
+	Amount         float64   `db:"-" json:"amount"` // Deprecated: kept for backward compatibility until callers migrate to HomeAmount
 }
 
 // Currency represents a supported currency definition
 type Currency struct {
-	Code      string    `db:"code"`
-	Symbol    string    `db:"symbol"`
-	Aliases   []string  `db:"aliases"`
-	IsActive  bool      `db:"is_active"`
-	CreatedAt time.Time `db:"created_at"`
-	UpdatedAt time.Time `db:"updated_at"`
+	Code      string    `db:"code" json:"code"`
+	Name      string    `db:"-" json:"name,omitempty"` // Default/English name
+	Symbol    string    `db:"symbol" json:"symbol"`
+	Aliases   []string  `db:"aliases" json:"aliases"`
+	IsActive  bool      `db:"is_active" json:"is_active"`
+	CreatedAt time.Time `db:"created_at" json:"created_at"`
+	UpdatedAt time.Time `db:"updated_at" json:"updated_at"`
 }
 
 // CurrencyTranslation stores localized currency names

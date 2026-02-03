@@ -1,6 +1,0 @@
-CREATE TABLE IF NOT EXISTS short_links (
-    id TEXT PRIMARY KEY,
-    target_token TEXT NOT NULL,
-    expires_at TIMESTAMP NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);

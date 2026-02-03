@@ -15,6 +15,9 @@ type UserRepository interface {
 
 	// Exists checks if a user exists
 	Exists(ctx context.Context, userID string) (bool, error)
+
+	// Update updates an existing user
+	Update(ctx context.Context, user *User) error
 }
 
 // ExpenseRepository defines operations for expense data

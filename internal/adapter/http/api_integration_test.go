@@ -95,6 +95,11 @@ func (r *TestUserRepository) Exists(ctx context.Context, userID string) (bool, e
 	return ok, nil
 }
 
+func (r *TestUserRepository) Update(ctx context.Context, user *domain.User) error {
+	r.users[user.UserID] = user
+	return nil
+}
+
 type TestCategoryRepository struct {
 	categories map[string]*domain.Category
 }
@@ -755,6 +760,205 @@ func TestAPIConcurrentRequests(t *testing.T) {
 	// Wait for all goroutines
 	for i := 0; i < 3; i++ {
 		<-done
+	}
+}
+
+// TestAPICreateExpense_WithAccountField tests expense creation with account field
+func TestAPICreateExpense_WithAccountField(t *testing.T) {
+	userRepo := &TestUserRepository{users: make(map[string]*domain.User)}
+	categoryRepo := &TestCategoryRepository{categories: make(map[string]*domain.Category)}
+	expenseRepo := &TestExpenseRepository{expenses: make(map[string]*domain.Expense)}
+	aiService := &TestAIService{}
+
+	// Create user first
+	userRepo.Create(context.Background(), &domain.User{
+		UserID:        "test_user_account",
+		MessengerType: "line",
+		CreatedAt:     time.Now(),
+	})
+
+	policyRepo := &TestPolicyRepository{policies: make(map[string]*domain.Policy)}
+
+	handler := NewHandler(
+		usecase.NewAutoSignupUseCase(userRepo, categoryRepo),
+		nil,
+		usecase.NewCreateExpenseUseCase(expenseRepo, categoryRepo, nil, nil, nil, nil, aiService),
+		nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
+		usecase.NewGetPolicyUseCase(policyRepo),
+		nil,
+		userRepo, categoryRepo, expenseRepo, nil, "",
+	)
+
+	t.Run("Create expense with explicit account", func(t *testing.T) {
+		bodyMap := map[string]interface{}{
+			"user_id":     "test_user_account",
+			"description": "Dinner with friends",
+			"amount":      85.50,
+			"account":     "Credit Card",
+		}
+		bodyBytes, _ := json.Marshal(bodyMap)
+
+		req := httptest.NewRequest("POST", "/api/expenses", bytes.NewReader(bodyBytes))
+		req.Header.Set("Content-Type", "application/json")
+
+		w := httptest.NewRecorder()
+		handler.CreateExpense(w, req)
+
+		if w.Code != http.StatusCreated {
+			t.Errorf("Expected %d, got %d", http.StatusCreated, w.Code)
+		}
+
+		// Verify expense was created with correct account
+		expenses, _ := expenseRepo.GetByUserID(context.Background(), "test_user_account")
+		if len(expenses) < 1 {
+			t.Fatal("Expected expense to be created")
+		}
+
+		found := false
+		for _, exp := range expenses {
+			if exp.Description == "Dinner with friends" {
+				found = true
+				if exp.Account != "Credit Card" {
+					t.Errorf("Expected account 'Credit Card', got '%s'", exp.Account)
+				}
+			}
+		}
+		if !found {
+			t.Error("Expected expense 'Dinner with friends' not found")
+		}
+	})
+
+	t.Run("Create expense without account defaults to Cash", func(t *testing.T) {
+		bodyMap := map[string]interface{}{
+			"user_id":     "test_user_account",
+			"description": "Morning coffee",
+			"amount":      5.00,
+		}
+		bodyBytes, _ := json.Marshal(bodyMap)
+
+		req := httptest.NewRequest("POST", "/api/expenses", bytes.NewReader(bodyBytes))
+		req.Header.Set("Content-Type", "application/json")
+
+		w := httptest.NewRecorder()
+		handler.CreateExpense(w, req)
+
+		if w.Code != http.StatusCreated {
+			t.Errorf("Expected %d, got %d", http.StatusCreated, w.Code)
+		}
+
+		// Verify default account is Cash
+		expenses, _ := expenseRepo.GetByUserID(context.Background(), "test_user_account")
+		for _, exp := range expenses {
+			if exp.Description == "Morning coffee" {
+				if exp.Account != "Cash" {
+					t.Errorf("Expected default account 'Cash', got '%s'", exp.Account)
+				}
+			}
+		}
+	})
+
+	t.Run("Create expense with empty account defaults to Cash", func(t *testing.T) {
+		bodyMap := map[string]interface{}{
+			"user_id":     "test_user_account",
+			"description": "Afternoon snack",
+			"amount":      3.00,
+			"account":     "",
+		}
+		bodyBytes, _ := json.Marshal(bodyMap)
+
+		req := httptest.NewRequest("POST", "/api/expenses", bytes.NewReader(bodyBytes))
+		req.Header.Set("Content-Type", "application/json")
+
+		w := httptest.NewRecorder()
+		handler.CreateExpense(w, req)
+
+		if w.Code != http.StatusCreated {
+			t.Errorf("Expected %d, got %d", http.StatusCreated, w.Code)
+		}
+
+		// Verify empty account defaults to Cash
+		expenses, _ := expenseRepo.GetByUserID(context.Background(), "test_user_account")
+		for _, exp := range expenses {
+			if exp.Description == "Afternoon snack" {
+				if exp.Account != "Cash" {
+					t.Errorf("Expected default account 'Cash' for empty string, got '%s'", exp.Account)
+				}
+			}
+		}
+	})
+}
+
+// TestAPIGetExpenses_IncludesAccount tests that retrieved expenses include account field
+func TestAPIGetExpenses_IncludesAccount(t *testing.T) {
+	userRepo := &TestUserRepository{users: make(map[string]*domain.User)}
+	categoryRepo := &TestCategoryRepository{categories: make(map[string]*domain.Category)}
+	expenseRepo := &TestExpenseRepository{expenses: make(map[string]*domain.Expense)}
+
+	// Create test data
+	userRepo.Create(context.Background(), &domain.User{
+		UserID:        "test_user_get",
+		MessengerType: "line",
+		CreatedAt:     time.Now(),
+	})
+
+	// Create expenses with different accounts
+	expenseRepo.Create(context.Background(), &domain.Expense{
+		ID:          "exp_cash",
+		UserID:      "test_user_get",
+		Description: "Cash expense",
+		Amount:      10.0,
+		Account:     "Cash",
+		ExpenseDate: time.Now(),
+		CreatedAt:   time.Now(),
+	})
+	expenseRepo.Create(context.Background(), &domain.Expense{
+		ID:          "exp_credit",
+		UserID:      "test_user_get",
+		Description: "Credit card expense",
+		Amount:      50.0,
+		Account:     "Credit Card",
+		ExpenseDate: time.Now(),
+		CreatedAt:   time.Now(),
+	})
+
+	policyRepo := &TestPolicyRepository{policies: make(map[string]*domain.Policy)}
+
+	handler := NewHandler(
+		usecase.NewAutoSignupUseCase(userRepo, categoryRepo),
+		nil, nil,
+		usecase.NewGetExpensesUseCase(expenseRepo, categoryRepo),
+		nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
+		usecase.NewGetPolicyUseCase(policyRepo),
+		nil,
+		userRepo, categoryRepo, expenseRepo, nil, "",
+	)
+
+	req := httptest.NewRequest("GET", "/api/expenses?user_id=test_user_get", nil)
+	req.Header.Set("Content-Type", "application/json")
+
+	w := httptest.NewRecorder()
+	handler.GetExpenses(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("Expected %d, got %d", http.StatusOK, w.Code)
+	}
+
+	// Verify expenses have correct accounts
+	expenses, _ := expenseRepo.GetByUserID(context.Background(), "test_user_get")
+	if len(expenses) != 2 {
+		t.Errorf("Expected 2 expenses, got %d", len(expenses))
+	}
+
+	accountMap := make(map[string]string)
+	for _, exp := range expenses {
+		accountMap[exp.ID] = exp.Account
+	}
+
+	if accountMap["exp_cash"] != "Cash" {
+		t.Errorf("Expected account 'Cash' for exp_cash, got '%s'", accountMap["exp_cash"])
+	}
+	if accountMap["exp_credit"] != "Credit Card" {
+		t.Errorf("Expected account 'Credit Card' for exp_credit, got '%s'", accountMap["exp_credit"])
 	}
 }
 

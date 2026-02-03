@@ -467,10 +467,10 @@ func TestCategoryRepositoryMock(t *testing.T) {
 
 // RepositoryContractTest runs common tests for any repository implementation
 type RepositoryContractTest struct {
-	UserRepo       domain.UserRepository
-	ExpenseRepo    domain.ExpenseRepository
-	CategoryRepo   domain.CategoryRepository
-	MetricsRepo    domain.MetricsRepository
+	UserRepo     domain.UserRepository
+	ExpenseRepo  domain.ExpenseRepository
+	CategoryRepo domain.CategoryRepository
+	MetricsRepo  domain.MetricsRepository
 }
 
 // TestRepositoryContract tests standard repository operations
@@ -631,6 +631,133 @@ func TestRepositoryContract(t *testing.T) {
 		deleted, _ := repo.GetByID(ctx, category.ID)
 		if deleted != nil {
 			t.Error("Delete did not remove category")
+		}
+	})
+}
+
+func TestExpenseRepository_AccountPersistence(t *testing.T) {
+	t.Run("AccountFieldPersistedOnCreate", func(t *testing.T) {
+		repo := usecase.NewMockExpenseRepository()
+		ctx := context.Background()
+
+		now := time.Now()
+		expense := &domain.Expense{
+			ID:          uuid.New().String(),
+			UserID:      "user_account_test",
+			Description: "Dinner",
+			Amount:      45.00,
+			Account:     "Credit Card",
+			ExpenseDate: now,
+			CreatedAt:   now,
+			UpdatedAt:   now,
+		}
+
+		if err := repo.Create(ctx, expense); err != nil {
+			t.Fatalf("Create failed: %v", err)
+		}
+
+		retrieved, err := repo.GetByID(ctx, expense.ID)
+		if err != nil {
+			t.Fatalf("GetByID failed: %v", err)
+		}
+
+		if retrieved.Account != "Credit Card" {
+			t.Errorf("expected account 'Credit Card', got '%s'", retrieved.Account)
+		}
+	})
+
+	t.Run("AccountFieldPersistedOnUpdate", func(t *testing.T) {
+		repo := usecase.NewMockExpenseRepository()
+		ctx := context.Background()
+
+		now := time.Now()
+		expense := &domain.Expense{
+			ID:          uuid.New().String(),
+			UserID:      "user_account_test",
+			Description: "Groceries",
+			Amount:      80.00,
+			Account:     "Cash",
+			ExpenseDate: now,
+			CreatedAt:   now,
+			UpdatedAt:   now,
+		}
+
+		repo.Create(ctx, expense)
+
+		expense.Account = "Debit Card"
+		expense.UpdatedAt = time.Now()
+
+		if err := repo.Update(ctx, expense); err != nil {
+			t.Fatalf("Update failed: %v", err)
+		}
+
+		retrieved, _ := repo.GetByID(ctx, expense.ID)
+		if retrieved.Account != "Debit Card" {
+			t.Errorf("expected updated account 'Debit Card', got '%s'", retrieved.Account)
+		}
+	})
+
+	t.Run("MultipleExpensesWithDifferentAccounts", func(t *testing.T) {
+		repo := usecase.NewMockExpenseRepository()
+		ctx := context.Background()
+
+		userID := "user_multi_account"
+		now := time.Now()
+
+		expenses := []*domain.Expense{
+			{ID: uuid.New().String(), UserID: userID, Amount: 10, Account: "Cash", ExpenseDate: now, CreatedAt: now, UpdatedAt: now},
+			{ID: uuid.New().String(), UserID: userID, Amount: 50, Account: "Credit Card", ExpenseDate: now, CreatedAt: now, UpdatedAt: now},
+			{ID: uuid.New().String(), UserID: userID, Amount: 25, Account: "Debit Card", ExpenseDate: now, CreatedAt: now, UpdatedAt: now},
+			{ID: uuid.New().String(), UserID: userID, Amount: 100, Account: "Bank Transfer", ExpenseDate: now, CreatedAt: now, UpdatedAt: now},
+		}
+
+		for _, exp := range expenses {
+			repo.Create(ctx, exp)
+		}
+
+		retrieved, err := repo.GetByUserID(ctx, userID)
+		if err != nil {
+			t.Fatalf("GetByUserID failed: %v", err)
+		}
+
+		if len(retrieved) != 4 {
+			t.Errorf("expected 4 expenses, got %d", len(retrieved))
+		}
+
+		accountSet := make(map[string]bool)
+		for _, exp := range retrieved {
+			accountSet[exp.Account] = true
+		}
+
+		expectedAccounts := []string{"Cash", "Credit Card", "Debit Card", "Bank Transfer"}
+		for _, acc := range expectedAccounts {
+			if !accountSet[acc] {
+				t.Errorf("expected account '%s' not found", acc)
+			}
+		}
+	})
+
+	t.Run("DefaultAccountValuePreserved", func(t *testing.T) {
+		repo := usecase.NewMockExpenseRepository()
+		ctx := context.Background()
+
+		now := time.Now()
+		expense := &domain.Expense{
+			ID:          uuid.New().String(),
+			UserID:      "user_default_account",
+			Description: "Quick purchase",
+			Amount:      5.00,
+			Account:     "Cash",
+			ExpenseDate: now,
+			CreatedAt:   now,
+			UpdatedAt:   now,
+		}
+
+		repo.Create(ctx, expense)
+
+		retrieved, _ := repo.GetByID(ctx, expense.ID)
+		if retrieved.Account != "Cash" {
+			t.Errorf("expected default account 'Cash' to be preserved, got '%s'", retrieved.Account)
 		}
 	})
 }
