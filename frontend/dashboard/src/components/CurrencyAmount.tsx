@@ -18,16 +18,17 @@ export function CurrencyAmount({
   hideOriginal = false
 }: CurrencyAmountProps) {
   
-  const resolveLocale = (curr: string) => {
-    if (curr === 'TWD') {
-      return 'zh-TW';
-    }
-    return 'en-US';
-  };
-
   const formatCurrency = (val: number, curr: string) => {
     try {
-      return new Intl.NumberFormat(resolveLocale(curr), { 
+      if (curr === 'TWD') {
+        const number = new Intl.NumberFormat('zh-TW', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        }).format(val);
+        return `NT$${number}`;
+      }
+
+      return new Intl.NumberFormat('en-US', { 
         style: 'currency', 
         currency: curr,
         minimumFractionDigits: 2,
@@ -49,7 +50,12 @@ export function CurrencyAmount({
       </span>
       {showOriginal && (
         <span className="text-xs text-text/50 whitespace-nowrap">
-          {formatCurrency(originalAmount, originalCurrency)}
+          ≈ {new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: originalCurrency,
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          }).format(originalAmount)}
         </span>
       )}
     </div>
