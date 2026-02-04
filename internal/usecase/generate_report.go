@@ -41,6 +41,7 @@ type ExpenseDetail struct {
 	ID               string    `json:"id"`
 	Description      string    `json:"description"`
 	Amount           float64   `json:"amount"`
+	Currency         string    `json:"currency"`
 	Category         string    `json:"category"`
 	Date             time.Time `json:"date"`
 	Account          string    `json:"account"`
@@ -188,7 +189,8 @@ func (u *GenerateReportUseCase) Execute(ctx context.Context, req *ReportRequest)
 		topExpenses = append(topExpenses, ExpenseDetail{
 			ID:               expense.ID,
 			Description:      expense.Description,
-			Amount:           expense.HomeAmount,
+			Amount:           expense.OriginalAmount,
+			Currency:         expense.Currency,
 			Category:         categoryName,
 			Date:             expense.ExpenseDate,
 			Account:          expense.Account,
