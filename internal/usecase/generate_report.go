@@ -92,6 +92,16 @@ func (u *GenerateReportUseCase) Execute(ctx context.Context, req *ReportRequest)
 		return nil, fmt.Errorf("failed to get expenses: %w", err)
 	}
 
+	// Pre-fetch all categories for the user to avoid N+1 queries
+	categories, err := u.categoryRepo.GetByUserID(ctx, req.UserID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get categories: %w", err)
+	}
+	categoryIDToName := make(map[string]string)
+	for _, cat := range categories {
+		categoryIDToName[cat.ID] = cat.Name
+	}
+
 	// Calculate basic statistics
 	totalExpenses := 0.0
 	highestExpense := 0.0
@@ -104,7 +114,6 @@ func (u *GenerateReportUseCase) Execute(ctx context.Context, req *ReportRequest)
 	dailyMap := make(map[string]*DailyBreakdown)
 
 	for _, expense := range expenses {
-		// Update totals
 		totalExpenses += expense.Amount
 
 		if expense.Amount > highestExpense {
@@ -115,12 +124,10 @@ func (u *GenerateReportUseCase) Execute(ctx context.Context, req *ReportRequest)
 			lowestExpense = expense.Amount
 		}
 
-		// Category breakdown
 		categoryName := "Uncategorized"
 		if expense.CategoryID != nil {
-			cat, _ := u.categoryRepo.GetByID(ctx, *expense.CategoryID)
-			if cat != nil {
-				categoryName = cat.Name
+			if name, ok := categoryIDToName[*expense.CategoryID]; ok {
+				categoryName = name
 			}
 		}
 
@@ -135,7 +142,6 @@ func (u *GenerateReportUseCase) Execute(ctx context.Context, req *ReportRequest)
 		categoryMap[categoryName].Total += expense.Amount
 		categoryMap[categoryName].Count += 1
 
-		// Daily breakdown
 		dayKey := expense.ExpenseDate.Format("2006-01-02")
 		if _, ok := dailyMap[dayKey]; !ok {
 			dailyMap[dayKey] = &DailyBreakdown{
@@ -166,14 +172,12 @@ func (u *GenerateReportUseCase) Execute(ctx context.Context, req *ReportRequest)
 		dailyBreakdown = append(dailyBreakdown, *db)
 	}
 
-	// Get all expenses (removed the 10 item limit for comprehensive expense list)
 	var topExpenses []ExpenseDetail
 	for _, expense := range expenses {
 		categoryName := "Uncategorized"
 		if expense.CategoryID != nil {
-			cat, _ := u.categoryRepo.GetByID(ctx, *expense.CategoryID)
-			if cat != nil {
-				categoryName = cat.Name
+			if name, ok := categoryIDToName[*expense.CategoryID]; ok {
+				categoryName = name
 			}
 		}
 
