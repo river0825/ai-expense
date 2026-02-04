@@ -17,7 +17,8 @@ import {
   XMarkIcon,
   CreditCardIcon,
   BanknotesIcon,
-  WalletIcon
+  WalletIcon,
+  GlobeAltIcon
 } from '@heroicons/react/24/outline';
 
 interface ExpenseListProps {
@@ -44,6 +45,16 @@ export function ExpenseList({ expenses, onCategoryFilter, onUpdateExpense, class
     account: ''
   });
   const [isSaving, setIsSaving] = useState(false);
+
+  const accountOptions = useMemo(() => {
+    const unique = new Set<string>();
+    expenses.forEach((expense) => {
+      if (expense.account) {
+        unique.add(expense.account);
+      }
+    });
+    return Array.from(unique);
+  }, [expenses]);
 
   const startEditing = (expense: Expense, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -213,7 +224,7 @@ export function ExpenseList({ expenses, onCategoryFilter, onUpdateExpense, class
                     className="group flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/5 hover:bg-white/10 hover:border-primary/30 transition-all duration-200 cursor-default"
                   >
                     {editingId === expense.id ? (
-                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full">
+                       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full">
                          <div className="flex flex-col gap-2 flex-1 w-full">
                             <input 
                               type="text"
@@ -223,27 +234,36 @@ export function ExpenseList({ expenses, onCategoryFilter, onUpdateExpense, class
                               placeholder="Description"
                               autoFocus
                             />
-                            <div className="flex gap-2 w-full">
+                            <div className="flex flex-col sm:flex-row gap-2 w-full">
                                <input 
                                  type="number"
                                  value={editForm.amount}
                                  onChange={(e) => setEditForm({...editForm, amount: e.target.value})}
-                                 className="flex-1 bg-black/20 border border-white/10 rounded px-2 py-1.5 text-sm text-text focus:border-primary/50 outline-none"
+                                 className="flex-1 bg-black/20 border border-white/10 rounded px-2 py-1.5 text-sm text-text focus:border-primary/50 outline-none min-w-0"
                                  placeholder="Amount"
                                  step="0.01"
+                                 inputMode="decimal"
                                />
-                               <input 
-                                 type="text"
+                               <select
                                  value={editForm.account}
                                  onChange={(e) => setEditForm({...editForm, account: e.target.value})}
-                                 className="flex-1 bg-black/20 border border-white/10 rounded px-2 py-1.5 text-sm text-text/70 focus:border-primary/50 outline-none"
-                                 placeholder="Account"
-                               />
+                                 className="flex-1 bg-black/20 border border-white/10 rounded px-2 py-1.5 text-sm text-text/80 focus:border-primary/50 outline-none min-w-0"
+                               >
+                                 <option value="">Select account</option>
+                                 {accountOptions.map((account) => (
+                                   <option key={account} value={account}>
+                                     {account}
+                                   </option>
+                                 ))}
+                                 {editForm.account && !accountOptions.includes(editForm.account) && (
+                                   <option value={editForm.account}>{editForm.account}</option>
+                                 )}
+                               </select>
                             </div>
                          </div>
                          <div className="flex sm:flex-col items-center gap-1 w-full sm:w-auto pt-2 sm:pt-0">
-                           <button 
-                             onClick={(e) => saveEditing(expense, e)}
+                            <button 
+                              onClick={(e) => saveEditing(expense, e)}
                              disabled={isSaving}
                              className="flex-1 sm:flex-none p-2 rounded-md bg-green-500/10 text-green-400 hover:bg-green-500/20 transition-colors flex items-center justify-center"
                            >
@@ -277,10 +297,10 @@ export function ExpenseList({ expenses, onCategoryFilter, onUpdateExpense, class
                               </p>
                               <div className="sm:hidden text-text group-hover:text-primary transition-colors shrink-0">
                                 <CurrencyAmount
-                                  amount={expense.home_amount || expense.amount}
+                                  amount={expense.home_amount ?? expense.amount}
                                   currency={expense.home_currency || 'TWD'}
                                   originalAmount={expense.original_amount}
-                                  originalCurrency={expense.currency}
+                                  originalCurrency={expense.original_currency || expense.currency}
                                   className="items-end"
                                 />
                               </div>
@@ -306,6 +326,12 @@ export function ExpenseList({ expenses, onCategoryFilter, onUpdateExpense, class
                                   {expense.account}
                                 </span>
                               )}
+                              {expense.currency && expense.home_currency && expense.currency !== expense.home_currency && (
+                                <span className="flex items-center gap-1 bg-primary/10 px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] uppercase tracking-wider font-bold text-primary/80 shrink-0">
+                                  <GlobeAltIcon className="w-2.5 h-2.5" />
+                                  {expense.currency}
+                                </span>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -314,12 +340,12 @@ export function ExpenseList({ expenses, onCategoryFilter, onUpdateExpense, class
                         <div className="hidden sm:flex items-center gap-4 ml-4">
                           <div className="flex-shrink-0 text-right">
                              <CurrencyAmount 
-                                amount={expense.home_amount || expense.amount}
-                                currency={expense.home_currency || 'TWD'}
-                                originalAmount={expense.original_amount}
-                                originalCurrency={expense.currency}
-                                className="text-text group-hover:text-primary transition-colors"
-                             />
+                                 amount={expense.home_amount ?? expense.amount}
+                                 currency={expense.home_currency || 'TWD'}
+                                 originalAmount={expense.original_amount}
+                                 originalCurrency={expense.original_currency || expense.currency}
+                                 className="text-text group-hover:text-primary transition-colors"
+                              />
                           </div>
                           
                           {onUpdateExpense && (
