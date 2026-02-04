@@ -50,11 +50,11 @@ func NewGeminiAI(apiKey string, model string, costRepo domain.AICostRepository) 
 }
 
 // ParseExpense extracts expenses from natural language text
-func (g *GeminiAI) ParseExpense(ctx context.Context, text string, userID string) (*ParseExpenseResponse, error) {
+func (g *GeminiAI) ParseExpense(ctx context.Context, text string, userCtx *domain.UserContext) (*ParseExpenseResponse, error) {
 	log.Printf("DEBUG: GeminiAI.ParseExpense called with: %s", text)
 
 	// Try Gemini API first
-	resp, err := g.callGeminiAPI(ctx, text)
+	resp, err := g.callGeminiAPI(ctx, text, userCtx)
 	if err == nil {
 		// Note: Cost logging has moved to UseCase layer
 		return resp, nil
@@ -196,7 +196,22 @@ func (g *GeminiAI) sendGeminiRequest(ctx context.Context, prompt string) (*gemin
 	return &geminiResp, rawResponse, nil
 }
 
-func (g *GeminiAI) callGeminiAPI(ctx context.Context, text string) (*ParseExpenseResponse, error) {
+func (g *GeminiAI) callGeminiAPI(ctx context.Context, text string, userCtx *domain.UserContext) (*ParseExpenseResponse, error) {
+	homeCurrency := "TWD"
+	categoryList := "Food, Transport, Shopping, Entertainment, Other"
+
+	if userCtx != nil && userCtx.User != nil && userCtx.User.HomeCurrency != "" {
+		homeCurrency = userCtx.User.HomeCurrency
+	}
+
+	if userCtx != nil && len(userCtx.Categories) > 0 {
+		var names []string
+		for _, cat := range userCtx.Categories {
+			names = append(names, cat.Name)
+		}
+		categoryList = strings.Join(names, ", ")
+	}
+
 	prompt := fmt.Sprintf(`
 You are an expense tracking assistant. Extract expenses from the following text.
 Today is %s.
@@ -206,15 +221,15 @@ Return a JSON array of objects with these fields:
 - amount: number (price)
 - currency: string (ISO 4217 code like TWD, JPY, USD; use uppercase; leave empty if ambiguous)
 - currency_original: string (exact word or symbol the user typed for currency, e.g., "$", "日幣")
-- suggested_category: string (Food, Transport, Shopping, Entertainment, Other)
+- suggested_category: string (one of: %s)
 - date: string (ISO 8601 format YYYY-MM-DD, resolve relative dates like "yesterday" based on today's date)
 - account: string (optional, the specific account/card used, e.g. "台新信用卡", "西瓜卡", "中信銀行", or null if not specified)
 
-If the currency is not specified, assume TWD for calculations but still set currency to "TWD" and currency_original to the best hint (or "" if none).
+If the currency is not specified, assume %s for calculations but still set currency to "%s" and currency_original to the best hint (or "" if none).
 If no expenses are found, return an empty array [].
 
 Text: %s
-`, time.Now().Format("2006-01-02"), text)
+`, time.Now().Format("2006-01-02"), categoryList, homeCurrency, homeCurrency, text)
 
 	log.Printf("DEBUG: Gemini AI Parse Prompt: %s", prompt)
 	geminiResp, rawResp, err := g.sendGeminiRequest(ctx, prompt)
@@ -294,22 +309,25 @@ func parseGeminiResponseText(responseText string) ([]*domain.ParsedExpense, erro
 	return expenses, nil
 }
 
-func (g *GeminiAI) callGeminiCategoryAPI(ctx context.Context, description string) (*SuggestCategoryResponse, error) {
+func (g *GeminiAI) callGeminiCategoryAPI(ctx context.Context, description string, userCtx *domain.UserContext) (*SuggestCategoryResponse, error) {
+	categoryList := "Food, Transport, Shopping, Entertainment, Other, Health, Education, Bills"
+
+	if userCtx != nil && len(userCtx.Categories) > 0 {
+		var names []string
+		for _, cat := range userCtx.Categories {
+			names = append(names, cat.Name)
+		}
+		categoryList = strings.Join(names, ", ")
+	}
+
 	prompt := fmt.Sprintf(`
 You are an expense tracking assistant. Categorize the following expense description into one of these categories:
-- Food
-- Transport
-- Shopping
-- Entertainment
-- Other
-- Health
-- Education
-- Bills
+%s
 
 Description: %s
 
 Return JUST the category name. Do not add any punctuation or explanation.
-`, description)
+`, categoryList, description)
 
 	log.Printf("DEBUG: Gemini AI Category Prompt: %s", prompt)
 	geminiResp, rawResp, err := g.sendGeminiRequest(ctx, prompt)
@@ -435,9 +453,9 @@ func detectCurrencyFromContext(text string) (string, string) {
 }
 
 // SuggestCategory suggests a category based on description
-func (g *GeminiAI) SuggestCategory(ctx context.Context, description string, userID string) (*SuggestCategoryResponse, error) {
+func (g *GeminiAI) SuggestCategory(ctx context.Context, description string, userCtx *domain.UserContext) (*SuggestCategoryResponse, error) {
 	// Try Gemini API first
-	resp, err := g.callGeminiCategoryAPI(ctx, description)
+	resp, err := g.callGeminiCategoryAPI(ctx, description, userCtx)
 	if err == nil {
 		return resp, nil
 	}

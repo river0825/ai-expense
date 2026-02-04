@@ -14,6 +14,12 @@ type User struct {
 	Locale        string    `db:"locale" json:"locale"`
 }
 
+// UserContext aggregates user settings and categories for prompt personalization
+type UserContext struct {
+	User       *User
+	Categories []*Category
+}
+
 // Expense represents a single expense record
 type Expense struct {
 	ID             string    `db:"id" json:"id"`

@@ -14,11 +14,11 @@ type MockAIForPayment struct {
 	Response *ai.ParseExpenseResponse
 }
 
-func (m *MockAIForPayment) ParseExpense(ctx context.Context, text string, userID string) (*ai.ParseExpenseResponse, error) {
+func (m *MockAIForPayment) ParseExpense(ctx context.Context, text string, userCtx *domain.UserContext) (*ai.ParseExpenseResponse, error) {
 	return m.Response, nil
 }
 
-func (m *MockAIForPayment) SuggestCategory(ctx context.Context, description string, userID string) (*ai.SuggestCategoryResponse, error) {
+func (m *MockAIForPayment) SuggestCategory(ctx context.Context, description string, userCtx *domain.UserContext) (*ai.SuggestCategoryResponse, error) {
 	return nil, nil // Not used in this test
 }
 
@@ -45,9 +45,7 @@ func TestParseConversation_DefaultAccount(t *testing.T) {
 		},
 	}
 
-	// Create UseCase with mock AI
-	// Repositories can be nil for this logic test
-	uc := NewParseConversationUseCase(mockAI, nil, nil, "gemini", "test-model")
+	uc := NewParseConversationUseCase(mockAI, nil, nil, nil, nil, "gemini", "test-model")
 
 	result, err := uc.Execute(context.TODO(), "Conversational text", "user123")
 	if err != nil {
