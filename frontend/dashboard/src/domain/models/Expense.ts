@@ -10,6 +10,7 @@ export interface Expense {
   created_at?: string;
   currency?: string;
   original_amount?: number;
+  original_currency?: string;
   home_amount?: number;
   home_currency?: string;
   exchange_rate?: number;

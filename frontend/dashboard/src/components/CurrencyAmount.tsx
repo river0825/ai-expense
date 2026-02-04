@@ -18,9 +18,16 @@ export function CurrencyAmount({
   hideOriginal = false
 }: CurrencyAmountProps) {
   
+  const resolveLocale = (curr: string) => {
+    if (curr === 'TWD') {
+      return 'zh-TW';
+    }
+    return 'en-US';
+  };
+
   const formatCurrency = (val: number, curr: string) => {
     try {
-      return new Intl.NumberFormat('en-US', { 
+      return new Intl.NumberFormat(resolveLocale(curr), { 
         style: 'currency', 
         currency: curr,
         minimumFractionDigits: 2,

@@ -23,6 +23,11 @@ export class HttpExpenseRepository implements ExpenseRepository {
         category_name: detail.category,
         expense_date: detail.date,
         account: detail.account,
+        currency: detail.currency,
+        original_amount: detail.original_amount ?? detail.amount,
+        original_currency: detail.currency,
+        home_amount: detail.home_amount ?? detail.amount,
+        home_currency: detail.home_currency,
       }));
 
       // Filter by category if specified

@@ -19,6 +19,10 @@ export interface ExpenseDetail {
   category: string;
   date: string;
   account?: string;
+  currency?: string;
+  original_amount?: number;
+  home_amount?: number;
+  home_currency?: string;
 }
 
 export interface ExpenseReport {
