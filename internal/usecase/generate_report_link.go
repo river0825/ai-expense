@@ -33,7 +33,12 @@ func NewGenerateReportLinkUseCase(baseURL string, shortLinkRepo domain.ShortLink
 }
 
 func (u *GenerateReportLinkUseCase) Execute(userID string) (string, error) {
-	// 1. Generate JWT (valid for 15 min)
+	// 1. Deprecate any existing short links for this user
+	if err := u.shortLinkRepo.DeprecateByUserID(context.Background(), userID); err != nil {
+		fmt.Printf("Failed to deprecate existing short links: %v\n", err)
+	}
+
+	// 2. Generate JWT (valid for 7 days)
 	claims := jwt.MapClaims{
 		"sub":  userID,
 		"exp":  time.Now().Add(7 * 24 * time.Hour).Unix(),
@@ -46,12 +51,13 @@ func (u *GenerateReportLinkUseCase) Execute(userID string) (string, error) {
 		return "", fmt.Errorf("failed to sign token: %w", err)
 	}
 
-	// 2. Generate Short Link (valid for 5 min)
+	// 3. Generate Short Link (no time limit - expires with JWT)
 	shortID := generateShortID()
-	expiresAt := time.Now().Add(5 * time.Minute)
+	expiresAt := time.Now().Add(7 * 24 * time.Hour)
 
 	shortLink := &domain.ShortLink{
 		ID:          shortID,
+		UserID:      userID,
 		TargetToken: tokenString,
 		ExpiresAt:   expiresAt,
 		CreatedAt:   time.Now(),
@@ -62,7 +68,7 @@ func (u *GenerateReportLinkUseCase) Execute(userID string) (string, error) {
 		return "", fmt.Errorf("failed to create short link: %w", err)
 	}
 
-	// 3. Return Short Link URL
+	// 4. Return Short Link URL
 	return fmt.Sprintf("%s/r/%s", u.baseURL, shortID), nil
 }
 
