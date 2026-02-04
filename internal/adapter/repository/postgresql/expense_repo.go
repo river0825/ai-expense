@@ -79,11 +79,13 @@ func (r *ExpenseRepository) Create(ctx context.Context, expense *domain.Expense)
 			exchange_rate,
 			category_id,
 			account,
+			source_message_id,
 			expense_date,
 			created_at,
 			updated_at
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+		ON CONFLICT (source_message_id) WHERE source_message_id IS NOT NULL DO NOTHING
 	`
 
 	normalizeExpenseForWrite(expense)
@@ -100,6 +102,7 @@ func (r *ExpenseRepository) Create(ctx context.Context, expense *domain.Expense)
 		expense.ExchangeRate,
 		expense.CategoryID,
 		expense.Account,
+		expense.SourceMessageID,
 		expense.ExpenseDate,
 		expense.CreatedAt,
 		expense.UpdatedAt,

@@ -142,7 +142,13 @@ func (u *ProcessMessageUseCase) Execute(ctx context.Context, msg *domain.UserMes
 	createdExpenses := []map[string]interface{}{}
 	totalAmount := 0.0
 
-	for _, parsedExp := range expenses {
+	for i, parsedExp := range expenses {
+		var sourceMessageID *string
+		if msg.MessageID != "" {
+			id := fmt.Sprintf("%s_%d", msg.MessageID, i)
+			sourceMessageID = &id
+		}
+
 		req := &CreateRequest{
 			UserID:           msg.UserID,
 			Description:      parsedExp.Description,
@@ -150,6 +156,7 @@ func (u *ProcessMessageUseCase) Execute(ctx context.Context, msg *domain.UserMes
 			Currency:         parsedExp.Currency,
 			CurrencyOriginal: parsedExp.CurrencyOriginal,
 			Account:          parsedExp.Account,
+			SourceMessageID:  sourceMessageID,
 			Date:             parsedExp.Date,
 		}
 

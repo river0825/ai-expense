@@ -22,20 +22,21 @@ type UserContext struct {
 
 // Expense represents a single expense record
 type Expense struct {
-	ID             string    `db:"id" json:"id"`
-	UserID         string    `db:"user_id" json:"user_id"`
-	Description    string    `db:"description" json:"description"`
-	OriginalAmount float64   `db:"original_amount" json:"original_amount"`
-	Currency       string    `db:"currency" json:"currency"`
-	HomeAmount     float64   `db:"home_amount" json:"home_amount"`
-	HomeCurrency   string    `db:"home_currency" json:"home_currency"`
-	ExchangeRate   float64   `db:"exchange_rate" json:"exchange_rate"`
-	CategoryID     *string   `db:"category_id" json:"category_id"`
-	Account        string    `db:"account" json:"account"` // Default 'Cash' / specific account name
-	ExpenseDate    time.Time `db:"expense_date" json:"expense_date"`
-	CreatedAt      time.Time `db:"created_at" json:"created_at"`
-	UpdatedAt      time.Time `db:"updated_at" json:"updated_at"`
-	Amount         float64   `db:"-" json:"amount"` // Deprecated: kept for backward compatibility until callers migrate to HomeAmount
+	ID              string    `db:"id" json:"id"`
+	UserID          string    `db:"user_id" json:"user_id"`
+	Description     string    `db:"description" json:"description"`
+	OriginalAmount  float64   `db:"original_amount" json:"original_amount"`
+	Currency        string    `db:"currency" json:"currency"`
+	HomeAmount      float64   `db:"home_amount" json:"home_amount"`
+	HomeCurrency    string    `db:"home_currency" json:"home_currency"`
+	ExchangeRate    float64   `db:"exchange_rate" json:"exchange_rate"`
+	CategoryID      *string   `db:"category_id" json:"category_id"`
+	Account         string    `db:"account" json:"account"`
+	SourceMessageID *string   `db:"source_message_id" json:"source_message_id,omitempty"`
+	ExpenseDate     time.Time `db:"expense_date" json:"expense_date"`
+	CreatedAt       time.Time `db:"created_at" json:"created_at"`
+	UpdatedAt       time.Time `db:"updated_at" json:"updated_at"`
+	Amount          float64   `db:"-" json:"amount"`
 }
 
 // Currency represents a supported currency definition

@@ -91,6 +91,7 @@ type CreateRequest struct {
 	ExchangeRate     float64
 	CategoryID       *string
 	Account          string
+	SourceMessageID  *string
 	Date             time.Time
 }
 
@@ -230,19 +231,20 @@ func (u *CreateExpenseUseCase) Execute(ctx context.Context, req *CreateRequest) 
 	}
 
 	expense := &domain.Expense{
-		ID:             uuid.New().String(),
-		UserID:         req.UserID,
-		Description:    req.Description,
-		OriginalAmount: originalAmount,
-		Currency:       currency,
-		HomeAmount:     homeAmount,
-		HomeCurrency:   homeCurrency,
-		ExchangeRate:   exchangeRate,
-		CategoryID:     categoryID,
-		Account:        account,
-		ExpenseDate:    req.Date,
-		CreatedAt:      time.Now(),
-		UpdatedAt:      time.Now(),
+		ID:              uuid.New().String(),
+		UserID:          req.UserID,
+		Description:     req.Description,
+		OriginalAmount:  originalAmount,
+		Currency:        currency,
+		HomeAmount:      homeAmount,
+		HomeCurrency:    homeCurrency,
+		ExchangeRate:    exchangeRate,
+		CategoryID:      categoryID,
+		Account:         account,
+		SourceMessageID: req.SourceMessageID,
+		ExpenseDate:     req.Date,
+		CreatedAt:       time.Now(),
+		UpdatedAt:       time.Now(),
 	}
 	expense.Amount = expense.HomeAmount
 
