@@ -45,7 +45,7 @@ export default function SettingsPage() {
     };
 
     fetchData();
-  }, []);
+  }, [token]);
 
   const handleSave = async () => {
     if (!user) return;

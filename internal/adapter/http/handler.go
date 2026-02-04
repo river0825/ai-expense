@@ -360,13 +360,15 @@ func (h *Handler) UpdateExpense(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	type UpdateExpenseRequest struct {
-		ID          string     `json:"id"`
-		UserID      string     `json:"user_id"`
-		Description *string    `json:"description,omitempty"`
-		Amount      *float64   `json:"amount,omitempty"`
-		CategoryID  *string    `json:"category_id,omitempty"`
-		Account     *string    `json:"account,omitempty"`
-		ExpenseDate *time.Time `json:"expense_date,omitempty"`
+		ID             string     `json:"id"`
+		UserID         string     `json:"user_id"`
+		Description    *string    `json:"description,omitempty"`
+		Amount         *float64   `json:"amount,omitempty"`
+		OriginalAmount *float64   `json:"original_amount,omitempty"`
+		Currency       *string    `json:"currency,omitempty"`
+		CategoryID     *string    `json:"category_id,omitempty"`
+		Account        *string    `json:"account,omitempty"`
+		ExpenseDate    *time.Time `json:"expense_date,omitempty"`
 	}
 
 	var req UpdateExpenseRequest
@@ -380,14 +382,20 @@ func (h *Handler) UpdateExpense(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	originalAmount := req.OriginalAmount
+	if originalAmount == nil {
+		originalAmount = req.Amount
+	}
+
 	resp, err := h.updateExpenseUC.Execute(ctx, &usecase.UpdateRequest{
-		ID:          req.ID,
-		UserID:      req.UserID,
-		Description: req.Description,
-		Amount:      req.Amount,
-		CategoryID:  req.CategoryID,
-		Account:     req.Account,
-		ExpenseDate: req.ExpenseDate,
+		ID:             req.ID,
+		UserID:         req.UserID,
+		Description:    req.Description,
+		OriginalAmount: originalAmount,
+		Currency:       req.Currency,
+		CategoryID:     req.CategoryID,
+		Account:        req.Account,
+		ExpenseDate:    req.ExpenseDate,
 	})
 
 	if err != nil {

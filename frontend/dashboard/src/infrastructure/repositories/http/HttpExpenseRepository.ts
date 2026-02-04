@@ -19,7 +19,7 @@ export class HttpExpenseRepository implements ExpenseRepository {
         id: detail.id,
         user_id: report.user_id,
         description: detail.description,
-        amount: detail.amount,
+        amount: detail.home_amount ?? detail.amount,
         category_name: detail.category,
         expense_date: detail.date,
         account: detail.account,
@@ -27,7 +27,8 @@ export class HttpExpenseRepository implements ExpenseRepository {
         original_currency: detail.original_currency || detail.currency,
         original_amount: detail.original_amount ?? detail.amount,
         home_amount: detail.home_amount ?? detail.amount,
-        home_currency: detail.home_currency || detail.currency || 'TWD',
+        home_currency: detail.home_currency || 'TWD',
+        exchange_rate: detail.home_amount && detail.original_amount ? detail.home_amount / detail.original_amount : undefined,
       }));
 
       // Filter by category if specified
@@ -223,12 +224,17 @@ export class HttpExpenseRepository implements ExpenseRepository {
         id: expense.id,
         user_id: expense.user_id,
         description: expense.description,
-        amount: expense.amount,
+        amount: expense.home_amount ?? expense.amount,
+        original_amount: expense.original_amount ?? expense.amount,
+        currency: expense.original_currency || expense.currency,
       };
 
       // Only include account if it exists
       if (expense.account) {
         payload.account = expense.account;
+      }
+      if (expense.expense_date) {
+        payload.expense_date = expense.expense_date;
       }
 
       await axios.put(url, payload);

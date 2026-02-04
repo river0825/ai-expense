@@ -106,7 +106,7 @@ func main() {
 		cfg.AIModel,
 	)
 	getExpensesUseCase := usecase.NewGetExpensesUseCase(expenseRepo, categoryRepo)
-	updateExpenseUseCase := usecase.NewUpdateExpenseUseCase(expenseRepo, categoryRepo)
+	updateExpenseUseCase := usecase.NewUpdateExpenseUseCase(expenseRepo, categoryRepo, exchangeRateSvc)
 	deleteExpenseUseCase := usecase.NewDeleteExpenseUseCase(expenseRepo)
 	manageCategoryUseCase := usecase.NewManageCategoryUseCase(categoryRepo)
 	generateReportUseCase := usecase.NewGenerateReportUseCase(expenseRepo, categoryRepo, metricsRepo)
