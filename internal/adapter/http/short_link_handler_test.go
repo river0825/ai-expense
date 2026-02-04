@@ -35,6 +35,11 @@ func (m *MockShortLinkRepository) DeleteExpired(ctx context.Context) error {
 	return args.Error(0)
 }
 
+func (m *MockShortLinkRepository) DeprecateByUserID(ctx context.Context, userID string) error {
+	args := m.Called(ctx, userID)
+	return args.Error(0)
+}
+
 func TestShortLinkHandler_HandleRedirect(t *testing.T) {
 	// Setup
 	mockRepo := new(MockShortLinkRepository)
