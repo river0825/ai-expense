@@ -38,13 +38,82 @@ export function ExpenseList({ expenses, onCategoryFilter, onUpdateExpense, class
   const [groupBy, setGroupBy] = useState<'none' | 'category' | 'date'>('none');
   
   // Editing state
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState<{description: string; amount: string; account: string}>({ 
-    description: '', 
-    amount: '',
-    account: ''
+  type EditFormState = {
+    description: string;
+    originalAmount: string;
+    currency: string;
+    account: string;
+    conversionRate: number;
+    homePreview: number;
+    homeCurrency: string;
+  };
+
+  const createEmptyEditForm = (): EditFormState => ({
+    description: '',
+    originalAmount: '',
+    currency: 'TWD',
+    account: '',
+    conversionRate: 1,
+    homePreview: 0,
+    homeCurrency: 'TWD',
   });
+
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<EditFormState>(createEmptyEditForm);
   const [isSaving, setIsSaving] = useState(false);
+
+  const userHomeCurrency = useMemo(() => {
+    for (const expense of expenses) {
+      if (expense.home_currency) {
+        return expense.home_currency;
+      }
+    }
+    return 'TWD';
+  }, [expenses]);
+
+  const currencyOptions = useMemo(() => {
+    const unique = new Set<string>();
+    expenses.forEach((expense) => {
+      const currency = expense.original_currency || expense.currency || expense.home_currency;
+      if (currency) {
+        unique.add(currency);
+      }
+    });
+    unique.add(userHomeCurrency);
+    return Array.from(unique);
+  }, [expenses, userHomeCurrency]);
+
+  const formatHomePreview = (value: number, currency: string) => {
+    if (!value || Number.isNaN(value)) {
+      return `≈ ${currency} 0.00`;
+    }
+    try {
+      const locale = currency === 'TWD' ? 'zh-TW' : 'en-US';
+      return `≈ ${new Intl.NumberFormat(locale, {
+        style: 'currency',
+        currency,
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(value)}`;
+    } catch {
+      return `≈ ${currency} ${value.toFixed(2)}`;
+    }
+  };
+
+  const determineInitialRate = (expense: Expense, initialCurrency: string, homeCurrency: string) => {
+    if (initialCurrency === homeCurrency) {
+      return 1;
+    }
+    if (expense.exchange_rate && expense.exchange_rate > 0) {
+      return expense.exchange_rate;
+    }
+    const original = expense.original_amount ?? expense.amount;
+    const home = expense.home_amount ?? expense.amount;
+    if (original && original !== 0) {
+      return home / original;
+    }
+    return 1;
+  };
 
   const accountOptions = useMemo(() => {
     const unique = new Set<string>();
@@ -59,17 +128,27 @@ export function ExpenseList({ expenses, onCategoryFilter, onUpdateExpense, class
   const startEditing = (expense: Expense, e: React.MouseEvent) => {
     e.stopPropagation();
     setEditingId(expense.id);
+    const homeCurrency = expense.home_currency || userHomeCurrency;
+    const initialOriginalAmount = expense.original_amount ?? expense.amount;
+    const initialCurrency = expense.original_currency || expense.currency || homeCurrency;
+    const conversionRate = determineInitialRate(expense, initialCurrency, homeCurrency);
+    const preview = (initialOriginalAmount || 0) * conversionRate;
+
     setEditForm({
       description: expense.description,
-      amount: expense.amount.toString(),
-      account: expense.account || ''
+      originalAmount: initialOriginalAmount ? initialOriginalAmount.toString() : '',
+      currency: initialCurrency,
+      account: expense.account || '',
+      conversionRate,
+      homePreview: Number.isNaN(preview) ? 0 : preview,
+      homeCurrency,
     });
   };
 
   const cancelEditing = (e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     setEditingId(null);
-    setEditForm({ description: '', amount: '', account: '' });
+    setEditForm(createEmptyEditForm());
   };
 
   const saveEditing = async (originalExpense: Expense, e: React.MouseEvent) => {
@@ -78,11 +157,19 @@ export function ExpenseList({ expenses, onCategoryFilter, onUpdateExpense, class
     
     try {
       setIsSaving(true);
+      const originalAmountValue = parseFloat(editForm.originalAmount) || 0;
+      const conversionRate = editForm.conversionRate || 1;
+      const derivedHomeAmount = originalAmountValue * conversionRate;
       const updatedExpense: Expense = {
         ...originalExpense,
         description: editForm.description,
-        amount: parseFloat(editForm.amount) || 0,
-        account: editForm.account
+        original_amount: originalAmountValue,
+        original_currency: editForm.currency,
+        currency: editForm.currency,
+        home_amount: derivedHomeAmount,
+        home_currency: editForm.homeCurrency || originalExpense.home_currency || userHomeCurrency,
+        amount: derivedHomeAmount,
+        account: editForm.account,
       };
       await onUpdateExpense(updatedExpense);
       setEditingId(null);
@@ -229,36 +316,80 @@ export function ExpenseList({ expenses, onCategoryFilter, onUpdateExpense, class
                             <input 
                               type="text"
                               value={editForm.description}
-                              onChange={(e) => setEditForm({...editForm, description: e.target.value})}
+                              onChange={(e) => setEditForm((prev) => ({ ...prev, description: e.target.value }))}
                               className="w-full bg-black/20 border border-white/10 rounded px-2 py-1.5 text-sm text-text focus:border-primary/50 outline-none"
                               placeholder="Description"
                               autoFocus
                             />
-                            <div className="flex flex-col sm:flex-row gap-2 w-full">
-                               <input 
-                                 type="number"
-                                 value={editForm.amount}
-                                 onChange={(e) => setEditForm({...editForm, amount: e.target.value})}
-                                 className="flex-1 bg-black/20 border border-white/10 rounded px-2 py-1.5 text-sm text-text focus:border-primary/50 outline-none min-w-0"
-                                 placeholder="Amount"
-                                 step="0.01"
-                                 inputMode="decimal"
-                               />
-                               <select
-                                 value={editForm.account}
-                                 onChange={(e) => setEditForm({...editForm, account: e.target.value})}
-                                 className="flex-1 bg-black/20 border border-white/10 rounded px-2 py-1.5 text-sm text-text/80 focus:border-primary/50 outline-none min-w-0"
-                               >
-                                 <option value="">Select account</option>
-                                 {accountOptions.map((account) => (
-                                   <option key={account} value={account}>
-                                     {account}
-                                   </option>
-                                 ))}
-                                 {editForm.account && !accountOptions.includes(editForm.account) && (
-                                   <option value={editForm.account}>{editForm.account}</option>
-                                 )}
-                               </select>
+                            <div className="flex flex-col gap-2 w-full">
+                              <div className="flex flex-col sm:flex-row gap-2 w-full">
+                                <div className="flex-1 min-w-0">
+                                  <input 
+                                    type="number"
+                                    value={editForm.originalAmount}
+                                    onChange={(e) => {
+                                      const value = e.target.value;
+                                      setEditForm((prev) => {
+                                        const parsed = parseFloat(value);
+                                        const numeric = Number.isNaN(parsed) ? 0 : parsed;
+                                        return {
+                                          ...prev,
+                                          originalAmount: value,
+                                          homePreview: numeric * prev.conversionRate,
+                                        };
+                                      });
+                                    }}
+                                    className="w-full bg-black/20 border border-white/10 rounded px-2 py-1.5 text-sm text-text focus:border-primary/50 outline-none"
+                                    placeholder="Amount"
+                                    step="0.01"
+                                    inputMode="decimal"
+                                  />
+                                  <p className="text-[10px] text-text/60 mt-1">
+                                    {formatHomePreview(editForm.homePreview, editForm.homeCurrency || expense.home_currency || userHomeCurrency || 'TWD')}
+                                  </p>
+                                </div>
+                                <select
+                                  value={editForm.currency}
+                                  onChange={(e) => {
+                                    const newCurrency = e.target.value;
+                                    setEditForm((prev) => {
+                                      const numeric = parseFloat(prev.originalAmount) || 0;
+                                      const rate = newCurrency === prev.homeCurrency ? 1 : prev.conversionRate || 1;
+                                      return {
+                                        ...prev,
+                                        currency: newCurrency,
+                                        conversionRate: rate,
+                                        homePreview: numeric * rate,
+                                      };
+                                    });
+                                  }}
+                                  className="flex-1 bg-black/20 border border-white/10 rounded px-2 py-1.5 text-sm text-text/80 focus:border-primary/50 outline-none min-w-0"
+                                >
+                                  {currencyOptions.map((currency) => (
+                                    <option key={currency} value={currency}>
+                                      {currency}
+                                    </option>
+                                  ))}
+                                  {editForm.currency && !currencyOptions.includes(editForm.currency) && (
+                                    <option value={editForm.currency}>{editForm.currency}</option>
+                                  )}
+                                </select>
+                              </div>
+                              <select
+                                value={editForm.account}
+                                onChange={(e) => setEditForm((prev) => ({ ...prev, account: e.target.value }))}
+                                className="flex-1 bg-black/20 border border-white/10 rounded px-2 py-1.5 text-sm text-text/80 focus:border-primary/50 outline-none min-w-0"
+                              >
+                                <option value="">Select account</option>
+                                {accountOptions.map((account) => (
+                                  <option key={account} value={account}>
+                                    {account}
+                                  </option>
+                                ))}
+                                {editForm.account && !accountOptions.includes(editForm.account) && (
+                                  <option value={editForm.account}>{editForm.account}</option>
+                                )}
+                              </select>
                             </div>
                          </div>
                          <div className="flex sm:flex-col items-center gap-1 w-full sm:w-auto pt-2 sm:pt-0">

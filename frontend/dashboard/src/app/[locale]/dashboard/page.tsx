@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { subDays, format } from 'date-fns';
@@ -66,11 +66,11 @@ export default function UserDashboardPage() {
     }
   }, [urlToken]);
 
-  const getToken = () => {
+  const getToken = useCallback(() => {
     // Prioritize URL token, then cookie
     if (urlToken) return urlToken;
     return getCookie('report_token');
-  };
+  }, [urlToken]);
 
   // Fetch data
 
@@ -110,7 +110,7 @@ export default function UserDashboardPage() {
     };
 
     fetchData();
-  }, [date, trendGroupBy, urlToken, refreshKey]);
+  }, [date, trendGroupBy, urlToken, refreshKey, getToken]);
 
   const handleUpdateExpense = async (updatedExpense: Expense) => {
     const token = getToken();

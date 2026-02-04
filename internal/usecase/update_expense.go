@@ -10,30 +10,34 @@ import (
 
 // UpdateExpenseUseCase handles updating existing expenses
 type UpdateExpenseUseCase struct {
-	expenseRepo  domain.ExpenseRepository
-	categoryRepo domain.CategoryRepository
+	expenseRepo     domain.ExpenseRepository
+	categoryRepo    domain.CategoryRepository
+	exchangeRateSvc domain.ExchangeRateService
 }
 
 // NewUpdateExpenseUseCase creates a new update expense use case
 func NewUpdateExpenseUseCase(
 	expenseRepo domain.ExpenseRepository,
 	categoryRepo domain.CategoryRepository,
+	exchangeRateSvc domain.ExchangeRateService,
 ) *UpdateExpenseUseCase {
 	return &UpdateExpenseUseCase{
-		expenseRepo:  expenseRepo,
-		categoryRepo: categoryRepo,
+		expenseRepo:     expenseRepo,
+		categoryRepo:    categoryRepo,
+		exchangeRateSvc: exchangeRateSvc,
 	}
 }
 
 // UpdateRequest represents a request to update an expense
 type UpdateRequest struct {
-	ID          string
-	UserID      string // For authorization
-	Description *string
-	Amount      *float64
-	CategoryID  *string
-	Account     *string
-	ExpenseDate *time.Time
+	ID             string
+	UserID         string // For authorization
+	Description    *string
+	OriginalAmount *float64
+	Currency       *string
+	CategoryID     *string
+	Account        *string
+	ExpenseDate    *time.Time
 }
 
 // UpdateResponse represents the response after updating an expense
@@ -65,13 +69,22 @@ func (u *UpdateExpenseUseCase) Execute(ctx context.Context, req *UpdateRequest) 
 		expense.Description = *req.Description
 	}
 
-	if req.Amount != nil {
-		expense.OriginalAmount = *req.Amount
-		expense.HomeAmount = *req.Amount
-		expense.Amount = expense.HomeAmount
-		if expense.ExchangeRate == 0 {
-			expense.ExchangeRate = 1.0
+	needRecalc := false
+	if req.OriginalAmount != nil {
+		expense.OriginalAmount = *req.OriginalAmount
+		needRecalc = true
+	}
+
+	if req.Currency != nil {
+		currency := normalizeCurrency(*req.Currency)
+		if currency != "" {
+			expense.Currency = currency
+			needRecalc = true
 		}
+	}
+
+	if needRecalc {
+		u.recalculateHomeAmount(ctx, expense)
 	}
 
 	if req.ExpenseDate != nil {
@@ -118,4 +131,41 @@ func (u *UpdateExpenseUseCase) Execute(ctx context.Context, req *UpdateRequest) 
 		Message:  message,
 		Category: categoryName,
 	}, nil
+}
+
+func (u *UpdateExpenseUseCase) recalculateHomeAmount(ctx context.Context, expense *domain.Expense) {
+	if expense.OriginalAmount == 0 {
+		expense.HomeAmount = 0
+		expense.Amount = 0
+		return
+	}
+
+	fromCurrency := normalizeCurrency(expense.Currency)
+	toCurrency := normalizeCurrency(expense.HomeCurrency)
+	if toCurrency == "" {
+		toCurrency = fromCurrency
+		expense.HomeCurrency = toCurrency
+	}
+
+	if fromCurrency == "" {
+		fromCurrency = toCurrency
+		expense.Currency = fromCurrency
+	}
+
+	if u.exchangeRateSvc != nil && fromCurrency != "" && toCurrency != "" && fromCurrency != toCurrency {
+		converted, rate, err := u.exchangeRateSvc.Convert(ctx, expense.OriginalAmount, fromCurrency, toCurrency, expense.ExpenseDate)
+		if err == nil {
+			expense.HomeAmount = converted
+			expense.ExchangeRate = rate
+			expense.Amount = expense.HomeAmount
+			return
+		}
+	}
+
+	// Fallback to 1:1 conversion
+	expense.HomeAmount = expense.OriginalAmount
+	if expense.ExchangeRate == 0 {
+		expense.ExchangeRate = 1.0
+	}
+	expense.Amount = expense.HomeAmount
 }
