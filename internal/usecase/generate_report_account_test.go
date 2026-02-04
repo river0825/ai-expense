@@ -62,6 +62,54 @@ func TestGenerateReport_AccountInExpenseDetails(t *testing.T) {
 		}
 	})
 
+	t.Run("ExpenseDetail includes currency metadata", func(t *testing.T) {
+		expenseRepo.Create(ctx, &domain.Expense{
+			ID:             "exp_currency_meta",
+			UserID:         userID,
+			Description:    "Business trip",
+			Amount:         9000,
+			OriginalAmount: 300,
+			Currency:       "USD",
+			HomeAmount:     9482.39,
+			HomeCurrency:   "TWD",
+			Account:        "Corporate Card",
+			ExpenseDate:    now,
+			CreatedAt:      now,
+			UpdatedAt:      now,
+		})
+
+		req := &ReportRequest{
+			UserID:     userID,
+			ReportType: "monthly",
+			StartDate:  startOfMonth,
+			EndDate:    endOfMonth,
+		}
+
+		report, err := uc.Execute(ctx, req)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		for _, exp := range report.TopExpenses {
+			if exp.ID == "exp_currency_meta" {
+				if exp.OriginalAmount != 300 {
+					t.Fatalf("expected original amount 300, got %v", exp.OriginalAmount)
+				}
+				if exp.OriginalCurrency != "USD" {
+					t.Fatalf("expected original currency USD, got %s", exp.OriginalCurrency)
+				}
+				if exp.HomeAmount != 9482.39 {
+					t.Fatalf("expected home amount 9482.39, got %v", exp.HomeAmount)
+				}
+				if exp.HomeCurrency != "TWD" {
+					t.Fatalf("expected home currency TWD, got %s", exp.HomeCurrency)
+				}
+				return
+			}
+		}
+		t.Fatal("expense exp_currency_meta not found in report")
+	})
+
 	t.Run("Multiple expenses with different accounts", func(t *testing.T) {
 		expenseRepo.Create(ctx, &domain.Expense{
 			ID:          "exp_report_cash",
