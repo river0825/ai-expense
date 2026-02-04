@@ -40,13 +40,14 @@ export function CurrencyAmount({
     }
   };
 
-  const isDifferent = originalCurrency && currency !== originalCurrency && originalAmount !== undefined;
+  const effectiveCurrency = currency || originalCurrency || 'TWD';
+  const isDifferent = originalCurrency && effectiveCurrency !== originalCurrency && originalAmount !== undefined;
   const showOriginal = isDifferent && !hideOriginal;
 
   return (
     <div className={`flex flex-col items-end ${className}`}>
       <span className="font-mono font-bold whitespace-nowrap">
-        {formatCurrency(amount, currency)}
+        {formatCurrency(amount, effectiveCurrency)}
       </span>
       {showOriginal && (
         <span className="text-xs text-text/50 whitespace-nowrap">
