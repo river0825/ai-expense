@@ -51,6 +51,6 @@ func (h *ShortLinkHandler) HandleRedirect(w http.ResponseWriter, r *http.Request
 
 	// Redirect to the actual report page (user dashboard)
 	// The report page will check for the cookie or URL param
-	redirectURL := fmt.Sprintf("%s/user/reports?token=%s", h.dashboardURL, link.TargetToken)
+	redirectURL := fmt.Sprintf("%s/dashboard?token=%s", h.dashboardURL, link.TargetToken)
 	http.Redirect(w, r, redirectURL, http.StatusFound)
 }
