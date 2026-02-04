@@ -40,7 +40,7 @@ export function ExpenseList({ expenses, onCategoryFilter, onUpdateExpense, class
   // Editing state
   type EditFormState = {
     description: string;
-    originalAmount: string;
+    originalAmount: number;
     currency: string;
     account: string;
     conversionRate: number;
@@ -50,7 +50,7 @@ export function ExpenseList({ expenses, onCategoryFilter, onUpdateExpense, class
 
   const createEmptyEditForm = (): EditFormState => ({
     description: '',
-    originalAmount: '',
+    originalAmount: 0,
     currency: 'TWD',
     account: '',
     conversionRate: 1,
@@ -89,14 +89,14 @@ export function ExpenseList({ expenses, onCategoryFilter, onUpdateExpense, class
     }
     try {
       const locale = currency === 'TWD' ? 'zh-TW' : 'en-US';
-      return `≈ ${new Intl.NumberFormat(locale, {
+      return new Intl.NumberFormat(locale, {
         style: 'currency',
         currency,
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
-      }).format(value)}`;
+      }).format(value);
     } catch {
-      return `≈ ${currency} ${value.toFixed(2)}`;
+      return `${currency} ${value.toFixed(2)}`;
     }
   };
 
@@ -136,7 +136,7 @@ export function ExpenseList({ expenses, onCategoryFilter, onUpdateExpense, class
 
     setEditForm({
       description: expense.description,
-      originalAmount: initialOriginalAmount ? initialOriginalAmount.toString() : '',
+      originalAmount: initialOriginalAmount,
       currency: initialCurrency,
       account: expense.account || '',
       conversionRate,
@@ -157,7 +157,7 @@ export function ExpenseList({ expenses, onCategoryFilter, onUpdateExpense, class
     
     try {
       setIsSaving(true);
-      const originalAmountValue = parseFloat(editForm.originalAmount) || 0;
+      const originalAmountValue = editForm.originalAmount || 0;
       const conversionRate = editForm.conversionRate || 1;
       const derivedHomeAmount = originalAmountValue * conversionRate;
       const updatedExpense: Expense = {
@@ -334,7 +334,7 @@ export function ExpenseList({ expenses, onCategoryFilter, onUpdateExpense, class
                                         const numeric = Number.isNaN(parsed) ? 0 : parsed;
                                         return {
                                           ...prev,
-                                          originalAmount: value,
+                                          originalAmount: numeric,
                                           homePreview: numeric * prev.conversionRate,
                                         };
                                       });
@@ -345,19 +345,31 @@ export function ExpenseList({ expenses, onCategoryFilter, onUpdateExpense, class
                                     inputMode="decimal"
                                   />
                                   <p className="text-[10px] text-text/60 mt-1">
-                                    {formatHomePreview(editForm.homePreview, editForm.homeCurrency || expense.home_currency || userHomeCurrency || 'TWD')}
+                                    <CurrencyAmount
+                                      amount={editForm.homePreview}
+                                      currency={editForm.homeCurrency || 'TWD'}
+                                      originalAmount={editForm.originalAmount}
+                                      originalCurrency={editForm.currency}
+                                      className="text-[10px] text-text/60 mt-1"
+                                    />
                                   </p>
+
                                 </div>
                                 <select
                                   value={editForm.currency}
                                   onChange={(e) => {
                                     const newCurrency = e.target.value;
                                     setEditForm((prev) => {
-                                      const numeric = parseFloat(prev.originalAmount) || 0;
-                                      const rate = newCurrency === prev.homeCurrency ? 1 : prev.conversionRate || 1;
-                                      return {
-                                        ...prev,
-                                        currency: newCurrency,
+                                      const numeric = prev.originalAmount || 0;
+                                    let rate = prev.conversionRate || 1;
+                                    if (newCurrency === prev.homeCurrency) {
+                                      rate = 1;
+                                    } else if (expense.exchange_rate && expense.exchange_rate > 0) {
+                                      rate = expense.exchange_rate;
+                                    }
+                                    return {
+                                      ...prev,
+                                      currency: newCurrency,
                                         conversionRate: rate,
                                         homePreview: numeric * rate,
                                       };
