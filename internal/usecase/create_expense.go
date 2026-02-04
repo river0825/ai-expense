@@ -122,8 +122,22 @@ func (u *CreateExpenseUseCase) Execute(ctx context.Context, req *CreateRequest) 
 			log.Printf("Expense created with manual category: %s (ID: %s)", categoryName, *req.CategoryID)
 		}
 	} else {
-		// Get AI suggestion
-		resp, err := u.aiService.SuggestCategory(ctx, req.Description, req.UserID)
+		var userCtx *domain.UserContext
+		if u.userRepo != nil && u.categoryRepo != nil {
+			user, _ := u.userRepo.GetByID(ctx, req.UserID)
+			if user != nil {
+				categories, _ := u.categoryRepo.GetByUserID(ctx, req.UserID)
+				if categories == nil {
+					categories = []*domain.Category{}
+				}
+				userCtx = &domain.UserContext{
+					User:       user,
+					Categories: categories,
+				}
+			}
+		}
+
+		resp, err := u.aiService.SuggestCategory(ctx, req.Description, userCtx)
 		if err == nil && resp != nil {
 			log.Printf("AI suggested category: %s for description: %s", resp.Category, req.Description)
 

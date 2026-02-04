@@ -192,7 +192,7 @@ func NewMockAIService() *MockAIService {
 	}
 }
 
-func (m *MockAIService) ParseExpense(ctx context.Context, text string, userID string) (*ai.ParseExpenseResponse, error) {
+func (m *MockAIService) ParseExpense(ctx context.Context, text string, userCtx *domain.UserContext) (*ai.ParseExpenseResponse, error) {
 	if m.shouldFail {
 		return nil, nil // Falls back to regex in ParseConversationUseCase
 	}
@@ -248,7 +248,7 @@ func (m *MockAIService) ParseExpense(ctx context.Context, text string, userID st
 	}, nil
 }
 
-func (m *MockAIService) SuggestCategory(ctx context.Context, description string, userID string) (*ai.SuggestCategoryResponse, error) {
+func (m *MockAIService) SuggestCategory(ctx context.Context, description string, userCtx *domain.UserContext) (*ai.SuggestCategoryResponse, error) {
 	descLower := strings.ToLower(description)
 	var category string
 

@@ -1,16 +1,22 @@
 package ai
 
-import "context"
+import (
+	"context"
+
+	"github.com/riverlin/aiexpense/internal/domain"
+)
 
 // Service defines the AI service interface for expense parsing and categorization
 type Service interface {
 	// ParseExpense extracts expenses from natural language text
 	// Returns parsed expenses with actual token usage from API response
-	ParseExpense(ctx context.Context, text string, userID string) (*ParseExpenseResponse, error)
+	// userCtx provides user preferences (currency, categories) for personalized prompts
+	ParseExpense(ctx context.Context, text string, userCtx *domain.UserContext) (*ParseExpenseResponse, error)
 
 	// SuggestCategory suggests a category based on description
 	// Returns suggested category with actual token usage from API response
-	SuggestCategory(ctx context.Context, description string, userID string) (*SuggestCategoryResponse, error)
+	// userCtx provides user preferences for personalized suggestions
+	SuggestCategory(ctx context.Context, description string, userCtx *domain.UserContext) (*SuggestCategoryResponse, error)
 }
 
 // Factory creates an AI service based on the provider type

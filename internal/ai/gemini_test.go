@@ -178,7 +178,7 @@ func TestParseExpense(t *testing.T) {
 	ctx := context.Background()
 
 	text := "早餐$20午餐$30"
-	resp, err := ai.ParseExpense(ctx, text, "test_user")
+	resp, err := ai.ParseExpense(ctx, text, nil)
 
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -210,7 +210,7 @@ func TestSuggestCategory(t *testing.T) {
 	ai := &GeminiAI{apiKey: "test"}
 	ctx := context.Background()
 
-	resp, err := ai.SuggestCategory(ctx, "早餐咖啡", "test_user")
+	resp, err := ai.SuggestCategory(ctx, "早餐咖啡", nil)
 
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)

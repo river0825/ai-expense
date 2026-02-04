@@ -162,7 +162,7 @@ type TestAIService struct{}
 
 var _ ai.Service = (*TestAIService)(nil)
 
-func (s *TestAIService) ParseExpense(ctx context.Context, text string, userID string) (*ai.ParseExpenseResponse, error) {
+func (s *TestAIService) ParseExpense(ctx context.Context, text string, userCtx *domain.UserContext) (*ai.ParseExpenseResponse, error) {
 	return &ai.ParseExpenseResponse{
 		Expenses: []*domain.ParsedExpense{
 			{
@@ -199,7 +199,7 @@ func (s *TestExchangeRateService) GetRate(ctx context.Context, fromCurrency, toC
 	return nil, nil
 }
 
-func (s *TestAIService) SuggestCategory(ctx context.Context, description string, userID string) (*ai.SuggestCategoryResponse, error) {
+func (s *TestAIService) SuggestCategory(ctx context.Context, description string, userCtx *domain.UserContext) (*ai.SuggestCategoryResponse, error) {
 	return &ai.SuggestCategoryResponse{
 		Category: "food",
 		Tokens: &ai.TokenMetadata{
@@ -417,7 +417,7 @@ func TestAPIParseExpenses(t *testing.T) {
 
 	handler := NewHandler(
 		usecase.NewAutoSignupUseCase(userRepo, categoryRepo),
-		usecase.NewParseConversationUseCase(aiService, pricingRepo, costRepo, "gemini", "gemini-2.5-lite"),
+		usecase.NewParseConversationUseCase(aiService, pricingRepo, costRepo, userRepo, categoryRepo, "gemini", "gemini-2.5-lite"),
 		nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
 		usecase.NewGetPolicyUseCase(policyRepo),
 		nil,
@@ -461,7 +461,7 @@ func TestAPICreateExpense(t *testing.T) {
 
 	handler := NewHandler(
 		usecase.NewAutoSignupUseCase(userRepo, categoryRepo),
-		usecase.NewParseConversationUseCase(aiService, pricingRepo, costRepo, "gemini", "gemini-2.5-lite"),
+		usecase.NewParseConversationUseCase(aiService, pricingRepo, costRepo, userRepo, categoryRepo, "gemini", "gemini-2.5-lite"),
 		usecase.NewCreateExpenseUseCase(expenseRepo, categoryRepo, nil, nil, nil, nil, aiService),
 		nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
 		usecase.NewGetPolicyUseCase(policyRepo),

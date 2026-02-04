@@ -16,7 +16,7 @@ type TestMockAIService struct {
 
 var _ ai.Service = (*TestMockAIService)(nil)
 
-func (m *TestMockAIService) ParseExpense(ctx context.Context, text string, userID string) (*ai.ParseExpenseResponse, error) {
+func (m *TestMockAIService) ParseExpense(ctx context.Context, text string, userCtx *domain.UserContext) (*ai.ParseExpenseResponse, error) {
 	if m.shouldFail {
 		return nil, nil
 	}
@@ -39,7 +39,7 @@ func (m *TestMockAIService) ParseExpense(ctx context.Context, text string, userI
 	}, nil
 }
 
-func (m *TestMockAIService) SuggestCategory(ctx context.Context, description string, userID string) (*ai.SuggestCategoryResponse, error) {
+func (m *TestMockAIService) SuggestCategory(ctx context.Context, description string, userCtx *domain.UserContext) (*ai.SuggestCategoryResponse, error) {
 	return &ai.SuggestCategoryResponse{
 		Category: "Other",
 		Tokens: &ai.TokenMetadata{
@@ -94,8 +94,7 @@ func TestParseDateLogic(t *testing.T) {
 	}
 
 	aiService := &TestMockAIService{shouldFail: true} // Use regex fallback to test date logic
-	// Mock repositories - can be nil since we're testing date parsing with fallback
-	uc := NewParseConversationUseCase(aiService, nil, nil, "test", "test-model")
+	uc := NewParseConversationUseCase(aiService, nil, nil, nil, nil, "test", "test-model")
 	ctx := context.Background()
 
 	for _, tt := range tests {

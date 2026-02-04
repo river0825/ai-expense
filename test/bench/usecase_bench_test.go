@@ -234,7 +234,7 @@ type BenchAIService struct{}
 
 var _ ai.Service = (*BenchAIService)(nil)
 
-func (s *BenchAIService) ParseExpense(ctx context.Context, text string, userID string) (*ai.ParseExpenseResponse, error) {
+func (s *BenchAIService) ParseExpense(ctx context.Context, text string, userCtx *domain.UserContext) (*ai.ParseExpenseResponse, error) {
 	return &ai.ParseExpenseResponse{
 		Expenses: []*domain.ParsedExpense{
 			{Amount: 20.0, Description: "Test"},
@@ -247,7 +247,7 @@ func (s *BenchAIService) ParseExpense(ctx context.Context, text string, userID s
 	}, nil
 }
 
-func (s *BenchAIService) SuggestCategory(ctx context.Context, description string, userID string) (*ai.SuggestCategoryResponse, error) {
+func (s *BenchAIService) SuggestCategory(ctx context.Context, description string, userCtx *domain.UserContext) (*ai.SuggestCategoryResponse, error) {
 	return &ai.SuggestCategoryResponse{
 		Category: "food",
 		Tokens: &ai.TokenMetadata{
@@ -290,7 +290,7 @@ func BenchmarkCreateExpense(b *testing.B) {
 		Name:   "Food",
 	})
 
-	uc := usecase.NewCreateExpenseUseCase(expenseRepo, categoryRepo, nil, nil, nil, nil, aiService)
+	uc := usecase.NewCreateExpenseUseCase(expenseRepo, categoryRepo, userRepo, nil, nil, nil, aiService)
 	ctx := context.Background()
 
 	b.ResetTimer()
@@ -308,7 +308,9 @@ func BenchmarkParseConversation(b *testing.B) {
 	aiService := &BenchAIService{}
 	pricingRepo := &BenchPricingRepository{pricing: make(map[string]*domain.PricingConfig)}
 	costRepo := &BenchAICostRepository{costs: make(map[string]*domain.AICostLog)}
-	uc := usecase.NewParseConversationUseCase(aiService, pricingRepo, costRepo, "gemini", "gemini-2.5-lite")
+	userRepo := &BenchUserRepository{users: make(map[string]*domain.User)}
+	categoryRepo := &BenchCategoryRepository{categories: make(map[string]*domain.Category)}
+	uc := usecase.NewParseConversationUseCase(aiService, pricingRepo, costRepo, userRepo, categoryRepo, "gemini", "gemini-2.5-lite")
 	ctx := context.Background()
 
 	b.ResetTimer()
@@ -356,7 +358,7 @@ func BenchmarkMultipleCreateExpenses(b *testing.B) {
 		CreatedAt:     time.Now(),
 	})
 
-	uc := usecase.NewCreateExpenseUseCase(expenseRepo, categoryRepo, nil, nil, nil, nil, aiService)
+	uc := usecase.NewCreateExpenseUseCase(expenseRepo, categoryRepo, userRepo, nil, nil, nil, aiService)
 	ctx := context.Background()
 
 	b.ResetTimer()
@@ -432,7 +434,7 @@ func BenchmarkExpenseCreationWithCategoryLookup(b *testing.B) {
 		})
 	}
 
-	uc := usecase.NewCreateExpenseUseCase(expenseRepo, categoryRepo, nil, nil, nil, nil, aiService)
+	uc := usecase.NewCreateExpenseUseCase(expenseRepo, categoryRepo, userRepo, nil, nil, nil, aiService)
 	ctx := context.Background()
 
 	b.ResetTimer()

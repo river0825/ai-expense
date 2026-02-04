@@ -293,7 +293,7 @@ type LoadTestAIService struct{}
 
 var _ ai.Service = (*LoadTestAIService)(nil)
 
-func (s *LoadTestAIService) ParseExpense(ctx context.Context, text string, userID string) (*ai.ParseExpenseResponse, error) {
+func (s *LoadTestAIService) ParseExpense(ctx context.Context, text string, userCtx *domain.UserContext) (*ai.ParseExpenseResponse, error) {
 	return &ai.ParseExpenseResponse{
 		Expenses: []*domain.ParsedExpense{
 			{Amount: 20.0, Description: "Test"},
@@ -306,7 +306,7 @@ func (s *LoadTestAIService) ParseExpense(ctx context.Context, text string, userI
 	}, nil
 }
 
-func (s *LoadTestAIService) SuggestCategory(ctx context.Context, description string, userID string) (*ai.SuggestCategoryResponse, error) {
+func (s *LoadTestAIService) SuggestCategory(ctx context.Context, description string, userCtx *domain.UserContext) (*ai.SuggestCategoryResponse, error) {
 	return &ai.SuggestCategoryResponse{
 		Category: "food",
 		Tokens: &ai.TokenMetadata{
@@ -458,7 +458,7 @@ func TestLoadConcurrentExpenseCreation(t *testing.T) {
 	})
 
 	aiService := &LoadTestAIService{}
-	uc := usecase.NewCreateExpenseUseCase(expenseRepo, categoryRepo, nil, nil, nil, nil, aiService)
+	uc := usecase.NewCreateExpenseUseCase(expenseRepo, categoryRepo, userRepo, nil, nil, nil, aiService)
 	ctx := context.Background()
 	metrics := &LoadTestMetrics{}
 
@@ -609,7 +609,7 @@ func TestLoadConcurrentMixedOperations(t *testing.T) {
 	}
 
 	aiService := &LoadTestAIService{}
-	createUC := usecase.NewCreateExpenseUseCase(expenseRepo, categoryRepo, nil, nil, nil, nil, aiService)
+	createUC := usecase.NewCreateExpenseUseCase(expenseRepo, categoryRepo, userRepo, nil, nil, nil, aiService)
 	getUC := usecase.NewGetExpensesUseCase(expenseRepo, categoryRepo)
 	ctx := context.Background()
 	metrics := &LoadTestMetrics{}
@@ -699,7 +699,7 @@ func TestLoadConcurrentStress(t *testing.T) {
 	}
 
 	aiService := &LoadTestAIService{}
-	uc := usecase.NewCreateExpenseUseCase(expenseRepo, categoryRepo, nil, nil, nil, nil, aiService)
+	uc := usecase.NewCreateExpenseUseCase(expenseRepo, categoryRepo, userRepo, nil, nil, nil, aiService)
 	ctx := context.Background()
 	metrics := &LoadTestMetrics{}
 
@@ -771,7 +771,7 @@ func TestLoadRampUp(t *testing.T) {
 	})
 
 	aiService := &LoadTestAIService{}
-	uc := usecase.NewCreateExpenseUseCase(expenseRepo, categoryRepo, nil, nil, nil, nil, aiService)
+	uc := usecase.NewCreateExpenseUseCase(expenseRepo, categoryRepo, userRepo, nil, nil, nil, aiService)
 	ctx := context.Background()
 
 	// Ramp-up stages
@@ -852,7 +852,7 @@ func TestLoadSustainedLoad(t *testing.T) {
 	}
 
 	aiService := &LoadTestAIService{}
-	uc := usecase.NewCreateExpenseUseCase(expenseRepo, categoryRepo, nil, nil, nil, nil, aiService)
+	uc := usecase.NewCreateExpenseUseCase(expenseRepo, categoryRepo, userRepo, nil, nil, nil, aiService)
 	ctx := context.Background()
 
 	// Sustained load for 5 seconds at constant rate

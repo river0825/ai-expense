@@ -14,11 +14,13 @@ import (
 
 // ParseConversationUseCase handles parsing of conversation text to extract expenses
 type ParseConversationUseCase struct {
-	aiService   ai.Service
-	pricingRepo domain.PricingRepository
-	costRepo    domain.AICostRepository
-	provider    string // e.g., "gemini"
-	model       string // e.g., "gemini-2.5-lite"
+	aiService    ai.Service
+	pricingRepo  domain.PricingRepository
+	costRepo     domain.AICostRepository
+	userRepo     domain.UserRepository
+	categoryRepo domain.CategoryRepository
+	provider     string // e.g., "gemini"
+	model        string // e.g., "gemini-2.5-lite"
 }
 
 // NewParseConversationUseCase creates a new parse conversation use case
@@ -26,22 +28,41 @@ func NewParseConversationUseCase(
 	aiService ai.Service,
 	pricingRepo domain.PricingRepository,
 	costRepo domain.AICostRepository,
+	userRepo domain.UserRepository,
+	categoryRepo domain.CategoryRepository,
 	provider string,
 	model string,
 ) *ParseConversationUseCase {
 	return &ParseConversationUseCase{
-		aiService:   aiService,
-		pricingRepo: pricingRepo,
-		costRepo:    costRepo,
-		provider:    provider,
-		model:       model,
+		aiService:    aiService,
+		pricingRepo:  pricingRepo,
+		costRepo:     costRepo,
+		userRepo:     userRepo,
+		categoryRepo: categoryRepo,
+		provider:     provider,
+		model:        model,
 	}
 }
 
 // Execute parses conversation text and extracts expenses with cost tracking
 func (u *ParseConversationUseCase) Execute(ctx context.Context, text, userID string) (*domain.ParseResult, error) {
+	var userCtx *domain.UserContext
+	if u.userRepo != nil && u.categoryRepo != nil {
+		user, _ := u.userRepo.GetByID(ctx, userID)
+		if user != nil {
+			categories, _ := u.categoryRepo.GetByUserID(ctx, userID)
+			if categories == nil {
+				categories = []*domain.Category{}
+			}
+			userCtx = &domain.UserContext{
+				User:       user,
+				Categories: categories,
+			}
+		}
+	}
+
 	// Call AI service to parse expenses (returns token metadata)
-	resp, err := u.aiService.ParseExpense(ctx, text, userID)
+	resp, err := u.aiService.ParseExpense(ctx, text, userCtx)
 	var expenses []*domain.ParsedExpense
 	var tokens *ai.TokenMetadata
 	var systemPrompt, rawResponse string

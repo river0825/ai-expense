@@ -89,6 +89,8 @@ func main() {
 		aiService,
 		pricingRepo,
 		aiCostRepo,
+		userRepo,
+		categoryRepo,
 		cfg.AIProvider,
 		cfg.AIModel,
 	)
