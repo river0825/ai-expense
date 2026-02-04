@@ -38,12 +38,16 @@ type ReportRequest struct {
 
 // ExpenseDetail represents a single expense in a report
 type ExpenseDetail struct {
-	ID          string    `json:"id"`
-	Description string    `json:"description"`
-	Amount      float64   `json:"amount"`
-	Category    string    `json:"category"`
-	Date        time.Time `json:"date"`
-	Account     string    `json:"account"`
+	ID               string    `json:"id"`
+	Description      string    `json:"description"`
+	Amount           float64   `json:"amount"`
+	Category         string    `json:"category"`
+	Date             time.Time `json:"date"`
+	Account          string    `json:"account"`
+	OriginalAmount   float64   `json:"original_amount"`
+	OriginalCurrency string    `json:"original_currency"`
+	HomeAmount       float64   `json:"home_amount"`
+	HomeCurrency     string    `json:"home_currency"`
 }
 
 // CategoryBreakdown represents spending by category
@@ -182,12 +186,16 @@ func (u *GenerateReportUseCase) Execute(ctx context.Context, req *ReportRequest)
 		}
 
 		topExpenses = append(topExpenses, ExpenseDetail{
-			ID:          expense.ID,
-			Description: expense.Description,
-			Amount:      expense.Amount,
-			Category:    categoryName,
-			Date:        expense.ExpenseDate,
-			Account:     expense.Account,
+			ID:               expense.ID,
+			Description:      expense.Description,
+			Amount:           expense.HomeAmount,
+			Category:         categoryName,
+			Date:             expense.ExpenseDate,
+			Account:          expense.Account,
+			OriginalAmount:   expense.OriginalAmount,
+			OriginalCurrency: expense.Currency,
+			HomeAmount:       expense.HomeAmount,
+			HomeCurrency:     expense.HomeCurrency,
 		})
 	}
 
