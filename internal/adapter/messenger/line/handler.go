@@ -41,6 +41,7 @@ type LineEvent struct {
 	Events []struct {
 		Type    string `json:"type"`
 		Message struct {
+			ID   string `json:"id"`
 			Type string `json:"type"`
 			Text string `json:"text"`
 		} `json:"message"`
@@ -92,9 +93,10 @@ func (h *Handler) HandleWebhook(w http.ResponseWriter, r *http.Request) {
 
 		// Map to UserMessage
 		userMsg := &domain.UserMessage{
-			UserID:  e.Source.UserID,
-			Content: e.Message.Text,
-			Source:  "line",
+			UserID:    e.Source.UserID,
+			MessageID: e.Message.ID,
+			Content:   e.Message.Text,
+			Source:    "line",
 			// Use event timestamp if available, otherwise Now
 			Timestamp: time.Unix(e.Timestamp/1000, 0),
 			Metadata: map[string]interface{}{

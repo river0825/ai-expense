@@ -5,6 +5,7 @@ import "time"
 // UserMessage represents a normalized message from any messenger source
 type UserMessage struct {
 	UserID    string                 `json:"user_id"`
+	MessageID string                 `json:"message_id,omitempty"`
 	Content   string                 `json:"content"`
 	Source    string                 `json:"source"`
 	Metadata  map[string]interface{} `json:"metadata,omitempty"`
