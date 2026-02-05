@@ -74,6 +74,17 @@ func (r *TestExpenseRepository) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
+func (r *TestExpenseRepository) ReassignExpenses(ctx context.Context, sourceID, targetID string) (int, error) {
+	count := 0
+	for _, exp := range r.expenses {
+		if exp.CategoryID != nil && *exp.CategoryID == sourceID {
+			exp.CategoryID = &targetID
+			count++
+		}
+	}
+	return count, nil
+}
+
 type TestUserRepository struct {
 	users map[string]*domain.User
 }
@@ -620,15 +631,16 @@ func TestAPICategoryManagement(t *testing.T) {
 	})
 
 	policyRepo := &TestPolicyRepository{policies: make(map[string]*domain.Policy)}
+	expenseRepo := &TestExpenseRepository{expenses: make(map[string]*domain.Expense)}
 
 	handler := NewHandler(
 		usecase.NewAutoSignupUseCase(userRepo, categoryRepo),
 		nil, nil, nil, nil, nil,
-		usecase.NewManageCategoryUseCase(categoryRepo),
+		usecase.NewManageCategoryUseCase(categoryRepo, expenseRepo),
 		nil, nil, nil, nil, nil, nil, nil, nil,
 		usecase.NewGetPolicyUseCase(policyRepo),
 		nil,
-		userRepo, categoryRepo, nil, nil, "",
+		userRepo, categoryRepo, expenseRepo, nil, "",
 	)
 
 	// Create category

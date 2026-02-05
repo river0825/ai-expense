@@ -444,9 +444,10 @@ func (h *Handler) CreateCategory(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	type CreateCategoryRequest struct {
-		UserID   string   `json:"user_id"`
-		Name     string   `json:"name"`
-		Keywords []string `json:"keywords,omitempty"`
+		UserID      string   `json:"user_id"`
+		Name        string   `json:"name"`
+		Description string   `json:"description,omitempty"`
+		Keywords    []string `json:"keywords,omitempty"`
 	}
 
 	var req CreateCategoryRequest
@@ -461,9 +462,10 @@ func (h *Handler) CreateCategory(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp, err := h.manageCategoryUC.CreateCategory(ctx, &usecase.CreateCategoryRequest{
-		UserID:   req.UserID,
-		Name:     req.Name,
-		Keywords: req.Keywords,
+		UserID:      req.UserID,
+		Name:        req.Name,
+		Description: req.Description,
+		Keywords:    req.Keywords,
 	})
 
 	if err != nil {
@@ -479,10 +481,11 @@ func (h *Handler) UpdateCategory(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	type UpdateCategoryRequest struct {
-		ID       string   `json:"id"`
-		UserID   string   `json:"user_id"`
-		Name     *string  `json:"name,omitempty"`
-		Keywords []string `json:"keywords,omitempty"`
+		ID          string   `json:"id"`
+		UserID      string   `json:"user_id"`
+		Name        *string  `json:"name,omitempty"`
+		Description *string  `json:"description,omitempty"`
+		Keywords    []string `json:"keywords,omitempty"`
 	}
 
 	var req UpdateCategoryRequest
@@ -497,10 +500,11 @@ func (h *Handler) UpdateCategory(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp, err := h.manageCategoryUC.UpdateCategory(ctx, &usecase.UpdateCategoryRequest{
-		UserID:   req.UserID,
-		ID:       req.ID,
-		Name:     req.Name,
-		Keywords: req.Keywords,
+		UserID:      req.UserID,
+		ID:          req.ID,
+		Name:        req.Name,
+		Description: req.Description,
+		Keywords:    req.Keywords,
 	})
 
 	if err != nil {
@@ -560,6 +564,41 @@ func (h *Handler) ListCategories(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		h.WriteJSON(w, http.StatusInternalServerError, &Response{Status: "error", Error: err.Error()})
+		return
+	}
+
+	h.WriteJSON(w, http.StatusOK, &Response{Status: "success", Data: resp})
+}
+
+// MergeCategories godoc
+func (h *Handler) MergeCategories(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	type MergeCategoriesRequest struct {
+		UserID   string `json:"user_id"`
+		SourceID string `json:"source_id"`
+		TargetID string `json:"target_id"`
+	}
+
+	var req MergeCategoriesRequest
+	if err := h.ReadJSON(r, &req); err != nil {
+		h.WriteJSON(w, http.StatusBadRequest, &Response{Status: "error", Error: "Invalid request"})
+		return
+	}
+
+	if req.UserID == "" || req.SourceID == "" || req.TargetID == "" {
+		h.WriteJSON(w, http.StatusBadRequest, &Response{Status: "error", Error: "user_id, source_id, and target_id are required"})
+		return
+	}
+
+	resp, err := h.manageCategoryUC.MergeCategories(ctx, &usecase.MergeCategoriesRequest{
+		UserID:   req.UserID,
+		SourceID: req.SourceID,
+		TargetID: req.TargetID,
+	})
+
+	if err != nil {
+		h.WriteJSON(w, http.StatusBadRequest, &Response{Status: "error", Error: err.Error()})
 		return
 	}
 
@@ -1575,6 +1614,13 @@ func RegisterRoutes(
 	mux.HandleFunc("DELETE /api/categories", handler.DeleteCategory)
 	mux.HandleFunc("GET /api/categories", handler.GetCategories)
 	mux.HandleFunc("GET /api/categories/list", handler.ListCategories)
+
+	// User category endpoints
+	mux.HandleFunc("GET /api/user/categories", handler.ListCategories)
+	mux.HandleFunc("POST /api/user/categories", handler.CreateCategory)
+	mux.HandleFunc("PUT /api/user/categories", handler.UpdateCategory)
+	mux.HandleFunc("DELETE /api/user/categories", handler.DeleteCategory)
+	mux.HandleFunc("POST /api/user/categories/merge", handler.MergeCategories)
 
 	// Recurring expense endpoints
 	mux.HandleFunc("POST /api/recurring", handler.CreateRecurring)
