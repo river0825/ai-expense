@@ -179,6 +179,17 @@ func (m *MockExpenseRepository) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
+func (m *MockExpenseRepository) ReassignExpenses(ctx context.Context, fromCategoryID, toCategoryID string) (int, error) {
+	count := 0
+	for _, exp := range m.expenses {
+		if exp.CategoryID != nil && *exp.CategoryID == fromCategoryID {
+			*exp.CategoryID = toCategoryID
+			count++
+		}
+	}
+	return count, nil
+}
+
 // MockAIService is a mock implementation for testing
 type MockAIService struct {
 	shouldFail bool

@@ -292,3 +292,16 @@ func (r *ExpenseRepository) Delete(ctx context.Context, id string) error {
 	_, err := r.db.ExecContext(ctx, query, id)
 	return err
 }
+
+func (r *ExpenseRepository) ReassignExpenses(ctx context.Context, fromCategoryID, toCategoryID string) (int, error) {
+	const query = `UPDATE expenses SET category_id = $2 WHERE category_id = $1`
+	result, err := r.db.ExecContext(ctx, query, fromCategoryID, toCategoryID)
+	if err != nil {
+		return 0, err
+	}
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return 0, err
+	}
+	return int(affected), nil
+}
