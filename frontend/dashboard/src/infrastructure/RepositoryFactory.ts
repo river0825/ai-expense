@@ -10,12 +10,17 @@ import { UserRepository } from '@/domain/repositories/UserRepository';
 import { CurrencyRepository } from '@/domain/repositories/CurrencyRepository';
 import { HttpUserRepository } from './repositories/http/HttpUserRepository';
 import { HttpCurrencyRepository } from './repositories/http/HttpCurrencyRepository';
+import { CategoryRepository } from '@/domain/repositories/CategoryRepository';
+import { HttpCategoryRepository } from './repositories/http/HttpCategoryRepository';
 
 class RepositoryFactory {
   private static transactionRepository: TransactionRepository;
   private static statsRepository: StatsRepository;
   private static reportRepository: ReportRepository;
   private static expenseRepository: ExpenseRepository;
+  private static userRepository: UserRepository;
+  private static currencyRepository: CurrencyRepository;
+  private static categoryRepository: CategoryRepository;
 
   static getTransactionRepository(): TransactionRepository {
     if (!this.transactionRepository) {
@@ -45,7 +50,6 @@ class RepositoryFactory {
     return this.expenseRepository;
   }
 
-  private static userRepository: UserRepository;
   static getUserRepository(): UserRepository {
     if (!this.userRepository) {
       this.userRepository = new HttpUserRepository();
@@ -53,12 +57,18 @@ class RepositoryFactory {
     return this.userRepository;
   }
 
-  private static currencyRepository: CurrencyRepository;
   static getCurrencyRepository(): CurrencyRepository {
     if (!this.currencyRepository) {
       this.currencyRepository = new HttpCurrencyRepository();
     }
     return this.currencyRepository;
+  }
+
+  static getCategoryRepository(): CategoryRepository {
+    if (!this.categoryRepository) {
+      this.categoryRepository = new HttpCategoryRepository();
+    }
+    return this.categoryRepository;
   }
 }
 
