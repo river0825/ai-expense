@@ -20,20 +20,20 @@ func NewCategoryRepository(db *sql.DB) *CategoryRepository {
 
 func (r *CategoryRepository) Create(ctx context.Context, category *domain.Category) error {
 	const query = `
-		INSERT INTO categories (id, user_id, name, is_default, created_at)
-		VALUES ($1, $2, $3, $4, $5)
+		INSERT INTO categories (id, user_id, name, description, is_default, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6)
 	`
 
 	_, err := r.db.ExecContext(ctx, query,
 		category.ID, category.UserID, category.Name,
-		category.IsDefault, category.CreatedAt,
+		category.Description, category.IsDefault, category.CreatedAt,
 	)
 	return err
 }
 
 func (r *CategoryRepository) GetByID(ctx context.Context, id string) (*domain.Category, error) {
 	const query = `
-		SELECT id, user_id, name, is_default, created_at
+		SELECT id, user_id, name, description, is_default, created_at
 		FROM categories
 		WHERE id = $1
 	`
@@ -41,7 +41,7 @@ func (r *CategoryRepository) GetByID(ctx context.Context, id string) (*domain.Ca
 	category := &domain.Category{}
 	err := r.db.QueryRowContext(ctx, query, id).Scan(
 		&category.ID, &category.UserID, &category.Name,
-		&category.IsDefault, &category.CreatedAt,
+		&category.Description, &category.IsDefault, &category.CreatedAt,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -54,7 +54,7 @@ func (r *CategoryRepository) GetByID(ctx context.Context, id string) (*domain.Ca
 
 func (r *CategoryRepository) GetByUserID(ctx context.Context, userID string) ([]*domain.Category, error) {
 	const query = `
-		SELECT id, user_id, name, is_default, created_at
+		SELECT id, user_id, name, description, is_default, created_at
 		FROM categories
 		WHERE user_id = $1
 		ORDER BY created_at DESC
@@ -71,7 +71,7 @@ func (r *CategoryRepository) GetByUserID(ctx context.Context, userID string) ([]
 		category := &domain.Category{}
 		if err := rows.Scan(
 			&category.ID, &category.UserID, &category.Name,
-			&category.IsDefault, &category.CreatedAt,
+			&category.Description, &category.IsDefault, &category.CreatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -82,7 +82,7 @@ func (r *CategoryRepository) GetByUserID(ctx context.Context, userID string) ([]
 
 func (r *CategoryRepository) GetByUserIDAndName(ctx context.Context, userID, name string) (*domain.Category, error) {
 	const query = `
-		SELECT id, user_id, name, is_default, created_at
+		SELECT id, user_id, name, description, is_default, created_at
 		FROM categories
 		WHERE user_id = $1 AND name = $2
 	`
@@ -90,7 +90,7 @@ func (r *CategoryRepository) GetByUserIDAndName(ctx context.Context, userID, nam
 	category := &domain.Category{}
 	err := r.db.QueryRowContext(ctx, query, userID, name).Scan(
 		&category.ID, &category.UserID, &category.Name,
-		&category.IsDefault, &category.CreatedAt,
+		&category.Description, &category.IsDefault, &category.CreatedAt,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -104,12 +104,12 @@ func (r *CategoryRepository) GetByUserIDAndName(ctx context.Context, userID, nam
 func (r *CategoryRepository) Update(ctx context.Context, category *domain.Category) error {
 	const query = `
 		UPDATE categories
-		SET name = $2, is_default = $3
+		SET name = $2, description = $3, is_default = $4
 		WHERE id = $1
 	`
 
 	_, err := r.db.ExecContext(ctx, query,
-		category.ID, category.Name, category.IsDefault,
+		category.ID, category.Name, category.Description, category.IsDefault,
 	)
 	return err
 }
