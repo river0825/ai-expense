@@ -12,14 +12,17 @@ import (
 // ManageCategoryUseCase handles managing user expense categories
 type ManageCategoryUseCase struct {
 	categoryRepo domain.CategoryRepository
+	expenseRepo  domain.ExpenseRepository
 }
 
 // NewManageCategoryUseCase creates a new manage category use case
 func NewManageCategoryUseCase(
 	categoryRepo domain.CategoryRepository,
+	expenseRepo domain.ExpenseRepository,
 ) *ManageCategoryUseCase {
 	return &ManageCategoryUseCase{
 		categoryRepo: categoryRepo,
+		expenseRepo:  expenseRepo,
 	}
 }
 
@@ -124,6 +127,13 @@ func (u *ManageCategoryUseCase) UpdateCategory(ctx context.Context, req *UpdateC
 	// Don't allow updating default categories
 	if category.IsDefault {
 		return nil, fmt.Errorf("cannot update default categories")
+	}
+
+	if req.Name != nil && *req.Name != "" && *req.Name != category.Name {
+		existing, err := u.categoryRepo.GetByUserIDAndName(ctx, req.UserID, *req.Name)
+		if err == nil && existing != nil {
+			return nil, fmt.Errorf("category with name '%s' already exists", *req.Name)
+		}
 	}
 
 	// Update name if provided
@@ -267,5 +277,69 @@ func (u *ManageCategoryUseCase) ListCategories(ctx context.Context, req *ListCat
 	return &ListCategoriesResponse{
 		Categories: result,
 		Total:      len(result),
+	}, nil
+}
+
+type MergeCategoriesRequest struct {
+	UserID   string
+	SourceID string
+	TargetID string
+}
+
+type MergeCategoriesResponse struct {
+	MergedCount int
+	Message     string
+}
+
+func (u *ManageCategoryUseCase) MergeCategories(ctx context.Context, req *MergeCategoriesRequest) (*MergeCategoriesResponse, error) {
+	if req.SourceID == req.TargetID {
+		return nil, fmt.Errorf("source and target categories must be different")
+	}
+
+	sourceCategory, err := u.categoryRepo.GetByID(ctx, req.SourceID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get source category: %w", err)
+	}
+	if sourceCategory == nil {
+		return nil, fmt.Errorf("source category not found")
+	}
+	if sourceCategory.UserID != req.UserID {
+		return nil, fmt.Errorf("unauthorized: user does not own source category")
+	}
+	if sourceCategory.IsDefault {
+		return nil, fmt.Errorf("cannot merge default categories")
+	}
+
+	targetCategory, err := u.categoryRepo.GetByID(ctx, req.TargetID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get target category: %w", err)
+	}
+	if targetCategory == nil {
+		return nil, fmt.Errorf("target category not found")
+	}
+	if targetCategory.UserID != req.UserID {
+		return nil, fmt.Errorf("unauthorized: user does not own target category")
+	}
+	if targetCategory.IsDefault {
+		return nil, fmt.Errorf("cannot merge into default categories")
+	}
+
+	mergedCount, err := u.expenseRepo.ReassignExpenses(ctx, req.SourceID, req.TargetID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to reassign expenses: %w", err)
+	}
+
+	keywords, _ := u.categoryRepo.GetKeywordsByCategory(ctx, req.SourceID)
+	for _, kw := range keywords {
+		u.categoryRepo.DeleteKeyword(ctx, kw.ID)
+	}
+
+	if err := u.categoryRepo.Delete(ctx, req.SourceID); err != nil {
+		return nil, fmt.Errorf("failed to delete source category: %w", err)
+	}
+
+	return &MergeCategoriesResponse{
+		MergedCount: mergedCount,
+		Message:     fmt.Sprintf("Merged %d expenses from '%s' into '%s'", mergedCount, sourceCategory.Name, targetCategory.Name),
 	}, nil
 }

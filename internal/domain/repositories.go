@@ -42,6 +42,9 @@ type ExpenseRepository interface {
 
 	// Delete deletes an expense
 	Delete(ctx context.Context, id string) error
+
+	// ReassignExpenses moves all expenses from one category to another
+	ReassignExpenses(ctx context.Context, fromCategoryID, toCategoryID string) (int, error)
 }
 
 // CurrencyRepository defines operations for reference currency data

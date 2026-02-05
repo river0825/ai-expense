@@ -108,7 +108,7 @@ func main() {
 	getExpensesUseCase := usecase.NewGetExpensesUseCase(expenseRepo, categoryRepo)
 	updateExpenseUseCase := usecase.NewUpdateExpenseUseCase(expenseRepo, categoryRepo, exchangeRateSvc)
 	deleteExpenseUseCase := usecase.NewDeleteExpenseUseCase(expenseRepo)
-	manageCategoryUseCase := usecase.NewManageCategoryUseCase(categoryRepo)
+	manageCategoryUseCase := usecase.NewManageCategoryUseCase(categoryRepo, expenseRepo)
 	generateReportUseCase := usecase.NewGenerateReportUseCase(expenseRepo, categoryRepo, metricsRepo)
 	budgetManagementUseCase := usecase.NewBudgetManagementUseCase(categoryRepo, expenseRepo)
 	dataExportUseCase := usecase.NewDataExportUseCase(expenseRepo, categoryRepo)
