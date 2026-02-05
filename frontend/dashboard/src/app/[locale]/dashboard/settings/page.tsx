@@ -6,6 +6,7 @@ import { DashboardLayout } from '@/components/DashboardLayout';
 import RepositoryFactory from '@/infrastructure/RepositoryFactory';
 import { Currency } from '@/domain/models/Currency';
 import { User } from '@/domain/models/User';
+import { Category } from '@/domain/models/Category';
 import { CheckIcon } from '@heroicons/react/24/outline';
 
 import { useSearchParams } from 'next/navigation';
@@ -20,6 +21,8 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [selectedCurrency, setSelectedCurrency] = useState('');
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -37,10 +40,16 @@ export default function SettingsPage() {
         setCurrencies(currencyData);
         setUser(userData);
         setSelectedCurrency(userData.home_currency);
+
+        // Fetch categories
+        const categoryRepo = RepositoryFactory.getCategoryRepository();
+        const categoryData = await categoryRepo.list(token);
+        setCategories(categoryData);
       } catch (error) {
         console.error('Failed to fetch settings data', error);
       } finally {
         setLoading(false);
+        setCategoriesLoading(false);
       }
     };
 
@@ -139,8 +148,59 @@ export default function SettingsPage() {
                )}
              </button>
           </div>
-        </div>
-      </div>
-    </DashboardLayout>
-  );
-}
+         </div>
+
+         {/* Category Management */}
+         <div className="glass-panel p-6 rounded-2xl border border-white/5 space-y-6">
+           <div>
+             <h2 className="text-xl font-bold text-text mb-2">Category Management</h2>
+             <p className="text-sm text-text/60">
+               Manage your expense categories. Default categories cannot be edited or deleted.
+             </p>
+           </div>
+
+           {categoriesLoading ? (
+             <div className="flex items-center justify-center p-8">
+               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+             </div>
+           ) : categories.length === 0 ? (
+             <div className="text-center py-8 text-text/60">
+               No categories found.
+             </div>
+           ) : (
+             <div className="space-y-3">
+               {categories.map((category) => (
+                 <div 
+                   key={category.id}
+                   className={`flex items-center justify-between p-4 rounded-xl border ${
+                     category.is_default 
+                       ? 'bg-white/5 border-white/5' 
+                       : 'bg-black/20 border-white/10'
+                   }`}
+                 >
+                   <div className="flex-1 min-w-0">
+                     <div className="flex items-center gap-2">
+                       <span className={`font-medium ${category.is_default ? 'text-text/60' : 'text-text'}`}>
+                         {category.name}
+                       </span>
+                       {category.is_default && (
+                         <span className="text-xs px-2 py-0.5 rounded-full bg-white/10 text-text/50">
+                           Default
+                         </span>
+                       )}
+                     </div>
+                     {category.description && (
+                       <p className="text-sm text-text/50 mt-1 truncate">
+                         {category.description}
+                       </p>
+                     )}
+                   </div>
+                 </div>
+               ))}
+             </div>
+           )}
+         </div>
+       </div>
+     </DashboardLayout>
+   );
+ }
