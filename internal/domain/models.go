@@ -72,11 +72,12 @@ type ExchangeRate struct {
 
 // Category represents an expense category
 type Category struct {
-	ID        string    `db:"id"`
-	UserID    string    `db:"user_id"`
-	Name      string    `db:"name"`
-	IsDefault bool      `db:"is_default"`
-	CreatedAt time.Time `db:"created_at"`
+	ID          string    `db:"id"`
+	UserID      string    `db:"user_id"`
+	Name        string    `db:"name"`
+	Description string    `db:"description"`
+	IsDefault   bool      `db:"is_default"`
+	CreatedAt   time.Time `db:"created_at"`
 }
 
 // CategoryKeyword maps keywords to categories
