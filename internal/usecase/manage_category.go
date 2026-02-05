@@ -28,18 +28,21 @@ func NewManageCategoryUseCase(
 
 // CreateCategoryRequest represents a request to create a category
 type CreateCategoryRequest struct {
-	UserID   string
-	Name     string
-	Keywords []string // Optional keywords to map to this category
+	UserID      string
+	Name        string
+	Description string   // Optional description
+	Keywords    []string // Optional keywords to map to this category
 }
 
 // CategoryResponse represents a response with category info
 type CategoryResponse struct {
-	ID        string
-	Name      string
-	IsDefault bool
-	Keywords  []string
-	Message   string
+	ID          string
+	UserID      string
+	Name        string
+	Description string
+	IsDefault   bool
+	Keywords    []string
+	Message     string
 }
 
 // CreateCategory creates a new custom category for a user
@@ -56,11 +59,12 @@ func (u *ManageCategoryUseCase) CreateCategory(ctx context.Context, req *CreateC
 
 	// Create the category
 	category := &domain.Category{
-		ID:        uuid.New().String(),
-		UserID:    req.UserID,
-		Name:      req.Name,
-		IsDefault: false,
-		CreatedAt: time.Now(),
+		ID:          uuid.New().String(),
+		UserID:      req.UserID,
+		Name:        req.Name,
+		Description: req.Description,
+		IsDefault:   false,
+		CreatedAt:   time.Now(),
 	}
 
 	if err := u.categoryRepo.Create(ctx, category); err != nil {
@@ -91,20 +95,23 @@ func (u *ManageCategoryUseCase) CreateCategory(ctx context.Context, req *CreateC
 	}
 
 	return &CategoryResponse{
-		ID:        category.ID,
-		Name:      category.Name,
-		IsDefault: category.IsDefault,
-		Keywords:  keywords,
-		Message:   fmt.Sprintf("Category '%s' created successfully", category.Name),
+		ID:          category.ID,
+		UserID:      category.UserID,
+		Name:        category.Name,
+		Description: category.Description,
+		IsDefault:   category.IsDefault,
+		Keywords:    keywords,
+		Message:     fmt.Sprintf("Category '%s' created successfully", category.Name),
 	}, nil
 }
 
 // UpdateCategoryRequest represents a request to update a category
 type UpdateCategoryRequest struct {
-	UserID   string
-	ID       string
-	Name     *string
-	Keywords []string // If provided, replaces existing keywords
+	UserID      string
+	ID          string
+	Name        *string
+	Description *string
+	Keywords    []string // If provided, replaces existing keywords
 }
 
 // UpdateCategory updates an existing category
@@ -139,6 +146,11 @@ func (u *ManageCategoryUseCase) UpdateCategory(ctx context.Context, req *UpdateC
 	// Update name if provided
 	if req.Name != nil && *req.Name != "" {
 		category.Name = *req.Name
+	}
+
+	// Update description if provided
+	if req.Description != nil {
+		category.Description = *req.Description
 	}
 
 	// Update in database
@@ -186,11 +198,13 @@ func (u *ManageCategoryUseCase) UpdateCategory(ctx context.Context, req *UpdateC
 	}
 
 	return &CategoryResponse{
-		ID:        category.ID,
-		Name:      category.Name,
-		IsDefault: category.IsDefault,
-		Keywords:  keywords,
-		Message:   fmt.Sprintf("Category '%s' updated successfully", category.Name),
+		ID:          category.ID,
+		UserID:      category.UserID,
+		Name:        category.Name,
+		Description: category.Description,
+		IsDefault:   category.IsDefault,
+		Keywords:    keywords,
+		Message:     fmt.Sprintf("Category '%s' updated successfully", category.Name),
 	}, nil
 }
 
@@ -234,9 +248,12 @@ func (u *ManageCategoryUseCase) DeleteCategory(ctx context.Context, req *DeleteC
 	}
 
 	return &CategoryResponse{
-		ID:      req.ID,
-		Name:    category.Name,
-		Message: fmt.Sprintf("Category '%s' deleted successfully", category.Name),
+		ID:          req.ID,
+		UserID:      category.UserID,
+		Name:        category.Name,
+		Description: category.Description,
+		IsDefault:   category.IsDefault,
+		Message:     fmt.Sprintf("Category '%s' deleted successfully", category.Name),
 	}, nil
 }
 
@@ -267,10 +284,12 @@ func (u *ManageCategoryUseCase) ListCategories(ctx context.Context, req *ListCat
 		}
 
 		result = append(result, &CategoryResponse{
-			ID:        cat.ID,
-			Name:      cat.Name,
-			IsDefault: cat.IsDefault,
-			Keywords:  kwList,
+			ID:          cat.ID,
+			UserID:      cat.UserID,
+			Name:        cat.Name,
+			Description: cat.Description,
+			IsDefault:   cat.IsDefault,
+			Keywords:    kwList,
 		})
 	}
 
