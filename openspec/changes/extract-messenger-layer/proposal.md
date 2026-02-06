@@ -1,19 +1,18 @@
 # Change: Extract Messenger Layer
 
 ## Why
-Currently, each messenger integration (Line, Terminal, Discord, etc.) implements its own orchestration logic (Signup -> Parse -> Create -> Respond). This leads to code duplication, inconsistent behavior across platforms, and higher maintenance cost. Adding a new messenger requires copying the entire flow.
+
+Currently, each messenger integration implements its own orchestration logic, leading to code duplication and maintenance burden. We need a unified layer that handles message processing regardless of the source.
 
 ## What Changes
-- **Extract** a unified `ProcessMessageUseCase` (Messenger Gateway) that handles the common orchestration logic.
-- **Define** generic `UserMessage` and `MessageResponse` structures in the Domain layer.
-- **Refactor** existing `line-integration` and `terminal` handlers to act as lightweight adapters that map platform-specific schemas to the unified domain models.
-- **Retain** platform-specific webhook verification and response delivery mechanisms (Sync vs Async) in the adapters.
+
+- Extract unified ProcessMessageUseCase that handles orchestration
+- Define domain models for messenger abstraction (UserMessage, MessageResponse)
+- Refactor all messenger adapters to use the new unified use case
+- Maintain backward compatibility for external webhook contracts
 
 ## Impact
-- **Affected Specs**:
-  - `line-integration`: Will delegate processing logic to the new gateway.
-  - `messenger-gateway` (New): Will define the core orchestration requirements.
-- **Affected Code**:
-  - `internal/usecase`: New `process_message.go`.
-  - `internal/adapter/messenger/*`: All handlers refactored.
-  - `cmd/server`: Wiring updated.
+
+- Affected specs: line-integration, messenger-gateway (new)
+- Improves maintainability by centralizing message processing logic
+- Enables easier addition of new messenger platforms
