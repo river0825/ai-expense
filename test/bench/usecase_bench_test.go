@@ -67,6 +67,10 @@ func (r *BenchExpenseRepository) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
+func (r *BenchExpenseRepository) ReassignExpenses(ctx context.Context, fromCategoryID, toCategoryID string) (int, error) {
+	return 0, nil
+}
+
 type BenchUserRepository struct {
 	users map[string]*domain.User
 }
