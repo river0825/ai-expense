@@ -445,6 +445,7 @@ func (h *Handler) CreateCategory(w http.ResponseWriter, r *http.Request) {
 
 	type CreateCategoryRequest struct {
 		UserID      string   `json:"user_id"`
+		Token       string   `json:"token"`
 		Name        string   `json:"name"`
 		Description string   `json:"description,omitempty"`
 		Keywords    []string `json:"keywords,omitempty"`
@@ -454,6 +455,15 @@ func (h *Handler) CreateCategory(w http.ResponseWriter, r *http.Request) {
 	if err := h.ReadJSON(r, &req); err != nil {
 		h.WriteJSON(w, http.StatusBadRequest, &Response{Status: "error", Error: "Invalid request"})
 		return
+	}
+
+	if req.UserID == "" && req.Token != "" {
+		var err error
+		req.UserID, err = h.validateToken(req.Token)
+		if err != nil {
+			h.WriteJSON(w, http.StatusUnauthorized, &Response{Status: "error", Error: "Invalid token: " + err.Error()})
+			return
+		}
 	}
 
 	if req.UserID == "" || req.Name == "" {
@@ -483,6 +493,7 @@ func (h *Handler) UpdateCategory(w http.ResponseWriter, r *http.Request) {
 	type UpdateCategoryRequest struct {
 		ID          string   `json:"id"`
 		UserID      string   `json:"user_id"`
+		Token       string   `json:"token"`
 		Name        *string  `json:"name,omitempty"`
 		Description *string  `json:"description,omitempty"`
 		Keywords    []string `json:"keywords,omitempty"`
@@ -492,6 +503,15 @@ func (h *Handler) UpdateCategory(w http.ResponseWriter, r *http.Request) {
 	if err := h.ReadJSON(r, &req); err != nil {
 		h.WriteJSON(w, http.StatusBadRequest, &Response{Status: "error", Error: "Invalid request"})
 		return
+	}
+
+	if req.UserID == "" && req.Token != "" {
+		var err error
+		req.UserID, err = h.validateToken(req.Token)
+		if err != nil {
+			h.WriteJSON(w, http.StatusUnauthorized, &Response{Status: "error", Error: "Invalid token: " + err.Error()})
+			return
+		}
 	}
 
 	if req.ID == "" || req.UserID == "" {
@@ -522,12 +542,22 @@ func (h *Handler) DeleteCategory(w http.ResponseWriter, r *http.Request) {
 	type DeleteCategoryRequest struct {
 		ID     string `json:"id"`
 		UserID string `json:"user_id"`
+		Token  string `json:"token"`
 	}
 
 	var req DeleteCategoryRequest
 	if err := h.ReadJSON(r, &req); err != nil {
 		h.WriteJSON(w, http.StatusBadRequest, &Response{Status: "error", Error: "Invalid request"})
 		return
+	}
+
+	if req.UserID == "" && req.Token != "" {
+		var err error
+		req.UserID, err = h.validateToken(req.Token)
+		if err != nil {
+			h.WriteJSON(w, http.StatusUnauthorized, &Response{Status: "error", Error: "Invalid token: " + err.Error()})
+			return
+		}
 	}
 
 	if req.ID == "" || req.UserID == "" {
@@ -552,9 +582,19 @@ func (h *Handler) DeleteCategory(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) ListCategories(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	userID := r.URL.Query().Get("user_id")
+	token := r.URL.Query().Get("token")
+
+	if userID == "" && token != "" {
+		var err error
+		userID, err = h.validateToken(token)
+		if err != nil {
+			h.WriteJSON(w, http.StatusUnauthorized, &Response{Status: "error", Error: "Invalid token: " + err.Error()})
+			return
+		}
+	}
 
 	if userID == "" {
-		h.WriteJSON(w, http.StatusBadRequest, &Response{Status: "error", Error: "user_id is required"})
+		h.WriteJSON(w, http.StatusBadRequest, &Response{Status: "error", Error: "user_id or token is required"})
 		return
 	}
 
@@ -576,6 +616,7 @@ func (h *Handler) MergeCategories(w http.ResponseWriter, r *http.Request) {
 
 	type MergeCategoriesRequest struct {
 		UserID   string `json:"user_id"`
+		Token    string `json:"token"`
 		SourceID string `json:"source_id"`
 		TargetID string `json:"target_id"`
 	}
@@ -584,6 +625,15 @@ func (h *Handler) MergeCategories(w http.ResponseWriter, r *http.Request) {
 	if err := h.ReadJSON(r, &req); err != nil {
 		h.WriteJSON(w, http.StatusBadRequest, &Response{Status: "error", Error: "Invalid request"})
 		return
+	}
+
+	if req.UserID == "" && req.Token != "" {
+		var err error
+		req.UserID, err = h.validateToken(req.Token)
+		if err != nil {
+			h.WriteJSON(w, http.StatusUnauthorized, &Response{Status: "error", Error: "Invalid token: " + err.Error()})
+			return
+		}
 	}
 
 	if req.UserID == "" || req.SourceID == "" || req.TargetID == "" {
