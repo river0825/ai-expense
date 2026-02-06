@@ -86,6 +86,10 @@ func (r *E2EExpenseRepository) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
+func (r *E2EExpenseRepository) ReassignExpenses(ctx context.Context, fromCategoryID, toCategoryID string) (int, error) {
+	return 0, nil
+}
+
 type E2EUserRepository struct {
 	users map[string]*domain.User
 	mu    sync.RWMutex

@@ -85,6 +85,10 @@ func (r *LoadTestExpenseRepository) Delete(ctx context.Context, id string) error
 	return nil
 }
 
+func (r *LoadTestExpenseRepository) ReassignExpenses(ctx context.Context, fromCategoryID, toCategoryID string) (int, error) {
+	return 0, nil
+}
+
 // LoadTestUserRepository implements in-memory user repository for load testing
 type LoadTestUserRepository struct {
 	users map[string]*domain.User
