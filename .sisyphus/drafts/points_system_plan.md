@@ -4,12 +4,19 @@
 - **Business Model**: Prepaid Points System (No Subscription).
   - 1 Point = 1 Record (Basic Expense).
   - Higher cost for advanced features (Group Splitting, Multi-currency).
+  - **Strategy**: "Sunk Cost" / High Initial Grant.
+    - New users get **500 Points** (approx 2-3 months usage).
+    - When points = 0, user can VIEW but NOT CREATE (Read-only mode).
 - **Viral Mechanism**: Invite rewards (User gets points for inviting others).
 - **Core Features**:
   - Points Wallet (Purchase/Deduct/Log).
   - Group Management (Create/Join/List).
   - Collaborative Expense Tracking (Expenses belong to Group).
-  - "Group Chat" context (Expenses can come from a group chat ID).
+  - "Group Chat" context: **Bind to External Messenger (LINE/Telegram)**.
+- **Tech Decisions**:
+  - **Group Chat**: External Messenger binding (store `ExternalGroupID`).
+  - **Payment**: Mock implementation for MVP.
+  - **Deduction Rule**: Deduct from **Group Owner** (or Group Pool logic if Owner empty).
 
 ## Technical Gap Analysis
 - **Missing Models**:
