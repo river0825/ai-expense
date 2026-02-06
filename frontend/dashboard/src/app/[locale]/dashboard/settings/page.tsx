@@ -1,6 +1,8 @@
 'use client';
 
 import { DashboardLayout } from '@/components/DashboardLayout';
+import { AggregateSettings, Account } from '@/domain/models/Aggregate';
+import { HttpAggregateRepository } from '@/infrastructure/repositories/http/HttpAggregateRepository';
 import { Category, MergeResult } from '@/domain/models/Category';
 import { Currency } from '@/domain/models/Currency';
 import { User } from '@/domain/models/User';
@@ -39,6 +41,7 @@ export default function SettingsPage() {
   const [editDescription, setEditDescription] = useState('');
   const [editError, setEditError] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
+  const [accounts, setAccounts] = useState<Account[]>([]);
 
   // Merge confirmation state
   const [showMergeConfirm, setShowMergeConfirm] = useState(false);
@@ -49,24 +52,14 @@ export default function SettingsPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const currencyRepo = RepositoryFactory.getCurrencyRepository();
-        const userRepo = RepositoryFactory.getUserRepository();
+        const aggregateRepo = new HttpAggregateRepository();
+        const aggregateData = await aggregateRepo.getAggregate(token);
 
-        // Token is now derived from searchParams
-        
-        const [currencyData, userData] = await Promise.all([
-          currencyRepo.getCurrencies(),
-          userRepo.getUser(token)
-        ]);
-
-        setCurrencies(currencyData);
-        setUser(userData);
-        setSelectedCurrency(userData.home_currency);
-
-        // Fetch categories
-        const categoryRepo = RepositoryFactory.getCategoryRepository();
-        const categoryData = await categoryRepo.list(token);
-        setCategories(categoryData);
+        setCurrencies(aggregateData.currencies);
+        setUser(aggregateData.profile);
+        setSelectedCurrency(aggregateData.profile.home_currency);
+        setCategories(aggregateData.categories);
+        setAccounts(aggregateData.accounts);
       } catch (error) {
         console.error('Failed to fetch settings data', error);
       } finally {
@@ -619,6 +612,37 @@ export default function SettingsPage() {
                 </div>
               </div>
             )}
+         </div>
+
+         {/* Account Management */}
+         <div className="glass-panel p-6 rounded-2xl border border-white/5 space-y-6">
+           <div>
+             <h2 className="text-xl font-bold text-text mb-2">Account Management</h2>
+             <p className="text-sm text-text/60">
+               View your accounts. Account editing will be implemented in a future update.
+             </p>
+           </div>
+           <div className="space-y-3">
+             {accounts.length === 0 ? (
+               <div className="text-center py-8 text-text/60">
+                 No accounts found.
+               </div>
+             ) : (
+               accounts.map((account) => (
+                 <div 
+                   key={account.name}
+                   className="p-4 rounded-xl border bg-black/20 border-white/10"
+                 >
+                   <div className="flex items-center justify-between">
+                     <span className="font-medium text-text">{account.name}</span>
+                     <span className="text-sm text-text/50">
+                       Created: {new Date(account.created_at).toLocaleDateString()}
+                     </span>
+                   </div>
+                 </div>
+               ))
+             )}
+           </div>
          </div>
        </div>
      </DashboardLayout>
