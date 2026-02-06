@@ -35,7 +35,7 @@ export function ExpenseList({ expenses, onCategoryFilter, onUpdateExpense, class
   const [searchQuery, setSearchQuery] = useState('');
   const [sortField, setSortField] = useState<SortField>('date');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
-  const [groupBy, setGroupBy] = useState<'none' | 'category' | 'date'>('none');
+  const [groupBy, setGroupBy] = useState<'none' | 'category' | 'date'>('date');
   
   // Editing state
   type EditFormState = {
@@ -96,6 +96,23 @@ export function ExpenseList({ expenses, onCategoryFilter, onUpdateExpense, class
         maximumFractionDigits: 2,
       }).format(value);
     } catch {
+      return `${currency} ${value.toFixed(2)}`;
+    }
+  };
+
+  const formatCurrencyAmount = (value: number, currency: string) => {
+    try {
+      const locale = currency === 'TWD' ? 'zh-TW' : 'en-US';
+      return new Intl.NumberFormat(locale, {
+        style: 'currency',
+        currency,
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(value);
+    } catch {
+      if (Number.isNaN(value)) {
+        return `${currency} 0.00`;
+      }
       return `${currency} ${value.toFixed(2)}`;
     }
   };
@@ -288,24 +305,36 @@ export function ExpenseList({ expenses, onCategoryFilter, onUpdateExpense, class
             <p>No expenses found</p>
           </div>
         ) : (
-          Object.entries(groupedExpenses).map(([groupName, groupExpenses]) => (
-            <div key={groupName}>
-              {groupBy !== 'none' && (
-                <h3 className="text-sm font-semibold text-text/80 mb-2 flex items-center gap-2">
-                  {groupBy === 'category' ? (
-                    <TagIcon className="w-4 h-4" />
-                  ) : (
-                    <CalendarIcon className="w-4 h-4" />
-                  )}
-                  {groupBy === 'date' ? format(new Date(groupName), 'MMMM dd, yyyy') : groupName}
-                  <span className="text-xs text-text/50 font-normal">
-                    ({groupExpenses.length} {groupExpenses.length === 1 ? 'item' : 'items'})
-                  </span>
-                </h3>
-              )}
+          Object.entries(groupedExpenses).map(([groupName, groupExpenses]) => {
+            const groupTotal = groupExpenses.reduce((sum, expense) => {
+              return sum + (expense.home_amount ?? expense.amount);
+            }, 0);
 
-              <div className="space-y-1.5">
-                {groupExpenses.map((expense) => (
+            return (
+              <div key={groupName}>
+                {groupBy !== 'none' && (
+                  <div className="flex items-center justify-between mb-2 gap-3">
+                    <h3 className="text-sm font-semibold text-text/80 flex items-center gap-2">
+                      {groupBy === 'category' ? (
+                        <TagIcon className="w-4 h-4" />
+                      ) : (
+                        <CalendarIcon className="w-4 h-4" />
+                      )}
+                      {groupBy === 'date' ? format(new Date(groupName), 'MMMM dd, yyyy') : groupName}
+                      <span className="text-xs text-text/50 font-normal">
+                        ({groupExpenses.length} {groupExpenses.length === 1 ? 'item' : 'items'})
+                      </span>
+                    </h3>
+                    {groupBy === 'date' && (
+                      <span className="px-2 py-1 text-xs font-semibold rounded-full bg-primary/15 text-primary whitespace-nowrap">
+                        {formatCurrencyAmount(groupTotal, userHomeCurrency)}
+                      </span>
+                    )}
+                  </div>
+                )}
+
+                <div className="space-y-1.5">
+                  {groupExpenses.map((expense) => (
                   <div
                     key={expense.id}
                     className="group flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/5 hover:bg-white/10 hover:border-primary/30 transition-all duration-200 cursor-default"
@@ -514,10 +543,11 @@ export function ExpenseList({ expenses, onCategoryFilter, onUpdateExpense, class
                       </>
                     )}
                   </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
 
