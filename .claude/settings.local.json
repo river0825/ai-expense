@@ -35,7 +35,8 @@
       "Bash(gcloud beta run domain-mappings create:*)",
       "Bash(dig:*)",
       "Bash(gcloud beta run domain-mappings delete:*)",
-      "Bash(gcloud run services list:*)"
+      "Bash(gcloud run services list:*)",
+      "Bash(npm install:*)"
     ]
   }
 }

@@ -1,14 +1,7 @@
 {
-  "active_plan": null,
-  "completed_plans": [
-    "edit-category-page",
-    "fix-category-auth",
-    "messenger-abstraction",
-    "user-context-aggregate"
-  ],
-  "started_at": "2026-02-06T10:59:44.876Z",
-  "session_ids": [
-    "ses_3d6b5fe8fffeEZl7916aQPRecP"
-  ],
-  "status": "ALL_COMPLETE"
+  "active_plan": "/Users/riverlin/Documents/workspace/aiexpense/.sisyphus/plans/integration-test.md",
+  "started_at": "2026-02-06T19:48:37.606Z",
+  "session_ids": ["ses_3cc88f206ffeVNVbyLMCKuWbeR"],
+  "plan_name": "integration-test",
+  "status": "IN_PROGRESS"
 }

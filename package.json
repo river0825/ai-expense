@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "@tanstack/react-virtual": "^3.5.1"
+  },
+  "devDependencies": {
+    "@testing-library/user-event": "^14.6.1"
+  }
+}
