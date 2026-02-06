@@ -30,7 +30,7 @@ func TestAPIGetPolicy(t *testing.T) {
 		nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
 		usecase.NewGetPolicyUseCase(policyRepo),
 		nil,
-		nil, nil, nil, nil, "",
+		nil, nil, nil, nil, "", false,
 	)
 
 	t.Run("GetPrivacyPolicy", func(t *testing.T) {

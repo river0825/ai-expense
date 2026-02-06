@@ -347,7 +347,7 @@ func TestAPIAutoSignupFlow(t *testing.T) {
 		nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
 		usecase.NewGetPolicyUseCase(policyRepo),
 		nil,
-		userRepo, categoryRepo, nil, nil, "",
+		userRepo, categoryRepo, nil, nil, "", false,
 	)
 
 	// Create request body
@@ -385,7 +385,7 @@ func TestAPIAutoSignup(t *testing.T) {
 		nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
 		usecase.NewGetPolicyUseCase(policyRepo),
 		nil,
-		userRepo, categoryRepo, nil, nil, "",
+		userRepo, categoryRepo, nil, nil, "", false,
 	)
 
 	bodyMap := map[string]string{
@@ -432,7 +432,7 @@ func TestAPIParseExpenses(t *testing.T) {
 		nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
 		usecase.NewGetPolicyUseCase(policyRepo),
 		nil,
-		userRepo, categoryRepo, nil, nil, "",
+		userRepo, categoryRepo, nil, nil, "", false,
 	)
 
 	bodyMap := map[string]string{
@@ -477,7 +477,7 @@ func TestAPICreateExpense(t *testing.T) {
 		nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
 		usecase.NewGetPolicyUseCase(policyRepo),
 		nil,
-		userRepo, categoryRepo, expenseRepo, nil, "",
+		userRepo, categoryRepo, expenseRepo, nil, "", false,
 	)
 
 	bodyMap := map[string]interface{}{
@@ -535,7 +535,7 @@ func TestAPIGetExpenses(t *testing.T) {
 		nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
 		usecase.NewGetPolicyUseCase(policyRepo),
 		nil,
-		userRepo, categoryRepo, expenseRepo, nil, "",
+		userRepo, categoryRepo, expenseRepo, nil, "", false,
 	)
 
 	req := httptest.NewRequest("GET", "/api/expenses?user_id=test_user_1", nil)
@@ -567,7 +567,7 @@ func TestAPIMissingRequired(t *testing.T) {
 		nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
 		usecase.NewGetPolicyUseCase(policyRepo),
 		nil,
-		nil, nil, nil, nil, "",
+		nil, nil, nil, nil, "", false,
 	)
 
 	// Missing user_id
@@ -602,7 +602,7 @@ func TestAPINotFound(t *testing.T) {
 		nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
 		usecase.NewGetPolicyUseCase(policyRepo),
 		nil,
-		userRepo, categoryRepo, expenseRepo, nil, "",
+		userRepo, categoryRepo, expenseRepo, nil, "", false,
 	)
 
 	// Try to get expenses for non-existent user
@@ -640,7 +640,7 @@ func TestAPICategoryManagement(t *testing.T) {
 		nil, nil, nil, nil, nil, nil, nil, nil,
 		usecase.NewGetPolicyUseCase(policyRepo),
 		nil,
-		userRepo, categoryRepo, expenseRepo, nil, "",
+		userRepo, categoryRepo, expenseRepo, nil, "", false,
 	)
 
 	// Create category
@@ -689,7 +689,7 @@ func TestAPIMultipleExpenses(t *testing.T) {
 		nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
 		usecase.NewGetPolicyUseCase(policyRepo),
 		nil,
-		userRepo, categoryRepo, expenseRepo, nil, "",
+		userRepo, categoryRepo, expenseRepo, nil, "", false,
 	)
 
 	// Create first expense
@@ -740,7 +740,7 @@ func TestAPIConcurrentRequests(t *testing.T) {
 		nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
 		usecase.NewGetPolicyUseCase(policyRepo),
 		nil,
-		userRepo, categoryRepo, nil, nil, "",
+		userRepo, categoryRepo, nil, nil, "", false,
 	)
 
 	// Simulate concurrent signup requests
@@ -798,7 +798,7 @@ func TestAPICreateExpense_WithAccountField(t *testing.T) {
 		nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
 		usecase.NewGetPolicyUseCase(policyRepo),
 		nil,
-		userRepo, categoryRepo, expenseRepo, nil, "",
+		userRepo, categoryRepo, expenseRepo, nil, "", false,
 	)
 
 	t.Run("Create expense with explicit account", func(t *testing.T) {
@@ -942,7 +942,7 @@ func TestAPIGetExpenses_IncludesAccount(t *testing.T) {
 		nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
 		usecase.NewGetPolicyUseCase(policyRepo),
 		nil,
-		userRepo, categoryRepo, expenseRepo, nil, "",
+		userRepo, categoryRepo, expenseRepo, nil, "", false,
 	)
 
 	req := httptest.NewRequest("GET", "/api/expenses?user_id=test_user_get", nil)
@@ -983,6 +983,7 @@ func TestRefreshExchangeRates(t *testing.T) {
 			svc,
 			nil, nil, nil, nil,
 			adminKey,
+			false,
 		)
 	}
 

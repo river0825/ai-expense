@@ -41,10 +41,10 @@ The user explicitly requested to create an **OpenSpec Change Proposal** for this
 - **Refactor**: All messenger adapters in `internal/adapter/messenger/*`.
 
 ### Definition of Done
-- [ ] OpenSpec proposal validated (`openspec validate extract-messenger-layer --strict`).
-- [ ] New `ProcessMessageUseCase` handles the orchestration.
-- [ ] All messenger adapters compile and pass their unit tests.
-- [ ] E2E tests `test/e2e/webhook_flow_test.go` pass.
+- [x] OpenSpec proposal validated (`openspec validate extract-messenger-layer --strict`).
+- [x] New `ProcessMessageUseCase` handles the orchestration.
+- [x] All messenger adapters compile and pass their unit tests.
+- [x] E2E tests `test/e2e/webhook_flow_test.go` pass.
 
 ### Must Have
 - Unified `ProcessMessageUseCase`.
@@ -69,7 +69,7 @@ Phase 1: OpenSpec Proposal → Phase 2: Implementation
 
 ### Phase 1: OpenSpec Proposal
 
-- [ ] 1. Scaffold OpenSpec Change
+- [x] 1. Scaffold OpenSpec Change
   **What to do**:
   - Create directory: `openspec/changes/extract-messenger-layer/`
   - Create subdirs: `specs/messenger-gateway` and `specs/line-integration`
@@ -87,7 +87,7 @@ Phase 1: OpenSpec Proposal → Phase 2: Implementation
     ```
   - Create `tasks.md` (Copy relevant implementation tasks from Phase 2 below).
 
-- [ ] 2. Define New Capability Spec (Messenger Gateway)
+- [x] 2. Define New Capability Spec (Messenger Gateway)
   **What to do**:
   - Create `openspec/changes/extract-messenger-layer/specs/messenger-gateway/spec.md`.
   - Content:
@@ -103,7 +103,7 @@ Phase 1: OpenSpec Proposal → Phase 2: Implementation
     - **AND** system generates a standardized text response
     ```
 
-- [ ] 3. Modify Existing Spec (Line Integration)
+- [x] 3. Modify Existing Spec (Line Integration)
   **What to do**:
   - Create `openspec/changes/extract-messenger-layer/specs/line-integration/spec.md`.
   - Content:
@@ -119,14 +119,14 @@ Phase 1: OpenSpec Proposal → Phase 2: Implementation
     ```
     (Note: Copy full requirement text if modifying behavior significantly, but here we are mainly changing internal delegation. If behavior is preserved, we might not strictly need MODIFIED, but it's good practice to reflect the architectural shift).
 
-- [ ] 4. Validate Proposal
+- [x] 4. Validate Proposal
   **What to do**:
   - Run `openspec validate extract-messenger-layer --strict`.
   - Fix any issues.
 
 ### Phase 2: Implementation (After Approval)
 
-- [ ] 5. Define Domain Types for Messenger Layer
+- [x] 5. Define Domain Types for Messenger Layer
   **What to do**:
   - Create `internal/domain/messenger.go`.
   - Define `UserMessage` struct (UserID, Content, Source, Metadata).
@@ -136,18 +136,18 @@ Phase 1: OpenSpec Proposal → Phase 2: Implementation
   - [ ] File exists with `UserMessage` and `MessageResponse` structs.
   - [ ] `go build ./internal/domain` passes.
 
-- [ ] 6. Implement ProcessMessageUseCase (TDD)
+- [x] 6. Implement ProcessMessageUseCase (TDD)
   **What to do**:
   - Create `internal/usecase/process_message.go` and `_test.go`.
   - Implement orchestration: AutoSignup -> Parse -> Create -> Format.
   - **Important**: Copy logic from `internal/adapter/messenger/terminal/usecase.go` but adapt to new types.
   
-  **Acceptance Criteria**:
-  - [ ] Unit tests cover: Success path, Parse error, Signup error.
-  - [ ] Logic matches existing `TerminalUseCase` exactly.
-  - [ ] `go test ./internal/usecase/...` passes.
+   **Acceptance Criteria**:
+   - [x] Unit tests cover: Success path, Parse error, Signup error.
+   - [x] Logic matches existing `TerminalUseCase` exactly.
+   - [x] `go test ./internal/usecase/...` passes.
 
-- [ ] 7. Refactor Terminal Adapter
+- [x] 7. Refactor Terminal Adapter
   **What to do**:
   - Modify `internal/adapter/messenger/terminal/handler.go`.
   - Map `TerminalRequest` -> `UserMessage`.
@@ -160,7 +160,7 @@ Phase 1: OpenSpec Proposal → Phase 2: Implementation
   - [ ] `handler_test.go` updated to mock `ProcessMessageUseCase`.
   - [ ] `go test ./internal/adapter/messenger/terminal` passes.
 
-- [ ] 8. Refactor Line Adapter
+- [x] 8. Refactor Line Adapter
   **What to do**:
   - Modify `internal/adapter/messenger/line/handler.go`.
   - Map `LineEvent` -> `UserMessage` (Metadata: `ReplyToken`).
@@ -172,7 +172,7 @@ Phase 1: OpenSpec Proposal → Phase 2: Implementation
   - [ ] Handler compiles.
   - [ ] `handler_test.go` passes.
 
-- [ ] 9. Refactor Discord Adapter
+- [x] 9. Refactor Discord Adapter
   **What to do**:
   - Modify `internal/adapter/messenger/discord/handler.go`.
   - Map `DiscordInteraction` -> `UserMessage`.
@@ -184,7 +184,7 @@ Phase 1: OpenSpec Proposal → Phase 2: Implementation
   - [ ] Handler compiles.
   - [ ] `handler_test.go` passes.
 
-- [ ] 10. Refactor Telegram Adapter
+- [x] 10. Refactor Telegram Adapter
   **What to do**:
   - Modify `internal/adapter/messenger/telegram/handler.go`.
   - Map `TelegramUpdate` -> `UserMessage` (Metadata: `ChatID`).
@@ -196,7 +196,7 @@ Phase 1: OpenSpec Proposal → Phase 2: Implementation
   - [ ] Handler compiles.
   - [ ] `handler_test.go` passes.
 
-- [ ] 11. Refactor Remaining Adapters (Slack, Teams, Whatsapp)
+- [x] 11. Refactor Remaining Adapters (Slack, Teams, Whatsapp)
   **What to do**:
   - Apply same pattern: Map Input -> UseCase -> Handle Response.
   - Delete their specific UseCases.
@@ -205,7 +205,7 @@ Phase 1: OpenSpec Proposal → Phase 2: Implementation
   - [ ] All adapters compile.
   - [ ] All adapter tests pass.
 
-- [ ] 12. Update Dependency Injection (Wiring)
+- [x] 12. Update Dependency Injection (Wiring)
   **What to do**:
   - Modify `cmd/server/main.go` (or wherever dependency injection happens).
   - Initialize ONE `ProcessMessageUseCase`.
@@ -215,7 +215,7 @@ Phase 1: OpenSpec Proposal → Phase 2: Implementation
   - [ ] `go build ./cmd/server` succeeds.
   - [ ] Server starts up without panics.
 
-- [ ] 13. Verify System
+- [x] 13. Verify System
   **What to do**:
   - Run all tests.
   - Run E2E tests.
@@ -235,6 +235,6 @@ go test ./test/e2e/... -v
 ```
 
 ### Final Checklist
-- [ ] No more `*UseCase` inside `internal/adapter/messenger/*` (except maybe for specifics not covered).
-- [ ] Single `ProcessMessageUseCase` in `internal/usecase`.
-- [ ] All 7 messengers working via new layer.
+- [x] No more `*UseCase` inside `internal/adapter/messenger/*` (except maybe for specifics not covered).
+- [x] Single `ProcessMessageUseCase` in `internal/usecase`.
+- [x] All 7 messengers working via new layer.

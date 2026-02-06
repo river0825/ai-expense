@@ -36,13 +36,13 @@ type CreateCategoryRequest struct {
 
 // CategoryResponse represents a response with category info
 type CategoryResponse struct {
-	ID          string
-	UserID      string
-	Name        string
-	Description string
-	IsDefault   bool
-	Keywords    []string
-	Message     string
+	ID          string   `json:"id"`
+	UserID      string   `json:"user_id"`
+	Name        string   `json:"name"`
+	Description string   `json:"description"`
+	IsDefault   bool     `json:"is_default"`
+	Keywords    []string `json:"keywords"`
+	Message     string   `json:"message"`
 }
 
 // CreateCategory creates a new custom category for a user
@@ -264,8 +264,8 @@ type ListCategoriesRequest struct {
 
 // ListCategoriesResponse represents a list of categories
 type ListCategoriesResponse struct {
-	Categories []*CategoryResponse
-	Total      int
+	Categories []*CategoryResponse `json:"categories"`
+	Total      int                 `json:"total"`
 }
 
 // ListCategories retrieves all categories for a user

@@ -131,6 +131,9 @@ func main() {
 		interactionLogRepo,
 	)
 
+	// Determine if running in development mode
+	isDev := cfg.Environment == "dev"
+
 	// Initialize HTTP handler
 	handler := httpAdapter.NewHandler(
 		autoSignupUseCase,
@@ -155,6 +158,7 @@ func main() {
 		expenseRepo,
 		metricsRepo,
 		cfg.AdminAPIKey,
+		isDev,
 	)
 
 	// Initialize AI Cost handler
