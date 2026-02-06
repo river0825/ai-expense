@@ -1,21 +1,22 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { useTranslations } from 'next-intl';
 import { DashboardLayout } from '@/components/DashboardLayout';
-import RepositoryFactory from '@/infrastructure/RepositoryFactory';
+import { Category, MergeResult } from '@/domain/models/Category';
 import { Currency } from '@/domain/models/Currency';
 import { User } from '@/domain/models/User';
-import { Category } from '@/domain/models/Category';
+import RepositoryFactory from '@/infrastructure/RepositoryFactory';
 import { CheckIcon, PencilSquareIcon, TrashIcon, XMarkIcon } from '@heroicons/react/24/outline';
-import { MergeResult } from '@/domain/models/Category';
+import { useTranslations } from 'next-intl';
+import { useEffect, useState } from 'react';
 
 import { useSearchParams } from 'next/navigation';
+
+import { getCookie } from '@/utils/cookies';
 
 export default function SettingsPage() {
   const t = useTranslations('Settings');
   const searchParams = useSearchParams();
-  const token = searchParams.get('token') || searchParams.get('user_id') || 'test-user';
+  const token = getCookie('report_token') || searchParams.get('token') || searchParams.get('user_id') ||  'test-user';
 
   const [currencies, setCurrencies] = useState<Currency[]>([]);
   const [user, setUser] = useState<User | null>(null);
@@ -425,6 +426,7 @@ export default function SettingsPage() {
                                 onChange={(e) => setEditName(e.target.value)}
                                 placeholder="Category name"
                                 maxLength={50}
+                                data-testid="category-name-input"
                                 className="flex-1 bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-text focus:border-primary/50 outline-none"
                                 autoFocus
                               />
@@ -434,6 +436,7 @@ export default function SettingsPage() {
                                 onChange={(e) => setEditDescription(e.target.value)}
                                 placeholder="Description (optional)"
                                 maxLength={200}
+                                data-testid="category-description-input"
                                 className="flex-1 bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-text focus:border-primary/50 outline-none"
                               />
                             </div>

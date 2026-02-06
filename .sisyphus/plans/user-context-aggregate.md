@@ -57,12 +57,12 @@ Enable AI prompts to include user-specific settings and category names for bette
 - `internal/usecase/parse_conversation.go`: Wire context loading
 
 ### Definition of Done
-- [ ] `go build ./...` succeeds with no errors
-- [ ] `go test ./... -v` all tests pass
-- [ ] `openspec validate add-user-context-aggregate --strict` passes
-- [ ] Prompts include user's HomeCurrency (not hardcoded TWD)
-- [ ] Prompts include user's category names (not hardcoded list)
-- [ ] When user has no custom categories, falls back to defaults
+- [x] `go build ./...` succeeds with no errors
+- [x] `go test ./... -v` all tests pass
+- [x] `openspec validate add-user-context-aggregate --strict` passes
+- [x] Prompts include user's HomeCurrency (not hardcoded TWD)
+- [x] Prompts include user's category names (not hardcoded list)
+- [x] When user has no custom categories, falls back to defaults
 
 ### Must Have
 - `UserContext` struct with `User *User` and `Categories []*Category`
@@ -144,7 +144,7 @@ Critical Path: Task 1 → Task 2 → Task 4 → Task 5 → Task 6
 
 ## TODOs
 
-- [ ] 1. Define UserContext struct in domain
+- [x] 1. Define UserContext struct in domain
 
   **What to do**:
   - Add `UserContext` struct to `internal/domain/models.go` after the `User` struct
@@ -201,7 +201,7 @@ Critical Path: Task 1 → Task 2 → Task 4 → Task 5 → Task 6
 
 ---
 
-- [ ] 2. Implement GetUserContext use case
+- [x] 2. Implement GetUserContext use case
 
   **What to do**:
   - Create new file `internal/usecase/get_user_context.go`
@@ -271,7 +271,7 @@ Critical Path: Task 1 → Task 2 → Task 4 → Task 5 → Task 6
 
 ---
 
-- [ ] 3. Write GetUserContext use case tests (TDD)
+- [x] 3. Write GetUserContext use case tests (TDD)
 
   **What to do**:
   - Create new file `internal/usecase/get_user_context_test.go`
@@ -329,7 +329,7 @@ Critical Path: Task 1 → Task 2 → Task 4 → Task 5 → Task 6
 
 ---
 
-- [ ] 4. Update AI service interface to accept UserContext
+- [x] 4. Update AI service interface to accept UserContext
 
   **What to do**:
   - Modify `internal/ai/service.go` interface
@@ -389,7 +389,7 @@ Critical Path: Task 1 → Task 2 → Task 4 → Task 5 → Task 6
 
 ---
 
-- [ ] 5. Update prompt construction with user context
+- [x] 5. Update prompt construction with user context
 
   **What to do**:
   - Modify `internal/ai/gemini.go` `callGeminiAPI()` method (line ~199)
@@ -466,7 +466,7 @@ Critical Path: Task 1 → Task 2 → Task 4 → Task 5 → Task 6
 
 ---
 
-- [ ] 6. Wire UserContext into ParseConversationUseCase
+- [x] 6. Wire UserContext into ParseConversationUseCase
 
   **What to do**:
   - Modify `internal/usecase/parse_conversation.go`
@@ -544,7 +544,7 @@ Critical Path: Task 1 → Task 2 → Task 4 → Task 5 → Task 6
 
 ---
 
-- [ ] 7. Final verification and OpenSpec tasks.md update
+- [x] 7. Final verification and OpenSpec tasks.md update
 
   **What to do**:
   - Run full test suite: `go test ./... -v`
@@ -654,11 +654,11 @@ openspec validate add-user-context-aggregate --strict
 ```
 
 ### Final Checklist
-- [ ] `UserContext` struct defined in `internal/domain/models.go`
-- [ ] `GetUserContextUseCase` implemented and tested
-- [ ] `ai.Service` interface accepts `*domain.UserContext`
-- [ ] Prompts use user's HomeCurrency (not hardcoded TWD)
-- [ ] Prompts use user's category names (not hardcoded list)
-- [ ] Graceful fallback when UserContext is nil
-- [ ] All tests pass
-- [ ] OpenSpec tasks.md fully checked
+- [x] `UserContext` struct defined in `internal/domain/models.go`
+- [x] `GetUserContextUseCase` implemented and tested
+- [x] `ai.Service` interface accepts `*domain.UserContext`
+- [x] Prompts use user's HomeCurrency (not hardcoded TWD)
+- [x] Prompts use user's category names (not hardcoded list)
+- [x] Graceful fallback when UserContext is nil
+- [x] All tests pass
+- [x] OpenSpec tasks.md fully checked

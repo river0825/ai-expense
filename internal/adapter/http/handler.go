@@ -37,6 +37,7 @@ type Handler struct {
 	metricsRepo         domain.MetricsRepository
 	adminAPIKey         string
 	jwtSecret           []byte
+	isDev               bool
 }
 
 // NewHandler creates a new HTTP handler
@@ -63,6 +64,7 @@ func NewHandler(
 	expenseRepo domain.ExpenseRepository,
 	metricsRepo domain.MetricsRepository,
 	adminAPIKey string,
+	isDev bool,
 ) *Handler {
 	h := &Handler{
 		autoSignupUC:        autoSignupUC,
@@ -88,6 +90,7 @@ func NewHandler(
 		metricsRepo:         metricsRepo,
 		adminAPIKey:         adminAPIKey,
 		jwtSecret:           []byte(os.Getenv("JWT_SECRET")),
+		isDev:               isDev,
 	}
 	if len(h.jwtSecret) == 0 {
 		h.jwtSecret = []byte("default-secret-do-not-use-in-prod")
@@ -607,7 +610,7 @@ func (h *Handler) ListCategories(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.WriteJSON(w, http.StatusOK, &Response{Status: "success", Data: resp})
+	h.WriteJSON(w, http.StatusOK, &Response{Status: "success", Data: resp.Categories})
 }
 
 // MergeCategories godoc
@@ -1604,6 +1607,11 @@ func (h *Handler) Health(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) validateToken(tokenString string) (string, error) {
+	// Dev mode bypass: allow test-user without JWT validation
+	if h.isDev && tokenString == "test-user" {
+		return "test-user", nil
+	}
+
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])

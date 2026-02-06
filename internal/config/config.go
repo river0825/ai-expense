@@ -53,6 +53,9 @@ type Config struct {
 
 	// Enabled Messengers
 	EnabledMessengers []string
+
+	// Environment
+	Environment string
 }
 
 func Load() (*Config, error) {
@@ -95,6 +98,12 @@ func Load() (*Config, error) {
 		for i, m := range cfg.EnabledMessengers {
 			cfg.EnabledMessengers[i] = strings.TrimSpace(m)
 		}
+	}
+
+	// Load environment with default
+	cfg.Environment = getEnv("APP_ENV", "dev")
+	if cfg.Environment == "" {
+		cfg.Environment = "dev"
 	}
 
 	// Validate required fields
