@@ -12,7 +12,7 @@ export class HttpCategoryRepository implements CategoryRepository {
   async list(token: string): Promise<Category[]> {
     try {
       const response = await axios.get(`${this.baseURL}/api/user/categories`, {
-        params: { user_id: token }
+        params: { token: token }
       });
       
       if (response.data.status === 'success') {
@@ -30,7 +30,7 @@ export class HttpCategoryRepository implements CategoryRepository {
   async create(token: string, name: string, description?: string): Promise<Category> {
     try {
       const response = await axios.post(`${this.baseURL}/api/user/categories`, {
-        user_id: token,
+        token: token,
         name,
         description: description || '',
         keywords: []
@@ -52,7 +52,7 @@ export class HttpCategoryRepository implements CategoryRepository {
     try {
       const response = await axios.put(`${this.baseURL}/api/user/categories`, {
         id,
-        user_id: token,
+        token: token,
         name,
         description: description || '',
         keywords: []
@@ -73,7 +73,7 @@ export class HttpCategoryRepository implements CategoryRepository {
   async delete(token: string, id: string): Promise<void> {
     try {
       const response = await axios.delete(`${this.baseURL}/api/user/categories`, {
-        data: { id, user_id: token }
+        data: { id, token: token }
       });
       
       if (response.data.status !== 'success') {
@@ -90,7 +90,7 @@ export class HttpCategoryRepository implements CategoryRepository {
   async merge(token: string, sourceId: string, targetId: string): Promise<MergeResult> {
     try {
       const response = await axios.post(`${this.baseURL}/api/user/categories/merge`, {
-        user_id: token,
+        token: token,
         source_id: sourceId,
         target_id: targetId
       });
