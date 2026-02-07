@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AIExpense - App Icon Concepts</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: white;
+            text-align: center;
+            margin-bottom: 50px;
+            font-size: 36px;
+            font-weight: 600;
+        }
+
+        .concepts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 40px;
+            margin-bottom: 60px;
+        }
+
+        .concept {
+            background: white;
+            border-radius: 24px;
+            padding: 40px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .concept:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.4);
+        }
+
+        .icon-preview {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 20px;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .icon-size {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .icon-size p {
+            font-size: 12px;
+            color: #666;
+            font-weight: 500;
+        }
+
+        .icon-192 {
+            width: 192px;
+            height: 192px;
+            border-radius: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+        }
+
+        .icon-120 {
+            width: 120px;
+            height: 120px;
+            border-radius: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .concept h2 {
+            font-size: 24px;
+            color: #1a1a1a;
+            margin-bottom: 12px;
+        }
+
+        .concept p {
+            font-size: 14px;
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+
+        .concept-features {
+            text-align: left;
+            background: #f5f5f5;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+
+        .concept-features h4 {
+            font-size: 12px;
+            color: #999;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .feature-list {
+            list-style: none;
+            font-size: 13px;
+            color: #555;
+        }
+
+        .feature-list li {
+            padding: 4px 0;
+        }
+
+        .feature-list li:before {
+            content: "✓ ";
+            color: #2563EB;
+            font-weight: bold;
+            margin-right: 6px;
+        }
+
+        .recommendation {
+            background: #EFF6FF;
+            border-left: 4px solid #2563EB;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            color: #1E40AF;
+            font-weight: 500;
+            margin-top: 16px;
+        }
+
+        .final-choice {
+            background: linear-gradient(135deg, #2563EB 0%, #3B82F6 100%);
+            border-radius: 24px;
+            padding: 60px 40px;
+            text-align: center;
+            color: white;
+            margin-top: 60px;
+            box-shadow: 0 20px 60px rgba(37, 99, 235, 0.3);
+        }
+
+        .final-choice h2 {
+            font-size: 32px;
+            margin-bottom: 20px;
+        }
+
+        .final-preview {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 40px;
+            margin-top: 40px;
+            flex-wrap: wrap;
+        }
+
+        .final-icon-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .final-icon-box p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        svg {
+            display: block;
+        }
+
+        .icon-bg-blue {
+            background: linear-gradient(135deg, #2563EB 0%, #3B82F6 100%);
+        }
+
+        .icon-bg-gradient {
+            background: linear-gradient(135deg, #2563EB 0%, #F97316 100%);
+        }
+
+        .icon-bg-white {
+            background: white;
+            border: 2px solid #E5E7EB;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 24px;
+                margin-bottom: 30px;
+            }
+
+            .concepts-grid {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+
+            .icon-192 {
+                width: 144px;
+                height: 144px;
+            }
+
+            .icon-120 {
+                width: 90px;
+                height: 90px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>AIExpense App Icon Design Concepts</h1>
+
+        <div class="concepts-grid">
+            <!-- Concept 1: Chat Bubble + Wallet -->
+            <div class="concept">
+                <div class="icon-preview">
+                    <div class="icon-size">
+                        <div class="icon-192 icon-bg-blue">
+                            <svg width="120" height="120" viewBox="0 0 120 120" fill="none">
+                                <!-- Chat bubble outline -->
+                                <path d="M30 20C22.2681 20 16 26.2681 16 34V70C16 77.7319 22.2681 84 30 84H65L85 100V84H90C97.7319 84 104 77.7319 104 70V34C104 26.2681 97.7319 20 90 20H30Z" fill="white" opacity="0.9"/>
+                                <!-- Wallet icon inside -->
+                                <rect x="35" y="40" width="50" height="28" rx="4" fill="#F97316"/>
+                                <rect x="35" y="40" width="50" height="8" rx="4" fill="#FFB84D" opacity="0.8"/>
+                                <circle cx="75" cy="58" r="4" fill="white" opacity="0.6"/>
+                            </svg>
+                        </div>
+                        <p>192x192px</p>
+                    </div>
+                    <div class="icon-size">
+                        <div class="icon-120 icon-bg-blue">
+                            <svg width="75" height="75" viewBox="0 0 120 120" fill="none">
+                                <path d="M30 20C22.2681 20 16 26.2681 16 34V70C16 77.7319 22.2681 84 30 84H65L85 100V84H90C97.7319 84 104 77.7319 104 70V34C104 26.2681 97.7319 20 90 20H30Z" fill="white" opacity="0.9"/>
+                                <rect x="35" y="40" width="50" height="28" rx="4" fill="#F97316"/>
+                                <rect x="35" y="40" width="50" height="8" rx="4" fill="#FFB84D" opacity="0.8"/>
+                                <circle cx="75" cy="58" r="4" fill="white" opacity="0.6"/>
+                            </svg>
+                        </div>
+                        <p>120x120px</p>
+                    </div>
+                </div>
+                <h2>Concept 1</h2>
+                <p>Chat Bubble + Wallet</p>
+                <div class="concept-features">
+                    <h4>特點</h4>
+                    <ul class="feature-list">
+                        <li>聊天氣泡代表對話式記帳</li>
+                        <li>錢包圖標代表金融管理</li>
+                        <li>圓潤設計，友善親切</li>
+                        <li>明確的視覺層次</li>
+                    </ul>
+                </div>
+                <div class="recommendation">
+                    ✓ 最適合：強調對話 + 金融的平衡
+                </div>
+            </div>
+
+            <!-- Concept 2: Bot Face + Chart -->
+            <div class="concept">
+                <div class="icon-preview">
+                    <div class="icon-size">
+                        <div class="icon-192 icon-bg-gradient">
+                            <svg width="120" height="120" viewBox="0 0 120 120" fill="none">
+                                <!-- Robot head -->
+                                <rect x="28" y="20" width="64" height="68" rx="12" fill="white" opacity="0.95"/>
+                                <!-- Eyes -->
+                                <circle cx="45" cy="38" r="6" fill="#2563EB"/>
+                                <circle cx="75" cy="38" r="6" fill="#2563EB"/>
+                                <!-- Smile -->
+                                <path d="M45 55 Q60 65 75 55" stroke="#F97316" stroke-width="3" fill="none" stroke-linecap="round"/>
+                                <!-- Chart bars -->
+                                <rect x="35" y="82" width="8" height="16" fill="#F97316" rx="2"/>
+                                <rect x="50" y="78" width="8" height="20" fill="#F97316" rx="2"/>
+                                <rect x="65" y="76" width="8" height="22" fill="#F97316" rx="2"/>
+                            </svg>
+                        </div>
+                        <p>192x192px</p>
+                    </div>
+                    <div class="icon-size">
+                        <div class="icon-120 icon-bg-gradient">
+                            <svg width="75" height="75" viewBox="0 0 120 120" fill="none">
+                                <rect x="28" y="20" width="64" height="68" rx="12" fill="white" opacity="0.95"/>
+                                <circle cx="45" cy="38" r="6" fill="#2563EB"/>
+                                <circle cx="75" cy="38" r="6" fill="#2563EB"/>
+                                <path d="M45 55 Q60 65 75 55" stroke="#F97316" stroke-width="3" fill="none" stroke-linecap="round"/>
+                                <rect x="35" y="82" width="8" height="16" fill="#F97316" rx="2"/>
+                                <rect x="50" y="78" width="8" height="20" fill="#F97316" rx="2"/>
+                                <rect x="65" y="76" width="8" height="22" fill="#F97316" rx="2"/>
+                            </svg>
+                        </div>
+                        <p>120x120px</p>
+                    </div>
+                </div>
+                <h2>Concept 2</h2>
+                <p>Robot Assistant + Growth Chart</p>
+                <div class="concept-features">
+                    <h4>特點</h4>
+                    <ul class="feature-list">
+                        <li>機器人代表 AI 聊天助手</li>
+                        <li>增長圖表代表數據分析</li>
+                        <li>友善的機器人表情</li>
+                        <li>充滿動感和活力</li>
+                    </ul>
+                </div>
+                <div class="recommendation">
+                    ✓ 最適合：強調 AI 助手的溫暖感
+                </div>
+            </div>
+
+            <!-- Concept 3: Message Bubbles + Coin -->
+            <div class="concept">
+                <div class="icon-preview">
+                    <div class="icon-size">
+                        <div class="icon-192 icon-bg-blue">
+                            <svg width="120" height="120" viewBox="0 0 120 120" fill="none">
+                                <!-- Left message bubble -->
+                                <path d="M20 40C20 32.268 26.268 26 34 26H60C67.732 26 74 32.268 74 40V58C74 65.732 67.732 72 60 72H40L25 85V72H34C26.268 72 20 65.732 20 58V40Z" fill="#2563EB"/>
+                                <!-- Right message bubble -->
+                                <path d="M56 58C56 50.268 62.268 44 70 44H86C93.732 44 100 50.268 100 58V68C100 75.732 93.732 82 86 82H80L65 95V82H70C62.268 82 56 75.732 56 68V58Z" fill="#3B82F6"/>
+                                <!-- Coin -->
+                                <circle cx="60" cy="80" r="20" fill="#F97316"/>
+                                <circle cx="60" cy="80" r="16" fill="#FFB84D"/>
+                                <text x="60" y="88" font-size="16" font-weight="bold" text-anchor="middle" fill="white">¥</text>
+                            </svg>
+                        </div>
+                        <p>192x192px</p>
+                    </div>
+                    <div class="icon-size">
+                        <div class="icon-120 icon-bg-blue">
+                            <svg width="75" height="75" viewBox="0 0 120 120" fill="none">
+                                <path d="M20 40C20 32.268 26.268 26 34 26H60C67.732 26 74 32.268 74 40V58C74 65.732 67.732 72 60 72H40L25 85V72H34C26.268 72 20 65.732 20 58V40Z" fill="#2563EB"/>
+                                <path d="M56 58C56 50.268 62.268 44 70 44H86C93.732 44 100 50.268 100 58V68C100 75.732 93.732 82 86 82H80L65 95V82H70C62.268 82 56 75.732 56 68V58Z" fill="#3B82F6"/>
+                                <circle cx="60" cy="80" r="20" fill="#F97316"/>
+                                <circle cx="60" cy="80" r="16" fill="#FFB84D"/>
+                                <text x="60" y="88" font-size="16" font-weight="bold" text-anchor="middle" fill="white">¥</text>
+                            </svg>
+                        </div>
+                        <p>120x120px</p>
+                    </div>
+                </div>
+                <h2>Concept 3</h2>
+                <p>Conversation + Currency</p>
+                <div class="concept-features">
+                    <h4>特點</h4>
+                    <ul class="feature-list">
+                        <li>對話氣泡代表聊天</li>
+                        <li>金幣代表金錢管理</li>
+                        <li>顏色對比鮮明</li>
+                        <li>簡潔而有力</li>
+                    </ul>
+                </div>
+                <div class="recommendation">
+                    ✓ 最適合：直接表達記帳功能
+                </div>
+            </div>
+
+            <!-- Concept 4: Minimalist Monogram -->
+            <div class="concept">
+                <div class="icon-preview">
+                    <div class="icon-size">
+                        <div class="icon-192 icon-bg-gradient">
+                            <svg width="120" height="120" viewBox="0 0 120 120" fill="none">
+                                <!-- Background circle -->
+                                <circle cx="60" cy="60" r="55" fill="white" opacity="0.95"/>
+                                <!-- Stylized "A" with message arrow -->
+                                <g>
+                                    <!-- Chat bubble outline integrated into "A" -->
+                                    <path d="M40 80 L45 45 L60 30 L75 45 L80 80 M50 70 L70 70" stroke="#2563EB" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                                    <!-- Arrow indicating send/forward -->
+                                    <path d="M75 85 L95 65 M95 65 L85 60 M95 65 L90 75" stroke="#F97316" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                                </g>
+                            </svg>
+                        </div>
+                        <p>192x192px</p>
+                    </div>
+                    <div class="icon-size">
+                        <div class="icon-120 icon-bg-gradient">
+                            <svg width="75" height="75" viewBox="0 0 120 120" fill="none">
+                                <circle cx="60" cy="60" r="55" fill="white" opacity="0.95"/>
+                                <g>
+                                    <path d="M40 80 L45 45 L60 30 L75 45 L80 80 M50 70 L70 70" stroke="#2563EB" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                                    <path d="M75 85 L95 65 M95 65 L85 60 M95 65 L90 75" stroke="#F97316" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                                </g>
+                            </svg>
+                        </div>
+                        <p>120x120px</p>
+                    </div>
+                </div>
+                <h2>Concept 4</h2>
+                <p>Minimalist Monogram</p>
+                <div class="concept-features">
+                    <h4>特點</h4>
+                    <ul class="feature-list">
+                        <li>品牌縮寫 "A" (AIExpense)</li>
+                        <li>整合了聊天和發送元素</li>
+                        <li>極簡現代風格</li>
+                        <li>易於識別和記憶</li>
+                    </ul>
+                </div>
+                <div class="recommendation">
+                    ⭐ 推薦：最專業、最易識別
+                </div>
+            </div>
+        </div>
+
+        <!-- Final Recommendation -->
+        <div class="final-choice">
+            <h2>🎯 推薦方案：Minimalist Monogram (Concept 4)</h2>
+            <p style="font-size: 16px; opacity: 0.95; margin-bottom: 30px;">簡潔、現代、專業、易於識別</p>
+
+            <div class="final-preview">
+                <div class="final-icon-box">
+                    <div class="icon-192" style="background: linear-gradient(135deg, #2563EB 0%, #F97316 100%);">
+                        <svg width="100" height="100" viewBox="0 0 120 120" fill="none">
+                            <circle cx="60" cy="60" r="55" fill="white" opacity="0.95"/>
+                            <g>
+                                <path d="M40 80 L45 45 L60 30 L75 45 L80 80 M50 70 L70 70" stroke="#2563EB" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M75 85 L95 65 M95 65 L85 60 M95 65 L90 75" stroke="#F97316" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                            </g>
+                        </svg>
+                    </div>
+                    <p>應用圖標 (192x192px)</p>
+                </div>
+
+                <div class="final-icon-box">
+                    <div class="icon-120" style="background: linear-gradient(135deg, #2563EB 0%, #F97316 100%);">
+                        <svg width="60" height="60" viewBox="0 0 120 120" fill="none">
+                            <circle cx="60" cy="60" r="55" fill="white" opacity="0.95"/>
+                            <g>
+                                <path d="M40 80 L45 45 L60 30 L75 45 L80 80 M50 70 L70 70" stroke="#2563EB" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M75 85 L95 65 M95 65 L85 60 M95 65 L90 75" stroke="#F97316" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                            </g>
+                        </svg>
+                    </div>
+                    <p>主屏快捷圖標 (120x120px)</p>
+                </div>
+
+                <div class="final-icon-box">
+                    <div class="icon-120" style="background: linear-gradient(135deg, #2563EB 0%, #F97316 100%);">
+                        <svg width="40" height="40" viewBox="0 0 120 120" fill="none">
+                            <circle cx="60" cy="60" r="55" fill="white" opacity="0.95"/>
+                            <g>
+                                <path d="M40 80 L45 45 L60 30 L75 45 L80 80 M50 70 L70 70" stroke="#2563EB" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M75 85 L95 65 M95 65 L85 60 M95 65 L90 75" stroke="#F97316" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                            </g>
+                        </svg>
+                    </div>
+                    <p>小圖標 (80x80px)</p>
+                </div>
+            </div>
+
+            <div style="margin-top: 40px; text-align: left; background: rgba(255, 255, 255, 0.1); padding: 24px; border-radius: 12px; backdrop-filter: blur(10px);">
+                <h3 style="margin-bottom: 12px;">✓ 為什麼選擇這個設計：</h3>
+                <ul style="list-style: none; font-size: 14px; line-height: 1.8;">
+                    <li>✓ <strong>易於識別：</strong> "A" 代表 AIExpense，簡潔有力</li>
+                    <li>✓ <strong>功能表達：</strong> 聊天氣泡 + 發送箭頭完美詮釋核心功能</li>
+                    <li>✓ <strong>品牌認同：</strong> 藍色 + 橙色配色與 landing page 一致</li>
+                    <li>✓ <strong>可擴展性：</strong> 適用所有尺寸，從 icon 到廣告素材</li>
+                    <li>✓ <strong>現代專業：</strong> 線性設計，符合最新設計趨勢</li>
+                    <li>✓ <strong>國際化：</strong> 無文字依賴，全球通用</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
