@@ -14,30 +14,32 @@ import (
 
 // Handler holds all HTTP request handlers
 type Handler struct {
-	autoSignupUC        *usecase.AutoSignupUseCase
-	parseConversationUC *usecase.ParseConversationUseCase
-	createExpenseUC     *usecase.CreateExpenseUseCase
-	getExpensesUC       *usecase.GetExpensesUseCase
-	updateExpenseUC     *usecase.UpdateExpenseUseCase
-	deleteExpenseUC     *usecase.DeleteExpenseUseCase
-	manageCategoryUC    *usecase.ManageCategoryUseCase
-	generateReportUC    *usecase.GenerateReportUseCase
-	budgetManagementUC  *usecase.BudgetManagementUseCase
-	dataExportUC        *usecase.DataExportUseCase
-	recurringExpenseUC  *usecase.RecurringExpenseUseCase
-	notificationUC      *usecase.NotificationUseCase
-	searchExpenseUC     *usecase.SearchExpenseUseCase
-	archiveUC           *usecase.ArchiveUseCase
-	metricsUC           *usecase.MetricsUseCase
-	getPolicyUC         *usecase.GetPolicyUseCase
-	exchangeRateSvc     domain.ExchangeRateService
-	userRepo            domain.UserRepository
-	categoryRepo        domain.CategoryRepository
-	expenseRepo         domain.ExpenseRepository
-	metricsRepo         domain.MetricsRepository
-	adminAPIKey         string
-	jwtSecret           []byte
-	isDev               bool
+	autoSignupUC          *usecase.AutoSignupUseCase
+	parseConversationUC   *usecase.ParseConversationUseCase
+	createExpenseUC       *usecase.CreateExpenseUseCase
+	getExpensesUC         *usecase.GetExpensesUseCase
+	updateExpenseUC       *usecase.UpdateExpenseUseCase
+	deleteExpenseUC       *usecase.DeleteExpenseUseCase
+	manageCategoryUC      *usecase.ManageCategoryUseCase
+	generateReportUC      *usecase.GenerateReportUseCase
+	budgetManagementUC    *usecase.BudgetManagementUseCase
+	dataExportUC          *usecase.DataExportUseCase
+	recurringExpenseUC    *usecase.RecurringExpenseUseCase
+	notificationUC        *usecase.NotificationUseCase
+	searchExpenseUC       *usecase.SearchExpenseUseCase
+	archiveUC             *usecase.ArchiveUseCase
+	metricsUC             *usecase.MetricsUseCase
+	getPolicyUC           *usecase.GetPolicyUseCase
+	getUserAggregateUC    *usecase.GetUserAggregateUseCase
+	updateUserAggregateUC *usecase.UpdateUserAggregateUseCase
+	exchangeRateSvc       domain.ExchangeRateService
+	userRepo              domain.UserRepository
+	categoryRepo          domain.CategoryRepository
+	expenseRepo           domain.ExpenseRepository
+	metricsRepo           domain.MetricsRepository
+	adminAPIKey           string
+	jwtSecret             []byte
+	isDev                 bool
 }
 
 // NewHandler creates a new HTTP handler
@@ -58,6 +60,8 @@ func NewHandler(
 	archiveUC *usecase.ArchiveUseCase,
 	metricsUC *usecase.MetricsUseCase,
 	getPolicyUC *usecase.GetPolicyUseCase,
+	getUserAggregateUC *usecase.GetUserAggregateUseCase,
+	updateUserAggregateUC *usecase.UpdateUserAggregateUseCase,
 	exchangeRateSvc domain.ExchangeRateService,
 	userRepo domain.UserRepository,
 	categoryRepo domain.CategoryRepository,
@@ -67,30 +71,32 @@ func NewHandler(
 	isDev bool,
 ) *Handler {
 	h := &Handler{
-		autoSignupUC:        autoSignupUC,
-		parseConversationUC: parseConversationUC,
-		createExpenseUC:     createExpenseUC,
-		getExpensesUC:       getExpensesUC,
-		updateExpenseUC:     updateExpenseUC,
-		deleteExpenseUC:     deleteExpenseUC,
-		manageCategoryUC:    manageCategoryUC,
-		generateReportUC:    generateReportUC,
-		budgetManagementUC:  budgetManagementUC,
-		dataExportUC:        dataExportUC,
-		recurringExpenseUC:  recurringExpenseUC,
-		notificationUC:      notificationUC,
-		searchExpenseUC:     searchExpenseUC,
-		archiveUC:           archiveUC,
-		metricsUC:           metricsUC,
-		getPolicyUC:         getPolicyUC,
-		exchangeRateSvc:     exchangeRateSvc,
-		userRepo:            userRepo,
-		categoryRepo:        categoryRepo,
-		expenseRepo:         expenseRepo,
-		metricsRepo:         metricsRepo,
-		adminAPIKey:         adminAPIKey,
-		jwtSecret:           []byte(os.Getenv("JWT_SECRET")),
-		isDev:               isDev,
+		autoSignupUC:          autoSignupUC,
+		parseConversationUC:   parseConversationUC,
+		createExpenseUC:       createExpenseUC,
+		getExpensesUC:         getExpensesUC,
+		updateExpenseUC:       updateExpenseUC,
+		deleteExpenseUC:       deleteExpenseUC,
+		manageCategoryUC:      manageCategoryUC,
+		generateReportUC:      generateReportUC,
+		budgetManagementUC:    budgetManagementUC,
+		dataExportUC:          dataExportUC,
+		recurringExpenseUC:    recurringExpenseUC,
+		notificationUC:        notificationUC,
+		searchExpenseUC:       searchExpenseUC,
+		archiveUC:             archiveUC,
+		metricsUC:             metricsUC,
+		getPolicyUC:           getPolicyUC,
+		getUserAggregateUC:    getUserAggregateUC,
+		updateUserAggregateUC: updateUserAggregateUC,
+		exchangeRateSvc:       exchangeRateSvc,
+		userRepo:              userRepo,
+		categoryRepo:          categoryRepo,
+		expenseRepo:           expenseRepo,
+		metricsRepo:           metricsRepo,
+		adminAPIKey:           adminAPIKey,
+		jwtSecret:             []byte(os.Getenv("JWT_SECRET")),
+		isDev:                 isDev,
 	}
 	if len(h.jwtSecret) == 0 {
 		h.jwtSecret = []byte("default-secret-do-not-use-in-prod")
@@ -1640,6 +1646,67 @@ func (h *Handler) validateToken(tokenString string) (string, error) {
 	return userID, nil
 }
 
+// HandleGetUserAggregate returns all user settings in one response
+func (h *Handler) HandleGetUserAggregate(w http.ResponseWriter, r *http.Request) {
+	userID := r.URL.Query().Get("user_id")
+	token := r.URL.Query().Get("token")
+
+	if userID == "" && token != "" {
+		var err error
+		userID, err = h.validateToken(token)
+		if err != nil {
+			h.WriteJSON(w, http.StatusUnauthorized, &Response{Status: "error", Error: "Invalid token: " + err.Error()})
+			return
+		}
+	}
+
+	if userID == "" {
+		h.WriteJSON(w, http.StatusBadRequest, &Response{Status: "error", Error: "user_id or token is required"})
+		return
+	}
+
+	settings, err := h.getUserAggregateUC.Execute(userID)
+	if err != nil {
+		h.WriteJSON(w, http.StatusInternalServerError, &Response{Status: "error", Error: err.Error()})
+		return
+	}
+
+	h.WriteJSON(w, http.StatusOK, &Response{Status: "success", Data: settings})
+}
+
+// HandleUpdateUserAggregate updates all user settings
+func (h *Handler) HandleUpdateUserAggregate(w http.ResponseWriter, r *http.Request) {
+	userID := r.URL.Query().Get("user_id")
+	token := r.URL.Query().Get("token")
+
+	if userID == "" && token != "" {
+		var err error
+		userID, err = h.validateToken(token)
+		if err != nil {
+			h.WriteJSON(w, http.StatusUnauthorized, &Response{Status: "error", Error: "Invalid token: " + err.Error()})
+			return
+		}
+	}
+
+	if userID == "" {
+		h.WriteJSON(w, http.StatusBadRequest, &Response{Status: "error", Error: "user_id or token is required"})
+		return
+	}
+
+	var settings domain.AggregateSettings
+	if err := h.ReadJSON(r, &settings); err != nil {
+		h.WriteJSON(w, http.StatusBadRequest, &Response{Status: "error", Error: "invalid request"})
+		return
+	}
+
+	if err := h.updateUserAggregateUC.Execute(userID, &settings); err != nil {
+		h.WriteJSON(w, http.StatusInternalServerError, &Response{Status: "error", Error: err.Error()})
+		return
+	}
+
+	h.WriteJSON(w, http.StatusOK, &Response{Status: "success", Message: "Settings updated"})
+}
+
 // RegisterRoutes registers all HTTP routes
 func RegisterRoutes(
 	mux *http.ServeMux,
@@ -1652,6 +1719,8 @@ func RegisterRoutes(
 	// User endpoints
 	mux.HandleFunc("POST /api/users/auto-signup", handler.AutoSignup)
 	mux.HandleFunc("GET /api/user", handler.GetUser)
+	mux.HandleFunc("GET /api/user/aggregate", handler.HandleGetUserAggregate)
+	mux.HandleFunc("PUT /api/user/aggregate", handler.HandleUpdateUserAggregate)
 	mux.HandleFunc("PUT /api/user/settings", handler.UpdateUserSettings)
 
 	// Currency endpoints
