@@ -1,33 +1,20 @@
 'use client';
 
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { format } from 'date-fns';
 import { DashboardLayout } from '@/components/DashboardLayout';
-import { VirtualExpenseList } from '@/components/VirtualExpenseList';
-import { AccountFilter } from '@/components/AccountFilter';
+import { ExpenseList } from '@/components/ExpenseList';
 import RepositoryFactory from '@/infrastructure/RepositoryFactory';
 import { Expense } from '@/domain/models/Expense';
 import { getCookie, setCookie } from '@/utils/cookies';
-import { ListBulletIcon, CalendarIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
-
-const BATCH_SIZE = 100;
 
 export default function ExpensesPage() {
   const searchParams = useSearchParams();
   const urlToken = searchParams.get('token');
 
-  // State management
-  const [allExpenses, setAllExpenses] = useState<Expense[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [groupBy, setGroupBy] = useState<'date' | 'category'>('date');
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [selectedAccount, setSelectedAccount] = useState<string | null>(null);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [hasMore, setHasMore] = useState(true);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [offset, setOffset] = useState(0);
 
   // Token management
   useEffect(() => {
@@ -44,7 +31,7 @@ export default function ExpensesPage() {
     return getCookie('report_token');
   }, [urlToken]);
 
-  // Fetch initial expenses
+  // Fetch expenses
   useEffect(() => {
     const fetchExpenses = async () => {
       const token = getToken();
@@ -54,12 +41,11 @@ export default function ExpensesPage() {
         return;
       }
 
-      setLoading(true);
       try {
+        setLoading(true);
         const expenseRepo = RepositoryFactory.getExpenseRepository();
-        const expenses = await expenseRepo.getExpenses(token);
-        setAllExpenses(expenses);
-        setHasMore(expenses.length >= BATCH_SIZE);
+        const data = await expenseRepo.getExpenses(token);
+        setExpenses(data || []);
         setError(null);
       } catch (err) {
         console.error('Failed to fetch expenses:', err);
@@ -71,24 +57,6 @@ export default function ExpensesPage() {
 
     fetchExpenses();
   }, [getToken]);
-
-  // Handle load more (infinite scroll)
-  const handleLoadMore = useCallback(async () => {
-    const token = getToken();
-    if (!token || isLoadingMore || !hasMore) return;
-
-    setIsLoadingMore(true);
-    try {
-      const expenseRepo = RepositoryFactory.getExpenseRepository();
-      // Note: The current API doesn't support pagination yet, so we'll just mark hasMore as false
-      // Once pagination is implemented, this can fetch the next batch
-      setHasMore(false);
-    } catch (err) {
-      console.error('Failed to load more expenses:', err);
-    } finally {
-      setIsLoadingMore(false);
-    }
-  }, [getToken, isLoadingMore, hasMore]);
 
   // Handle expense update
   const handleUpdateExpense = useCallback(
@@ -219,87 +187,15 @@ export default function ExpensesPage() {
         {/* Header */}
         <div className="mb-4">
           <h1 className="text-2xl font-bold text-text tracking-tight">Expenses</h1>
-          <p className="text-text/60 text-sm">
-            {filteredExpenses.length} of {allExpenses.length} transactions
-          </p>
+          <p className="text-text/60 text-sm">{expenses.length} transactions</p>
         </div>
 
-        {/* Sticky Filter */}
-        <div className="sticky top-0 z-10 bg-background border-b border-white/10 mb-4 p-3 space-y-3 rounded-lg">
-          {/* Search Input - Full Width */}
-          <div className="relative">
-            <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-text/40" />
-            <input
-              type="text"
-              placeholder="Search expenses..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-text placeholder-text/40 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
-            />
-          </div>
-
-          {/* Controls Row */}
-          <div className="flex flex-wrap gap-2 items-center">
-            <span className="text-sm text-text/60 font-medium">Group by:</span>
-            {['date', 'category'].map((option) => (
-              <button
-                key={option}
-                onClick={() => setGroupBy(option as 'date' | 'category')}
-                className={`px-3 py-1 text-xs font-medium rounded-md transition-all cursor-pointer
-                  ${
-                    groupBy === option
-                      ? 'bg-primary text-white'
-                      : 'bg-white/5 text-text/70 hover:bg-white/10 border border-white/10'
-                  }
-                `}
-              >
-                {option === 'date' ? 'Date' : 'Category'}
-              </button>
-            ))}
-
-            <AccountFilter
-              accounts={uniqueAccounts}
-              selectedAccount={selectedAccount}
-              onSelectAccount={setSelectedAccount}
-            />
-          </div>
-        </div>
-
-        {/* Content Area */}
-        {filteredExpenses.length === 0 ? (
-          <div className="flex-1 flex items-center justify-center">
-            <div className="text-center">
-              <MagnifyingGlassIcon className="w-12 h-12 mx-auto mb-3 opacity-40 text-text/40" />
-              <p className="text-text/40">
-                {searchQuery || selectedAccount ? 'No expenses match your filters' : 'No expenses found'}
-              </p>
-            </div>
-          </div>
-        ) : (
-          <>
-            <VirtualExpenseList
-              groupedExpenses={groupedExpenses}
-              userHomeCurrency={userHomeCurrency}
-              onLoadMore={handleLoadMore}
-              onUpdateExpense={handleUpdateExpense}
-              hasMore={hasMore}
-              isLoading={isLoadingMore}
-            />
-
-            {/* Footer Summary */}
-            <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-between text-sm">
-              <span className="text-text/60">
-                Showing <span className="font-semibold text-text">{filteredExpenses.length}</span> of{' '}
-                <span className="font-semibold text-text">{allExpenses.length}</span> expenses
-              </span>
-              <span className="font-mono font-bold text-text">
-                Total: {new Intl.NumberFormat('en-US', { style: 'currency', currency: userHomeCurrency || 'USD' }).format(
-                  filteredExpenses.reduce((sum, e) => sum + (e.home_amount || e.amount), 0)
-                )}
-              </span>
-            </div>
-          </>
-        )}
+        {/* Expense List Component - Handles search, filtering, grouping, editing all internally */}
+        <ExpenseList
+          expenses={expenses}
+          onUpdateExpense={handleUpdateExpense}
+          className="flex-1"
+        />
       </div>
     </DashboardLayout>
   );
