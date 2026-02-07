@@ -41,6 +41,7 @@ func main() {
 	var pricingRepo domain.PricingRepository
 	var shortLinkRepo domain.ShortLinkRepository
 	var exchangeRateRepo domain.ExchangeRateRepository
+	var accountRepo domain.AccountRepository
 
 	if cfg.DatabaseURL == "" {
 		log.Fatal("Database URL is not configured")
@@ -63,6 +64,7 @@ func main() {
 	interactionLogRepo = postgresRepo.NewInteractionLogRepository(db)
 	shortLinkRepo = postgresRepo.NewShortLinkRepository(db)
 	exchangeRateRepo = postgresRepo.NewExchangeRateRepository(db)
+	accountRepo = postgresRepo.NewAccountRepository(db)
 	log.Printf("Connected to PostgreSQL database")
 
 	// Ensure database is closed on exit
@@ -120,6 +122,8 @@ func main() {
 	archiveUseCase := usecase.NewArchiveUseCase(expenseRepo)
 	getPolicyUseCase := usecase.NewGetPolicyUseCase(policyRepo)
 	generateReportLinkUseCase := usecase.NewGenerateReportLinkUseCase(cfg.APIPublicURL, shortLinkRepo)
+	getUserAggregateUseCase := usecase.NewGetUserAggregateUseCase(userRepo, categoryRepo, accountRepo)
+	updateUserAggregateUseCase := usecase.NewUpdateUserAggregateUseCase(userRepo, categoryRepo, accountRepo, expenseRepo)
 
 	// Initialize Unified Message Processor
 	processMessageUseCase := usecase.NewProcessMessageUseCase(
@@ -152,6 +156,8 @@ func main() {
 		archiveUseCase,
 		metricsUseCase,
 		getPolicyUseCase,
+		getUserAggregateUseCase,
+		updateUserAggregateUseCase,
 		exchangeRateSvc,
 		userRepo,
 		categoryRepo,
