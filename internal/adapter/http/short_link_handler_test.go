@@ -72,7 +72,7 @@ func TestShortLinkHandler_HandleRedirect(t *testing.T) {
 		}
 
 		// Check Location Header
-		expectedLocation := fmt.Sprintf("%s/dashboard?token=%s", dashboardURL, targetToken)
+		expectedLocation := fmt.Sprintf("%s/expenses?token=%s", dashboardURL, targetToken)
 		if loc := w.Header().Get("Location"); loc != expectedLocation {
 			t.Errorf("Expected Location %s, got %s", expectedLocation, loc)
 		}
