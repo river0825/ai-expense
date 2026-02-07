@@ -13,7 +13,8 @@ import {
 } from '@heroicons/react/24/outline';
 
 const NAVIGATION = [
-  { name: 'my_expenses', href: '/dashboard', icon: HomeIcon },
+  { name: 'dashboard', href: '/dashboard', icon: HomeIcon },
+  { name: 'my_expenses', href: '/expenses', icon: HomeIcon },
 ];
 
 interface SidebarProps {
