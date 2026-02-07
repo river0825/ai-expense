@@ -49,8 +49,8 @@ func (h *ShortLinkHandler) HandleRedirect(w http.ResponseWriter, r *http.Request
 		SameSite: http.SameSiteLaxMode,
 	})
 
-	// Redirect to the actual report page (user dashboard)
+	// Redirect to the actual report page (expenses page)
 	// The report page will check for the cookie or URL param
-	redirectURL := fmt.Sprintf("%s/dashboard?token=%s", h.dashboardURL, link.TargetToken)
+	redirectURL := fmt.Sprintf("%s/expenses?token=%s", h.dashboardURL, link.TargetToken)
 	http.Redirect(w, r, redirectURL, http.StatusFound)
 }
