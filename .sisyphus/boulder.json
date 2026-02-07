@@ -1,7 +1,8 @@
 {
-  "active_plan": "/Users/riverlin/Documents/workspace/aiexpense/.sisyphus/plans/integration-test.md",
+  "active_plan": null,
+  "completed_plans": ["integration-test"],
   "started_at": "2026-02-06T19:48:37.606Z",
   "session_ids": ["ses_3cc88f206ffeVNVbyLMCKuWbeR"],
   "plan_name": "integration-test",
-  "status": "IN_PROGRESS"
+  "status": "ALL_COMPLETE"
 }

@@ -57,7 +57,7 @@ Scenario: Run Integration Tests
 
 ## TODOs
 
-- [ ] 1. Create Integration Test File
+- [x] 1. Create Integration Test File
   **What to do**:
   - Create `test/integration/user_aggregate_test.go`.
   - Setup test suite structure (setup/teardown).
@@ -65,7 +65,7 @@ Scenario: Run Integration Tests
   **Recommended Agent Profile**:
   - **Category**: `quick`
 
-- [ ] 2. Implement GET Test
+- [x] 2. Implement GET Test
   **What to do**:
   - Add test case `TestGetUserAggregate`.
   - Seed data (User, Categories, Accounts).
@@ -75,7 +75,7 @@ Scenario: Run Integration Tests
   **Recommended Agent Profile**:
   - **Category**: `unspecified-high`
 
-- [ ] 3. Implement PUT Test
+- [x] 3. Implement PUT Test
   **What to do**:
   - Add test case `TestUpdateUserAggregate`.
   - Test scenario: Rename account "Cash" -> "Gold".
