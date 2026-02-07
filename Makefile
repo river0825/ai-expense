@@ -18,7 +18,7 @@ LOG_FRESHNESS ?= 1h
 LOG_ORDER ?= desc
 PRICING_PROVIDER ?= gemini
 
-.PHONY: image push deploy tail update-price deploy-fe deploy-fe-dashboard
+.PHONY: image push deploy tail update-price deploy-fe deploy-fe-dashboard deploy-landing
 image:
 	$(DOCKER) buildx build --platform $(PLATFORM) -t $(IMAGE):$(TAG) --load $(BUILD_CONTEXT)
 
@@ -51,3 +51,6 @@ deploy-fe:
 
 deploy-fe-dashboard:
 	cd frontend/dashboard && vercel --prod --build-env NEXT_PUBLIC_API_URL=https://aiexpense-996531141309.us-central1.run.app --env NEXT_PUBLIC_API_URL=https://aiexpense-996531141309.us-central1.run.app
+
+deploy-landing:
+	cd frontend/landing && vercel --prod
