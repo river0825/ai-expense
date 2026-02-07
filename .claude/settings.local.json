@@ -36,7 +36,9 @@
       "Bash(dig:*)",
       "Bash(gcloud beta run domain-mappings delete:*)",
       "Bash(gcloud run services list:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(grep:*)",
+      "Bash(git -C /Users/riverlin/Documents/workspace/aiexpense log --oneline --all)"
     ]
   }
 }
