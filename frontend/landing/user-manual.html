@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Expense User Manual</title>
+    <meta name="description" content="AI Expense user manual: chat-based expense tracking, report links, dashboard usage, settings, and release notes.">
+    <link rel="icon" type="image/jpeg" href="./assets/ai-bot-icon.jpeg">
+    <link rel="apple-touch-icon" href="./assets/ai-bot-icon.jpeg">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Fira Sans"', 'sans-serif'],
+                        mono: ['"Fira Code"', 'monospace'],
+                    },
+                    colors: {
+                        primary: '#F59E0B',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans antialiased">
+    <div class="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
+        <div class="absolute top-[-15%] left-[-10%] w-[45%] h-[45%] rounded-full bg-primary/20 blur-[120px]"></div>
+        <div class="absolute bottom-[-20%] right-[-10%] w-[45%] h-[45%] rounded-full bg-sky-500/20 blur-[120px]"></div>
+    </div>
+
+    <header class="sticky top-0 z-40 border-b border-white/10 bg-slate-950/85 backdrop-blur">
+        <div class="max-w-5xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-3">
+            <a href="/" class="inline-flex items-center gap-2">
+                <span class="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-orange-600 text-white font-bold font-mono flex items-center justify-center">AI</span>
+                <span class="font-semibold tracking-tight" data-i18n="header.title">Expense User Manual</span>
+            </a>
+            <div class="flex items-center gap-3">
+                <div class="relative">
+                    <select id="lang-select" class="text-sm bg-white/5 border border-white/15 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/50">
+                        <option value="zh-TW">繁體中文</option>
+                        <option value="en">English</option>
+                        <option value="ja">日本語</option>
+                        <option value="es">Español</option>
+                    </select>
+                </div>
+                <a href="/" class="text-sm px-4 py-2 rounded-lg border border-white/15 hover:bg-white/5 transition-colors" data-i18n="header.back">Back to Home</a>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-5xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
+        <section class="mb-10">
+            <h1 class="text-3xl sm:text-4xl font-bold tracking-tight mb-4" data-i18n="hero.title">AI Expense User Manual</h1>
+            <p class="text-slate-300 leading-relaxed" data-i18n="hero.desc">
+                This manual is based on the currently implemented features in code, focused on practical user flows.
+            </p>
+        </section>
+
+        <section class="grid gap-4 sm:grid-cols-2 mb-12">
+            <a href="#quick-start" class="p-4 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-colors" data-i18n="toc.quick">1. Quick Start</a>
+            <a href="#chat-tracking" class="p-4 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-colors" data-i18n="toc.chat">2. Chat Tracking</a>
+            <a href="#report-link" class="p-4 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-colors" data-i18n="toc.report">3. Report Link & Access</a>
+            <a href="#dashboard" class="p-4 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-colors" data-i18n="toc.dashboard">4. Dashboard Features</a>
+            <a href="#settings" class="p-4 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-colors" data-i18n="toc.settings">5. Settings</a>
+            <a href="#video" class="p-4 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-colors" data-i18n="toc.video">6. Quick-start Video</a>
+            <a href="#changelog" class="p-4 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-colors sm:col-span-2" data-i18n="toc.changelog">7. Release Notes</a>
+        </section>
+
+        <section id="quick-start" class="mb-12">
+            <h2 class="text-2xl font-bold mb-4" data-i18n="quick.title">1. Quick Start</h2>
+            <ol class="list-decimal pl-5 space-y-2 text-slate-300">
+                <li data-i18n="quick.1">Add AI Expense bot (commonly LINE in public deployment).</li>
+                <li data-i18n="quick.2">Send an expense message, for example: "Lunch 180".</li>
+                <li data-i18n="quick.3">The system auto-registers your account and records the expense.</li>
+                <li data-i18n="quick.4">Send "report" to get your personal report link.</li>
+            </ol>
+        </section>
+
+        <section id="chat-tracking" class="mb-12">
+            <h2 class="text-2xl font-bold mb-4" data-i18n="chat.title">2. Chat Tracking</h2>
+            <p class="text-slate-300 mb-4" data-i18n="chat.desc">Supported input examples:</p>
+            <div class="grid gap-3 sm:grid-cols-2 text-sm">
+                <div class="rounded-xl border border-white/10 bg-white/5 p-4">
+                    <p class="text-primary font-semibold mb-2" data-i18n="chat.card1">Basic</p>
+                    <p class="font-mono">Breakfast 80</p>
+                </div>
+                <div class="rounded-xl border border-white/10 bg-white/5 p-4">
+                    <p class="text-primary font-semibold mb-2" data-i18n="chat.card2">With Account</p>
+                    <p class="font-mono">Dinner 320 Credit Card</p>
+                </div>
+                <div class="rounded-xl border border-white/10 bg-white/5 p-4">
+                    <p class="text-primary font-semibold mb-2" data-i18n="chat.card3">Multi-currency</p>
+                    <p class="font-mono">Tokyo ramen 1200 JPY</p>
+                </div>
+                <div class="rounded-xl border border-white/10 bg-white/5 p-4">
+                    <p class="text-primary font-semibold mb-2" data-i18n="chat.card4">Relative Date</p>
+                    <p class="font-mono">Yesterday coffee 120</p>
+                </div>
+            </div>
+            <ul class="list-disc pl-5 mt-4 space-y-2 text-slate-300">
+                <li data-i18n="chat.note1">If account is omitted, default account is "Cash".</li>
+                <li data-i18n="chat.note2">System returns category, amount, currency, and account.</li>
+                <li data-i18n="chat.note3">One message may be parsed into multiple expenses.</li>
+            </ul>
+        </section>
+
+        <section id="report-link" class="mb-12">
+            <h2 class="text-2xl font-bold mb-4" data-i18n="report.title">3. Report Link & Access</h2>
+            <ul class="list-disc pl-5 space-y-2 text-slate-300">
+                <li data-i18n="report.1">Keywords include: report, summary, stats, analysis.</li>
+                <li data-i18n="report.2">System generates a short link like /r/{id} to your dashboard.</li>
+                <li data-i18n="report.3">After opening, your data is loaded via secure token flow.</li>
+            </ul>
+        </section>
+
+        <section id="dashboard" class="mb-12">
+            <h2 class="text-2xl font-bold mb-4" data-i18n="dashboard.title">4. Dashboard Features</h2>
+            <div class="space-y-4 text-slate-300">
+                <div class="rounded-xl border border-white/10 bg-white/5 p-4">
+                    <h3 class="font-semibold text-white mb-2" data-i18n="dashboard.overviewTitle">4.1 Overview</h3>
+                    <ul class="list-disc pl-5 space-y-1">
+                        <li data-i18n="dashboard.o1">Date range filters (preset + custom).</li>
+                        <li data-i18n="dashboard.o2">Account filter (Cash, Credit Card, etc).</li>
+                        <li data-i18n="dashboard.o3">Cards: total spend, count, average, top category.</li>
+                        <li data-i18n="dashboard.o4">Charts: category breakdown and trend (day/week/month).</li>
+                    </ul>
+                </div>
+                <div class="rounded-xl border border-white/10 bg-white/5 p-4">
+                    <h3 class="font-semibold text-white mb-2" data-i18n="dashboard.listTitle">4.2 Expense List</h3>
+                    <ul class="list-disc pl-5 space-y-1">
+                        <li data-i18n="dashboard.l1">Search, sorting, and grouping.</li>
+                        <li data-i18n="dashboard.l2">Inline edit: description, amount, currency, account.</li>
+                        <li data-i18n="dashboard.l3">Home-currency preview while editing.</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <section id="settings" class="mb-12">
+            <h2 class="text-2xl font-bold mb-4" data-i18n="settings.title">5. Settings</h2>
+            <div class="space-y-4 text-slate-300">
+                <div class="rounded-xl border border-white/10 bg-white/5 p-4">
+                    <h3 class="font-semibold text-white mb-2" data-i18n="settings.currencyTitle">5.1 Home Currency</h3>
+                    <p data-i18n="settings.currencyDesc">Set your home currency for aggregated display and reports.</p>
+                </div>
+                <div class="rounded-xl border border-white/10 bg-white/5 p-4">
+                    <h3 class="font-semibold text-white mb-2" data-i18n="settings.categoryTitle">5.2 Category Management</h3>
+                    <ul class="list-disc pl-5 space-y-1">
+                        <li data-i18n="settings.c1">Create category (name + description).</li>
+                        <li data-i18n="settings.c2">Edit or delete custom categories.</li>
+                        <li data-i18n="settings.c3">Merge categories when duplicate name is detected.</li>
+                        <li data-i18n="settings.c4">Default categories are protected.</li>
+                    </ul>
+                </div>
+                <div class="rounded-xl border border-white/10 bg-white/5 p-4">
+                    <h3 class="font-semibold text-white mb-2" data-i18n="settings.accountTitle">5.3 Accounts</h3>
+                    <p data-i18n="settings.accountDesc">Current version supports account listing; advanced edits are planned.</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="video" class="mb-12">
+            <h2 class="text-2xl font-bold mb-4" data-i18n="video.title">6. Quick-start Video</h2>
+            <p class="text-slate-300 mb-4" data-i18n="video.desc">Watch the short onboarding video to complete your first record in under 60 seconds.</p>
+
+            <div id="video-embed" class="hidden rounded-2xl overflow-hidden border border-white/10 bg-black"></div>
+
+            <div id="video-placeholder" class="rounded-2xl border border-dashed border-white/20 bg-white/5 p-6">
+                <img src="./assets/dashboard-mockup.png" alt="AI Expense dashboard preview" class="rounded-xl border border-white/10 mb-4 w-full h-auto">
+                <p class="text-slate-300" data-i18n="video.placeholder">Video URL is not configured yet. Add your tutorial video URL in this page to enable embedded playback.</p>
+            </div>
+        </section>
+
+        <section id="changelog" class="mb-16">
+            <h2 class="text-2xl font-bold mb-4" data-i18n="changelog.title">7. Release Notes</h2>
+            <div class="space-y-3">
+                <div class="rounded-xl border border-white/10 bg-white/5 p-4">
+                    <p class="text-xs text-slate-400 font-mono">2026-02-08</p>
+                    <p class="font-semibold" data-i18n="changelog.v1.title">User Manual Published</p>
+                    <ul class="list-disc pl-5 mt-2 text-slate-300 text-sm space-y-1">
+                        <li data-i18n="changelog.v1.1">Added complete user-facing manual page.</li>
+                        <li data-i18n="changelog.v1.2">Added navigation entry from landing page.</li>
+                        <li data-i18n="changelog.v1.3">Included quick-start video section and maintenance-ready changelog section.</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <section class="rounded-2xl border border-primary/30 bg-primary/10 p-6">
+            <h2 class="text-xl font-bold mb-2" data-i18n="next.title">Next Step</h2>
+            <p class="text-slate-200 mb-4" data-i18n="next.desc">Try 3 days of chat-first tracking, then review trends and category distribution in dashboard.</p>
+            <div class="flex flex-col sm:flex-row gap-3">
+                <a href="https://lin.ee/TZ9sQic" target="_blank" class="inline-flex items-center justify-center px-5 py-3 rounded-lg bg-[#06C755] hover:bg-[#05b34c] text-white font-semibold transition-colors" data-i18n="next.cta1">Start from LINE</a>
+                <a href="/" class="inline-flex items-center justify-center px-5 py-3 rounded-lg border border-white/20 hover:bg-white/5 transition-colors" data-i18n="next.cta2">Back to Landing Page</a>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        // Set your video URL here when ready (YouTube/Loom public embed URL).
+        const QUICKSTART_VIDEO_URL = '';
+
+        const translations = {
+            'en': {
+                'header.title': 'Expense User Manual',
+                'header.back': 'Back to Home',
+                'hero.title': 'AI Expense User Manual',
+                'hero.desc': 'This manual is based on the currently implemented features in code, focused on practical user flows.',
+                'toc.quick': '1. Quick Start',
+                'toc.chat': '2. Chat Tracking',
+                'toc.report': '3. Report Link & Access',
+                'toc.dashboard': '4. Dashboard Features',
+                'toc.settings': '5. Settings',
+                'toc.video': '6. Quick-start Video',
+                'toc.changelog': '7. Release Notes',
+                'quick.title': '1. Quick Start',
+                'quick.1': 'Add AI Expense bot (commonly LINE in public deployment).',
+                'quick.2': 'Send an expense message, for example: "Lunch 180".',
+                'quick.3': 'The system auto-registers your account and records the expense.',
+                'quick.4': 'Send "report" to get your personal report link.',
+                'chat.title': '2. Chat Tracking',
+                'chat.desc': 'Supported input examples:',
+                'chat.card1': 'Basic',
+                'chat.card2': 'With Account',
+                'chat.card3': 'Multi-currency',
+                'chat.card4': 'Relative Date',
+                'chat.note1': 'If account is omitted, default account is "Cash".',
+                'chat.note2': 'System returns category, amount, currency, and account.',
+                'chat.note3': 'One message may be parsed into multiple expenses.',
+                'report.title': '3. Report Link & Access',
+                'report.1': 'Keywords include: report, summary, stats, analysis.',
+                'report.2': 'System generates a short link like /r/{id} to your dashboard.',
+                'report.3': 'After opening, your data is loaded via secure token flow.',
+                'dashboard.title': '4. Dashboard Features',
+                'dashboard.overviewTitle': '4.1 Overview',
+                'dashboard.o1': 'Date range filters (preset + custom).',
+                'dashboard.o2': 'Account filter (Cash, Credit Card, etc).',
+                'dashboard.o3': 'Cards: total spend, count, average, top category.',
+                'dashboard.o4': 'Charts: category breakdown and trend (day/week/month).',
+                'dashboard.listTitle': '4.2 Expense List',
+                'dashboard.l1': 'Search, sorting, and grouping.',
+                'dashboard.l2': 'Inline edit: description, amount, currency, account.',
+                'dashboard.l3': 'Home-currency preview while editing.',
+                'settings.title': '5. Settings',
+                'settings.currencyTitle': '5.1 Home Currency',
+                'settings.currencyDesc': 'Set your home currency for aggregated display and reports.',
+                'settings.categoryTitle': '5.2 Category Management',
+                'settings.c1': 'Create category (name + description).',
+                'settings.c2': 'Edit or delete custom categories.',
+                'settings.c3': 'Merge categories when duplicate name is detected.',
+                'settings.c4': 'Default categories are protected.',
+                'settings.accountTitle': '5.3 Accounts',
+                'settings.accountDesc': 'Current version supports account listing; advanced edits are planned.',
+                'video.title': '6. Quick-start Video',
+                'video.desc': 'Watch the short onboarding video to complete your first record in under 60 seconds.',
+                'video.placeholder': 'Video URL is not configured yet. Add your tutorial video URL in this page to enable embedded playback.',
+                'changelog.title': '7. Release Notes',
+                'changelog.v1.title': 'User Manual Published',
+                'changelog.v1.1': 'Added complete user-facing manual page.',
+                'changelog.v1.2': 'Added navigation entry from landing page.',
+                'changelog.v1.3': 'Included quick-start video section and maintenance-ready changelog section.',
+                'next.title': 'Next Step',
+                'next.desc': 'Try 3 days of chat-first tracking, then review trends and category distribution in dashboard.',
+                'next.cta1': 'Start from LINE',
+                'next.cta2': 'Back to Landing Page'
+            },
+            'zh-TW': {
+                'header.title': 'Expense 使用手冊',
+                'header.back': '回到首頁',
+                'hero.title': 'AI Expense 一般使用者手冊',
+                'hero.desc': '本手冊依照目前程式碼已實作功能整理，聚焦在一般使用者的實際使用流程。',
+                'toc.quick': '1. 快速開始',
+                'toc.chat': '2. 聊天記帳',
+                'toc.report': '3. 報表連結與存取',
+                'toc.dashboard': '4. Dashboard 功能',
+                'toc.settings': '5. 設定功能',
+                'toc.video': '6. 快速上手影片',
+                'toc.changelog': '7. 版本更新紀錄',
+                'quick.title': '1. 快速開始',
+                'quick.1': '加入 AI Expense 機器人（公開部署常見為 LINE）。',
+                'quick.2': '傳送一筆支出訊息，例如：「午餐 180」。',
+                'quick.3': '系統會自動建立帳號並完成記帳。',
+                'quick.4': '輸入「report」取得你的個人報表連結。',
+                'chat.title': '2. 聊天記帳',
+                'chat.desc': '支援輸入範例：',
+                'chat.card1': '基本格式',
+                'chat.card2': '含帳戶',
+                'chat.card3': '多幣別',
+                'chat.card4': '相對日期',
+                'chat.note1': '未提供帳戶時，預設帳戶為「Cash」。',
+                'chat.note2': '系統回覆包含分類、金額、幣別與帳戶。',
+                'chat.note3': '一則訊息可能解析成多筆支出。',
+                'report.title': '3. 報表連結與存取',
+                'report.1': '常用關鍵字：report、summary、stats、analysis。',
+                'report.2': '系統會產生 /r/{id} 短連結導向你的 dashboard。',
+                'report.3': '開啟後會透過 token 流程讀取你的資料。',
+                'dashboard.title': '4. Dashboard 功能',
+                'dashboard.overviewTitle': '4.1 總覽頁',
+                'dashboard.o1': '日期區間篩選（預設區間 + 自訂區間）。',
+                'dashboard.o2': '帳戶篩選（Cash、Credit Card 等）。',
+                'dashboard.o3': '指標卡：總支出、筆數、平均、最高分類。',
+                'dashboard.o4': '圖表：分類占比與趨勢（日/週/月）。',
+                'dashboard.listTitle': '4.2 明細清單',
+                'dashboard.l1': '搜尋、排序與分組。',
+                'dashboard.l2': '可直接編輯描述、金額、幣別、帳戶。',
+                'dashboard.l3': '編輯時可即時預覽主幣金額。',
+                'settings.title': '5. 設定功能',
+                'settings.currencyTitle': '5.1 主幣設定',
+                'settings.currencyDesc': '設定 Home Currency 後，報表與聚合結果會以主幣顯示。',
+                'settings.categoryTitle': '5.2 分類管理',
+                'settings.c1': '新增分類（名稱 + 描述）。',
+                'settings.c2': '編輯與刪除自訂分類。',
+                'settings.c3': '同名衝突時可執行分類合併。',
+                'settings.c4': '預設分類受保護，不可編輯或刪除。',
+                'settings.accountTitle': '5.3 帳戶管理',
+                'settings.accountDesc': '目前支援查看帳戶列表；進階編輯後續提供。',
+                'video.title': '6. 快速上手影片',
+                'video.desc': '透過短影片，你可以在 60 秒內完成第一筆記帳。',
+                'video.placeholder': '目前尚未設定影片網址。你可以在此頁設定教學影片 URL 後自動啟用嵌入播放。',
+                'changelog.title': '7. 版本更新紀錄',
+                'changelog.v1.title': '使用手冊上線',
+                'changelog.v1.1': '新增完整一般使用者操作手冊頁面。',
+                'changelog.v1.2': '從 landing page 導覽可直接進入手冊。',
+                'changelog.v1.3': '新增快速上手影片區與可維護的版本更新區塊。',
+                'next.title': '下一步建議',
+                'next.desc': '先連續 3 天用聊天記帳，再回 Dashboard 觀察分類與趨勢。',
+                'next.cta1': '從 LINE 開始',
+                'next.cta2': '回到 Landing Page'
+            },
+            'ja': {
+                'header.title': 'Expense ユーザーマニュアル',
+                'header.back': 'ホームへ戻る',
+                'hero.title': 'AI Expense ユーザーマニュアル',
+                'hero.desc': 'このマニュアルは実装済み機能に基づき、実用的な利用フローに絞って整理しています。',
+                'toc.quick': '1. クイックスタート',
+                'toc.chat': '2. チャット記帳',
+                'toc.report': '3. レポートリンクとアクセス',
+                'toc.dashboard': '4. Dashboard 機能',
+                'toc.settings': '5. 設定',
+                'toc.video': '6. はじめ方動画',
+                'toc.changelog': '7. 更新履歴',
+                'quick.title': '1. クイックスタート',
+                'quick.1': 'AI Expense ボットを追加します（公開環境では LINE が一般的）。',
+                'quick.2': '例: 「Lunch 180」のように送信。',
+                'quick.3': 'アカウント自動作成後、記帳されます。',
+                'quick.4': '「report」で個人レポートリンクを取得できます。',
+                'chat.title': '2. チャット記帳',
+                'chat.desc': '入力例:',
+                'chat.card1': '基本',
+                'chat.card2': '口座指定',
+                'chat.card3': '多通貨',
+                'chat.card4': '相対日付',
+                'chat.note1': '口座未指定時は「Cash」が既定値です。',
+                'chat.note2': '分類・金額・通貨・口座が返されます。',
+                'chat.note3': '1メッセージが複数支出に分割される場合があります。',
+                'report.title': '3. レポートリンクとアクセス',
+                'report.1': 'キーワード: report / summary / stats / analysis。',
+                'report.2': '/r/{id} の短縮リンクが生成されます。',
+                'report.3': 'リンク先ではトークンでデータを読み込みます。',
+                'dashboard.title': '4. Dashboard 機能',
+                'dashboard.overviewTitle': '4.1 概要',
+                'dashboard.o1': '日付範囲フィルター（プリセット + カスタム）。',
+                'dashboard.o2': '口座フィルター（Cash、Credit Card など）。',
+                'dashboard.o3': 'カード: 総額、件数、平均、トップカテゴリ。',
+                'dashboard.o4': 'グラフ: カテゴリ内訳と推移（日/週/月）。',
+                'dashboard.listTitle': '4.2 明細リスト',
+                'dashboard.l1': '検索・ソート・グループ化。',
+                'dashboard.l2': '説明、金額、通貨、口座をインライン編集。',
+                'dashboard.l3': '編集中にホーム通貨プレビュー。',
+                'settings.title': '5. 設定',
+                'settings.currencyTitle': '5.1 ホーム通貨',
+                'settings.currencyDesc': '集計とレポートの表示通貨を設定します。',
+                'settings.categoryTitle': '5.2 カテゴリ管理',
+                'settings.c1': 'カテゴリ作成（名称 + 説明）。',
+                'settings.c2': 'カスタムカテゴリ編集・削除。',
+                'settings.c3': '重複名検出時はカテゴリ統合が可能。',
+                'settings.c4': 'デフォルトカテゴリは保護されています。',
+                'settings.accountTitle': '5.3 アカウント',
+                'settings.accountDesc': '現バージョンは一覧表示のみ対応。',
+                'video.title': '6. はじめ方動画',
+                'video.desc': '60秒以内で初回記帳を完了できる短い動画です。',
+                'video.placeholder': '動画URLは未設定です。設定後に埋め込み再生が有効になります。',
+                'changelog.title': '7. 更新履歴',
+                'changelog.v1.title': 'ユーザーマニュアル公開',
+                'changelog.v1.1': '一般ユーザー向けマニュアルページを追加。',
+                'changelog.v1.2': 'ランディングページから手冊への導線を追加。',
+                'changelog.v1.3': 'はじめ方動画セクションと更新履歴セクションを追加。',
+                'next.title': '次のステップ',
+                'next.desc': 'まず3日間チャット記帳し、その後 Dashboard で傾向を確認してください。',
+                'next.cta1': 'LINE から開始',
+                'next.cta2': 'Landing Page へ戻る'
+            },
+            'es': {
+                'header.title': 'Manual de Usuario Expense',
+                'header.back': 'Volver al inicio',
+                'hero.title': 'Manual de Usuario de AI Expense',
+                'hero.desc': 'Este manual se basa en las funciones implementadas actualmente y se enfoca en flujos reales de uso.',
+                'toc.quick': '1. Inicio rápido',
+                'toc.chat': '2. Registro por chat',
+                'toc.report': '3. Enlace de reporte y acceso',
+                'toc.dashboard': '4. Funciones del dashboard',
+                'toc.settings': '5. Configuración',
+                'toc.video': '6. Video de inicio rápido',
+                'toc.changelog': '7. Registro de cambios',
+                'quick.title': '1. Inicio rápido',
+                'quick.1': 'Agrega el bot AI Expense (normalmente LINE en despliegues públicos).',
+                'quick.2': 'Envía un gasto, por ejemplo: "Lunch 180".',
+                'quick.3': 'El sistema crea tu cuenta automáticamente y registra el gasto.',
+                'quick.4': 'Envía "report" para obtener tu enlace personal.',
+                'chat.title': '2. Registro por chat',
+                'chat.desc': 'Ejemplos de entrada:',
+                'chat.card1': 'Básico',
+                'chat.card2': 'Con cuenta',
+                'chat.card3': 'Multimoneda',
+                'chat.card4': 'Fecha relativa',
+                'chat.note1': 'Si no indicas cuenta, el valor por defecto es "Cash".',
+                'chat.note2': 'El sistema devuelve categoría, monto, moneda y cuenta.',
+                'chat.note3': 'Un mensaje puede convertirse en múltiples gastos.',
+                'report.title': '3. Enlace de reporte y acceso',
+                'report.1': 'Palabras clave: report, summary, stats, analysis.',
+                'report.2': 'Se genera un enlace corto /r/{id} hacia tu dashboard.',
+                'report.3': 'Al abrirlo, los datos se cargan mediante token seguro.',
+                'dashboard.title': '4. Funciones del dashboard',
+                'dashboard.overviewTitle': '4.1 Resumen',
+                'dashboard.o1': 'Filtros de rango de fecha (predefinidos + personalizado).',
+                'dashboard.o2': 'Filtro por cuenta (Cash, Credit Card, etc.).',
+                'dashboard.o3': 'Tarjetas: total, cantidad, promedio y categoría principal.',
+                'dashboard.o4': 'Gráficos: distribución por categoría y tendencia (día/semana/mes).',
+                'dashboard.listTitle': '4.2 Lista de gastos',
+                'dashboard.l1': 'Búsqueda, orden y agrupación.',
+                'dashboard.l2': 'Edición en línea: descripción, monto, moneda y cuenta.',
+                'dashboard.l3': 'Vista previa en moneda principal al editar.',
+                'settings.title': '5. Configuración',
+                'settings.currencyTitle': '5.1 Moneda principal',
+                'settings.currencyDesc': 'Configura la moneda principal para agregados y reportes.',
+                'settings.categoryTitle': '5.2 Gestión de categorías',
+                'settings.c1': 'Crear categoría (nombre + descripción).',
+                'settings.c2': 'Editar o eliminar categorías personalizadas.',
+                'settings.c3': 'Fusionar categorías en caso de nombre duplicado.',
+                'settings.c4': 'Las categorías por defecto están protegidas.',
+                'settings.accountTitle': '5.3 Cuentas',
+                'settings.accountDesc': 'La versión actual permite ver cuentas; edición avanzada está planificada.',
+                'video.title': '6. Video de inicio rápido',
+                'video.desc': 'Mira el video corto para registrar tu primer gasto en menos de 60 segundos.',
+                'video.placeholder': 'La URL del video aún no está configurada. Agrega la URL para habilitar el reproductor embebido.',
+                'changelog.title': '7. Registro de cambios',
+                'changelog.v1.title': 'Publicación del manual de usuario',
+                'changelog.v1.1': 'Se añadió una página completa de manual para usuarios.',
+                'changelog.v1.2': 'Se añadió acceso desde la navegación del landing page.',
+                'changelog.v1.3': 'Se añadió sección de video de inicio y de registro de cambios.',
+                'next.title': 'Siguiente paso',
+                'next.desc': 'Registra gastos por chat durante 3 días y luego revisa tendencias en el dashboard.',
+                'next.cta1': 'Comenzar desde LINE',
+                'next.cta2': 'Volver al Landing Page'
+            }
+        };
+
+        function applyLanguage(lang) {
+            const language = translations[lang] ? lang : 'en';
+            document.documentElement.lang = language;
+            document.querySelectorAll('[data-i18n]').forEach((el) => {
+                const key = el.getAttribute('data-i18n');
+                const value = translations[language][key];
+                if (value) {
+                    el.textContent = value;
+                }
+            });
+            localStorage.setItem('manual-lang', language);
+        }
+
+        function initVideo() {
+            const embed = document.getElementById('video-embed');
+            const placeholder = document.getElementById('video-placeholder');
+            if (QUICKSTART_VIDEO_URL && QUICKSTART_VIDEO_URL.trim() !== '') {
+                embed.classList.remove('hidden');
+                embed.innerHTML = '<iframe class="w-full aspect-video" src="' + QUICKSTART_VIDEO_URL + '" title="AI Expense Quick-start Video" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>';
+                placeholder.classList.add('hidden');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const select = document.getElementById('lang-select');
+            const saved = localStorage.getItem('manual-lang') || 'zh-TW';
+            select.value = saved;
+            applyLanguage(saved);
+
+            select.addEventListener('change', (e) => {
+                applyLanguage(e.target.value);
+            });
+
+            initVideo();
+        });
+    </script>
+</body>
+</html>

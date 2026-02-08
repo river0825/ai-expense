@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Expense - Intelligent Financial Tracking</title>
+    <meta name="description" content="AI-powered expense tracking and analytics dashboard. Visualise your finances with precision.">
+    <link rel="icon" type="image/jpeg" href="./assets/ai-bot-icon.jpeg">
+    <link rel="apple-touch-icon" href="./assets/ai-bot-icon.jpeg">
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Fira Sans"', 'sans-serif'],
+                        mono: ['"Fira Code"', 'monospace'],
+                    },
+                    colors: {
+                        primary: '#F59E0B',
+                        secondary: '#FBBF24',
+                        cta: '#8B5CF6',
+                        dark: '#0F172A',
+                    },
+                    backgroundImage: {
+                        'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .glass {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .glass-card {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body class="bg-dark text-slate-50 font-sans antialiased overflow-x-hidden">
+
+    <!-- Background Elements -->
+    <div class="fixed inset-0 z-[-1] overflow-hidden pointer-events-none">
+        <div class="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-primary/20 blur-[120px]"></div>
+        <div class="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] rounded-full bg-cta/20 blur-[120px]"></div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="fixed w-full z-50 top-0 transition-all duration-300" id="navbar">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="glass mt-4 rounded-2xl px-6 py-4 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 bg-gradient-to-br from-primary to-orange-600 rounded-lg flex items-center justify-center text-white font-bold font-mono">AI</div>
+                    <span class="font-bold text-xl tracking-tight">Expense</span>
+                </div>
+                <div class="hidden md:flex items-center space-x-8">
+                    <a href="#features" class="text-sm font-medium text-slate-300 hover:text-white transition-colors" data-i18n="nav.features">Features</a>
+                    <a href="#testimonials" class="text-sm font-medium text-slate-300 hover:text-white transition-colors" data-i18n="nav.testimonials">Testimonials</a>
+                    <a href="#pricing" class="text-sm font-medium text-slate-300 hover:text-white transition-colors" data-i18n="nav.pricing">Pricing</a>
+                    <a href="./user-manual.html" class="text-sm font-medium text-slate-300 hover:text-white transition-colors" data-i18n="nav.manual">User Manual</a>
+                </div>
+                <div class="flex items-center gap-4">
+                    <!-- Language Switcher -->
+                    <div class="relative group">
+                        <button class="flex items-center gap-1 text-sm font-medium text-slate-300 hover:text-white transition-colors focus:outline-none">
+                            <span id="current-lang">EN</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </button>
+                        <div class="absolute right-0 top-full pt-2 w-24 hidden group-hover:block">
+                            <div class="bg-slate-800 rounded-lg shadow-xl border border-white/10 overflow-hidden">
+                                <button onclick="changeLanguage('en')" class="block w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-white/10 hover:text-white">EN</button>
+                                <button onclick="changeLanguage('zh-TW')" class="block w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-white/10 hover:text-white">繁體中文</button>
+                                <button onclick="changeLanguage('ja')" class="block w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-white/10 hover:text-white">日本語</button>
+                                <button onclick="changeLanguage('es')" class="block w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-white/10 hover:text-white">Español</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <a href="/dashboard" class="bg-white/10 hover:bg-white/20 text-white px-5 py-2 rounded-lg text-sm font-medium transition-all border border-white/10 backdrop-blur-sm" data-i18n="nav.login">
+                        Login
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="relative pt-32 pb-20 lg:pt-48 lg:pb-32">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-mono mb-8 animate-fade-in-up">
+                <span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+                <span data-i18n="hero.badge">v2.0 Now Available</span>
+            </div>
+            
+            <h1 class="text-5xl md:text-7xl font-bold tracking-tight mb-6 bg-clip-text text-transparent bg-gradient-to-b from-white to-slate-400">
+                <span data-i18n="hero.title_line1">Master Your Finances</span> <br>
+                <span class="text-primary" data-i18n="hero.title_line2">With AI Precision</span>
+            </h1>
+            
+            <p class="mt-6 text-lg md:text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed" data-i18n="hero.subtitle">
+                Stop guessing where your money goes. Just chat to track expenses, get real-time insights, and beautiful visualizations.
+            </p>
+            
+            <div class="mt-10 flex flex-col sm:flex-row gap-4 justify-center">
+                <a href="./quick-add.html" class="group relative px-8 py-4 bg-[#06C755] hover:bg-[#05b34c] text-white font-bold rounded-xl transition-all shadow-lg shadow-green-500/25 flex items-center justify-center gap-2">
+                    <span data-i18n="hero.cta_primary">Chat to Start</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" class="bi bi-line" viewBox="0 0 16 16">
+                        <path d="M8 0c4.411 0 8 2.912 8 6.492 0 1.433-.555 2.723-1.515 3.692.516 1.107 1.307 2.455 1.307 2.478 0 .115-.173.194-.275.115-.115-.094-2.822-1.636-3.235-1.89C11.196 12 9.68 12.984 8 12.984c-4.411 0-8-2.912-8-6.492C0 2.912 3.589 0 8 0"/>
+                    </svg>
+                </a>
+                <a href="#demo" class="px-8 py-4 bg-white/5 hover:bg-white/10 text-white font-medium rounded-xl transition-all border border-white/10 backdrop-blur-sm" data-i18n="hero.cta_secondary">
+                    View Verified Demo
+                </a>
+            </div>
+
+            <!-- Dashboard Preview (Screenshot) -->
+            <div class="mt-20 relative mx-auto max-w-5xl group perspective-1000">
+                <div class="absolute -inset-1 bg-gradient-to-r from-primary to-cta rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-1000 group-hover:duration-200"></div>
+                <div class="relative rounded-2xl overflow-hidden glass-card border-white/10 shadow-2xl transform transition-transform duration-500 group-hover:scale-[1.01]">
+                    <div class="h-8 bg-slate-900/50 border-b border-white/5 flex items-center px-4 gap-2">
+                        <div class="flex gap-2">
+                            <div class="w-3 h-3 rounded-full bg-red-500/80"></div>
+                            <div class="w-3 h-3 rounded-full bg-yellow-500/80"></div>
+                            <div class="w-3 h-3 rounded-full bg-green-500/80"></div>
+                        </div>
+                        <div class="mx-auto text-xs font-mono text-slate-500">dashboard.aiexpense.com</div>
+                    </div>
+                    <img src="./assets/dashboard-mockup.png" alt="AI Expense Dashboard Interface" class="w-full h-auto object-cover opacity-90 hover:opacity-100 transition-opacity">
+                    
+                    <!-- Floating Data Points (Decoration) -->
+                    <div class="absolute top-1/4 right-[-20px] glass p-4 rounded-xl shadow-xl animate-float-slow hidden lg:block">
+                        <div class="text-xs text-slate-400 mb-1" data-i18n="hero.floating_savings">Total Savings</div>
+                        <div class="text-xl font-mono text-green-400 font-bold">+$2,450.00</div>
+                    </div>
+                     <div class="absolute bottom-1/4 left-[-20px] glass p-4 rounded-xl shadow-xl animate-float-slower hidden lg:block">
+                        <div class="text-xs text-slate-400 mb-1" data-i18n="hero.floating_budget">Monthly Budget</div>
+                        <div class="flex items-center gap-2">
+                            <div class="w-24 h-2 bg-slate-700 rounded-full overflow-hidden">
+                                <div class="w-[70%] h-full bg-primary rounded-full"></div>
+                            </div>
+                            <span class="text-xs font-mono text-white">70%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Grid -->
+    <section id="features" class="py-20 bg-slate-900/50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl md:text-5xl font-bold mb-4" data-i18n="features.title">Why AI Expense?</h2>
+                <p class="text-slate-400 max-w-2xl mx-auto" data-i18n="features.subtitle">Built for modern financial tracking with cutting-edge technology.</p>
+            </div>
+            
+            <div class="grid md:grid-cols-3 gap-8">
+                <!-- Feature 1 -->
+                <div class="glass-card p-8 rounded-2xl hover:bg-slate-800/50 transition-colors group cursor-pointer">
+                    <div class="w-12 h-12 bg-primary/20 rounded-xl flex items-center justify-center mb-6 text-primary group-hover:scale-110 transition-transform">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3" data-i18n="features.f1_title">Real-time Analytics</h3>
+                    <p class="text-slate-400 text-sm leading-relaxed" data-i18n="features.f1_desc">
+                        Instant visualization of your spending habits. Track every dollar as it leaves your account.
+                    </p>
+                </div>
+
+                <!-- Feature 2 -->
+                <div class="glass-card p-8 rounded-2xl hover:bg-slate-800/50 transition-colors group cursor-pointer">
+                    <div class="w-12 h-12 bg-cta/20 rounded-xl flex items-center justify-center mb-6 text-cta group-hover:scale-110 transition-transform">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3" data-i18n="features.f2_title">AI Categorization</h3>
+                    <p class="text-slate-400 text-sm leading-relaxed" data-i18n="features.f2_desc">
+                        Smart algorithms automatically sort your transactions into the right categories with 99% accuracy.
+                    </p>
+                </div>
+
+                <!-- Feature 3 -->
+                <div class="glass-card p-8 rounded-2xl hover:bg-slate-800/50 transition-colors group cursor-pointer">
+                    <div class="w-12 h-12 bg-green-500/20 rounded-xl flex items-center justify-center mb-6 text-green-500 group-hover:scale-110 transition-transform">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3" data-i18n="features.f3_title">Bank-Grade Security</h3>
+                    <p class="text-slate-400 text-sm leading-relaxed" data-i18n="features.f3_desc">
+                        Your financial data is encrypted with military-grade 256-bit encryption. Private and secure.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="py-12 border-t border-white/5 bg-slate-900">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-6">
+            <div class="flex items-center gap-2">
+                <div class="w-6 h-6 bg-gradient-to-br from-primary to-orange-600 rounded flex items-center justify-center text-white text-xs font-bold font-mono">AI</div>
+                <span class="font-bold text-lg tracking-tight text-slate-300">Expense</span>
+            </div>
+            <div class="text-slate-500 text-sm">
+                &copy; 2026 AI Expense. <span data-i18n="footer.rights">All rights reserved.</span> · <a href="./user-manual.html" class="hover:text-slate-300 transition-colors" data-i18n="footer.manual">User Manual</a>
+            </div>
+        </div>
+    </footer>
+
+    <style>
+        @keyframes float-slow {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        @keyframes float-slower {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-15px); }
+        }
+        .animate-float-slow { animation: float-slow 4s ease-in-out infinite; }
+        .animate-float-slower { animation: float-slower 6s ease-in-out infinite; }
+    </style>
+
+    <!-- i18n Logic -->
+    <script>
+        const translations = {
+            'en': {
+                'nav.features': 'Features',
+                'nav.testimonials': 'Testimonials',
+                'nav.pricing': 'Pricing',
+                'nav.manual': 'User Manual',
+                'nav.login': 'Login',
+                'hero.badge': 'v2.0 Now Available',
+                'hero.title_line1': 'Master Your Finances',
+                'hero.title_line2': 'With AI Precision',
+                'hero.subtitle': 'Stop guessing where your money goes. Just chat to track expenses, get real-time insights, and beautiful visualizations.',
+                'hero.cta_primary': 'Chat to Start',
+                'hero.cta_secondary': 'View Verified Demo',
+                'hero.floating_savings': 'Total Savings',
+                'hero.floating_budget': 'Monthly Budget',
+                'features.title': 'Why AI Expense?',
+                'features.subtitle': 'Built for modern financial tracking with cutting-edge technology.',
+                'features.f1_title': 'Real-time Analytics',
+                'features.f1_desc': 'Instant visualization of your spending habits. Track every dollar as it leaves your account.',
+                'features.f2_title': 'AI Categorization',
+                'features.f2_desc': 'Smart algorithms automatically sort your transactions into the right categories with 99% accuracy.',
+                'features.f3_title': 'Bank-Grade Security',
+                'features.f3_desc': 'Your financial data is encrypted with military-grade 256-bit encryption. Private and secure.',
+                'footer.rights': 'All rights reserved.',
+                'footer.manual': 'User Manual'
+            },
+            'zh-TW': {
+                'nav.features': '功能特色',
+                'nav.testimonials': '用戶見證',
+                'nav.pricing': '方案價格',
+                'nav.manual': '使用手冊',
+                'nav.login': '登入',
+                'hero.badge': 'v2.0 全新上線',
+                'hero.title_line1': '掌握您的財務',
+                'hero.title_line2': '以 AI 精準運算',
+                'hero.subtitle': '不再猜測錢花去哪了。只需透過聊天即可記帳，獲得即時洞察和精美的圖表可視化。',
+                'hero.cta_primary': '開始聊天記帳',
+                'hero.cta_secondary': '查看演示',
+                'hero.floating_savings': '總儲蓄',
+                'hero.floating_budget': '本月預算',
+                'features.title': '為什麼選擇 AI Expense？',
+                'features.subtitle': '專為現代財務追蹤打造，採用最先進的技術。',
+                'features.f1_title': '即時分析',
+                'features.f1_desc': '即時可視化您的消費習慣。追蹤每一筆從您帳戶流出的資金。',
+                'features.f2_title': 'AI 智慧分類',
+                'features.f2_desc': '智慧演算法能以 99% 的準確率自動將您的交易分類到正確的類別。',
+                'features.f3_title': '銀行級安全',
+                'features.f3_desc': '您的財務數據採用軍用級 256 位元加密。私密且安全。',
+                'footer.rights': '版權所有。',
+                'footer.manual': '使用手冊'
+            },
+            'ja': {
+                'nav.features': '機能',
+                'nav.testimonials': 'お客様の声',
+                'nav.pricing': '料金',
+                'nav.manual': 'ユーザーマニュアル',
+                'nav.login': 'ログイン',
+                'hero.badge': 'v2.0 リリース',
+                'hero.title_line1': 'お金の管理を',
+                'hero.title_line2': 'AIの精度で',
+                'hero.subtitle': 'お金の使い道を推測するのはもうやめましょう。チャットするだけで経費を追跡、リアルタイムの分析と美しい可視化を実現します。',
+                'hero.cta_primary': 'チャットで始める',
+                'hero.cta_secondary': 'デモを見る',
+                'hero.floating_savings': '貯蓄総額',
+                'hero.floating_budget': '今月の予算',
+                'features.title': 'AI Expenseを選ぶ理由',
+                'features.subtitle': '最新のテクノロジーで構築された現代の財務トラッキング。',
+                'features.f1_title': 'リアルタイム分析',
+                'features.f1_desc': '支出習慣を瞬時に可視化。口座から出るすべてのお金を追跡します。',
+                'features.f2_title': 'AIによる自動分類',
+                'features.f2_desc': 'スマートアルゴリズムが99%の精度で取引を正しいカテゴリに自動分類します。',
+                'features.f3_title': '銀行レベルのセキュリティ',
+                'features.f3_desc': '財務データは軍事レベルの256ビット暗号化で保護されます。プライベートで安全です。',
+                'footer.rights': 'All rights reserved.',
+                'footer.manual': 'ユーザーマニュアル'
+            },
+            'es': {
+                'nav.features': 'Características',
+                'nav.testimonials': 'Testimonios',
+                'nav.pricing': 'Precios',
+                'nav.manual': 'Manual de uso',
+                'nav.login': 'Iniciar sesión',
+                'hero.badge': 'v2.0 Disponible',
+                'hero.title_line1': 'Domina tus finanzas',
+                'hero.title_line2': 'Con precisión de IA',
+                'hero.subtitle': 'Deja de adivinar a dónde va tu dinero. Solo chatea para rastrear gastos, obtener información en tiempo real y hermosas visualizaciones.',
+                'hero.cta_primary': 'Empezar a chatear',
+                'hero.cta_secondary': 'Ver demostración',
+                'hero.floating_savings': 'Ahorros totales',
+                'hero.floating_budget': 'Presupuesto mensual',
+                'features.title': '¿Por qué AI Expense?',
+                'features.subtitle': 'Creado para el seguimiento financiero moderno con tecnología de punta.',
+                'features.f1_title': 'Análisis en tiempo real',
+                'features.f1_desc': 'Visualización instantánea de tus hábitos de gasto. Rastrea cada dólar que sale de tu cuenta.',
+                'features.f2_title': 'Categorización por IA',
+                'features.f2_desc': 'Algoritmos inteligentes clasifican automáticamente tus transacciones en las categorías correctas con un 99% de precisión.',
+                'features.f3_title': 'Seguridad de grado bancario',
+                'features.f3_desc': 'Tus datos financieros están encriptados con encriptación de 256 bits de grado militar. Privado y seguro.',
+                'footer.rights': 'Todos los derechos reservados.',
+                'footer.manual': 'Manual de uso'
+            }
+        };
+
+        function changeLanguage(lang) {
+            // Update current lang text
+            const langNames = {
+                'en': 'EN',
+                'zh-TW': 'ZH',
+                'ja': 'JP',
+                'es': 'ES'
+            };
+            document.getElementById('current-lang').textContent = langNames[lang];
+
+            // Update all text with data-i18n attribute
+            document.querySelectorAll('[data-i18n]').forEach(element => {
+                const key = element.getAttribute('data-i18n');
+                if (translations[lang] && translations[lang][key]) {
+                    element.textContent = translations[lang][key];
+                }
+            });
+
+            // Persist preference (optional)
+            localStorage.setItem('preferred-lang', lang);
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedLang = localStorage.getItem('preferred-lang') || 'en';
+            changeLanguage(savedLang);
+        });
+    </script>
+</body>
+</html>
