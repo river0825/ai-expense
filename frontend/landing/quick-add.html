@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="zh-TW" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>AI Expense 快速記帳</title>
+  <meta name="description" content="快速輸入一段記帳內容，立即送到 AIExpense LINE Bot。">
+
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="AI Expense 快速記帳">
+  <link rel="icon" type="image/jpeg" href="./assets/ai-bot-icon.jpeg">
+  <link rel="apple-touch-icon" href="./assets/ai-bot-icon.jpeg">
+  <meta name="theme-color" content="#f59e0b">
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: { primary: '#f59e0b' }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --text: #0f172a;
+      --muted: #475569;
+      --card: rgba(255, 255, 255, 0.92);
+      --line: rgba(15, 23, 42, 0.12);
+      --field: #ffffff;
+      --hint: #f8fafc;
+    }
+
+    [data-theme="dark"] {
+      --bg: #0f172a;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --card: rgba(15, 23, 42, 0.85);
+      --line: rgba(255, 255, 255, 0.12);
+      --field: rgba(15, 23, 42, 0.6);
+      --hint: rgba(15, 23, 42, 0.65);
+    }
+
+    body {
+      color: var(--text);
+      background:
+        radial-gradient(circle at 20% 10%, rgba(245, 158, 11, 0.20), transparent 45%),
+        radial-gradient(circle at 85% 90%, rgba(59, 130, 246, 0.12), transparent 35%),
+        var(--bg);
+      transition: background-color .2s ease, color .2s ease;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+
+    .muted { color: var(--muted); }
+
+    .field {
+      background: var(--field);
+      border-color: var(--line);
+      color: var(--text);
+    }
+
+    .hint {
+      background: var(--hint);
+      border-color: var(--line);
+    }
+
+    .chip {
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.08);
+      color: var(--text);
+    }
+
+    [data-theme="light"] .chip {
+      background: rgba(15,23,42,0.04);
+    }
+
+    .active-theme {
+      background: #f59e0b;
+      border-color: transparent;
+      color: white;
+    }
+
+    .secondary-btn {
+      border: 1px solid var(--line);
+      color: var(--text);
+      background: transparent;
+    }
+
+    .secondary-btn:hover {
+      background: rgba(15, 23, 42, 0.06);
+    }
+
+    [data-theme="dark"] .secondary-btn:hover {
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .collapsible {
+      border: 1px solid var(--line);
+      background: var(--hint);
+    }
+
+    .collapsible summary {
+      list-style: none;
+    }
+
+    .collapsible summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .collapsible .chevron {
+      transition: transform .2s ease;
+    }
+
+    .collapsible[open] .chevron {
+      transform: rotate(180deg);
+    }
+  </style>
+</head>
+<body class="min-h-screen">
+  <main class="max-w-xl mx-auto px-4 py-8 sm:py-12">
+    <div class="card rounded-2xl shadow-xl p-5 sm:p-7">
+      <div class="mb-5">
+        <div class="flex items-center gap-3">
+          <img src="./assets/ai-bot-icon.jpeg" alt="AI Expense Bot Icon" class="w-10 h-10 rounded-lg object-cover border border-white/30">
+          <div>
+            <h1 class="text-2xl sm:text-3xl font-bold tracking-tight leading-tight" data-i18n="title">快速記帳</h1>
+            <p class="text-sm muted mt-0.5" data-i18n="subtitle">直接送到 AI Chat bot</p>
+          </div>
+        </div>
+        <div class="mt-3 flex items-center justify-end gap-2">
+          <select id="lang-select" class="chip rounded-lg px-2 py-1.5 text-xs sm:text-sm focus:outline-none">
+            <option value="zh-TW">繁中</option>
+            <option value="en">EN</option>
+            <option value="ja">JP</option>
+            <option value="es">ES</option>
+          </select>
+          <div class="chip rounded-lg p-1 flex items-center gap-1">
+            <button id="theme-light" class="px-2 py-1 text-xs rounded-md">Light</button>
+            <button id="theme-dark" class="px-2 py-1 text-xs rounded-md">Dark</button>
+          </div>
+        </div>
+      </div>
+
+      <label for="expenseInput" class="block text-sm font-medium mb-2" data-i18n="label">記帳內容</label>
+      <textarea
+        id="expenseInput"
+        rows="6"
+        autofocus
+        class="field w-full rounded-xl border px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary/40"
+        placeholder="請用語音輸入你想記的帳，如「昨天 早餐 300元」或「Adidas 球鞋 3350」、「日本行伴手禮 2000 日元 台新信用卡」。你也可以一次輸入多筆帳務。"
+      ></textarea>
+
+      <button
+        id="submitBtn"
+        class="mt-4 w-full rounded-xl bg-primary hover:bg-amber-600 text-white font-semibold py-3 transition-colors"
+        data-i18n="cta"
+      >
+        記帳
+      </button>
+      <button
+        id="reportBtn"
+        class="secondary-btn mt-3 w-full rounded-xl font-semibold py-3 transition-colors"
+        data-i18n="reportCta"
+      >
+        查看帳務總覽
+      </button>
+
+      <details class="collapsible mt-6 rounded-xl p-4">
+        <summary class="flex items-center justify-between gap-3 cursor-pointer">
+          <span class="text-sm font-semibold" data-i18n="bookmark.summary">加入手機桌面，快速記帳</span>
+          <svg class="chevron w-4 h-4 muted shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+            <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.12l3.71-3.89a.75.75 0 111.08 1.04l-4.25 4.45a.75.75 0 01-1.08 0L5.21 8.27a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+          </svg>
+        </summary>
+        <div class="mt-3 rounded-xl border border-[var(--line)] p-4">
+          <h2 class="font-semibold text-sm mb-2" data-i18n="bookmark.title">快速加入手機桌面</h2>
+          <ol class="list-decimal list-inside text-sm muted space-y-1">
+            <li data-i18n="bookmark.1">iPhone Safari：點「分享」→「加入主畫面」。</li>
+            <li data-i18n="bookmark.2">Android Chrome：點選單 →「加到主畫面」。</li>
+            <li data-i18n="bookmark.3">加入後可像 App 一樣一鍵開啟，立刻記帳，速度更快。</li>
+          </ol>
+        </div>
+      </details>
+
+      <a href="/" class="inline-block mt-4 text-sm muted hover:text-current underline" data-i18n="back">返回首頁</a>
+    </div>
+  </main>
+
+  <script>
+    const lineMessageBase = 'https://line.me/R/oaMessage/@979okton/?';
+    const lineDesktopJoinUrl = 'https://line.me/R/ti/p/@979okton';
+    const input = document.getElementById('expenseInput');
+    const submitBtn = document.getElementById('submitBtn');
+    const reportBtn = document.getElementById('reportBtn');
+    const root = document.documentElement;
+    const langSelect = document.getElementById('lang-select');
+    const themeLight = document.getElementById('theme-light');
+    const themeDark = document.getElementById('theme-dark');
+
+    function isMobileDevice() {
+      const ua = navigator.userAgent || navigator.vendor || '';
+      return /android|iphone|ipad|ipod|mobile|windows phone/i.test(ua);
+    }
+
+    const translations = {
+      'zh-TW': {
+        title: 'AI Expense 快速記帳',
+        subtitle: '直接送到 AI Chat bot',
+        label: '記帳內容',
+        cta: '記帳',
+        reportCta: '查看帳務總覽',
+        ph: '請用語音輸入你想記的帳，如「昨天 早餐 300元」或「Adidas 球鞋 3350」、「日本行伴手禮 2000 日元 台新信用卡」。你也可以一次輸入多筆帳務。',
+        'bookmark.summary': '加入手機桌面，快速記帳',
+        'bookmark.title': '快速加入手機桌面',
+        'bookmark.1': 'iPhone Safari：點「分享」→「加入主畫面」。',
+        'bookmark.2': 'Android Chrome：點選單 →「加到主畫面」。',
+        'bookmark.3': '加入後可像 App 一樣一鍵開啟，立刻記帳，速度更快。',
+        back: '返回首頁'
+      },
+      'en': {
+        title: 'AI Expense Quick Add',
+        subtitle: 'Send directly to AI Chat bot',
+        label: 'Expense Message',
+        cta: 'Record',
+        reportCta: 'View Expense Overview',
+        ph: 'Use voice input for expense logs, like "Yesterday breakfast 300", "Adidas shoes 3350", or "Japan souvenirs 2000 JPY Taishin credit card". You can also enter multiple records at once.',
+        'bookmark.summary': 'Add to Home Screen for Faster Logging',
+        'bookmark.title': 'Quickly Add to Home Screen',
+        'bookmark.1': 'iPhone Safari: tap Share -> Add to Home Screen.',
+        'bookmark.2': 'Android Chrome: menu -> Add to Home screen.',
+        'bookmark.3': 'After adding, open it in one tap and log expenses immediately.',
+        back: 'Back to Home'
+      },
+      'ja': {
+        title: 'AI Expense クイック記帳',
+        subtitle: 'AI チャットボットへ直接送信',
+        label: '記帳メッセージ',
+        cta: '記帳する',
+        reportCta: '支出ダッシュボードを見る',
+        ph: '音声入力で記帳できます。例：「昨日 朝食 300」「Adidas シューズ 3350」「日本お土産 2000 JPY 台新クレカ」。複数件をまとめて入力可能です。',
+        'bookmark.summary': 'ホーム画面に追加して、すぐ記帳',
+        'bookmark.title': 'ホーム画面にすばやく追加',
+        'bookmark.1': 'iPhone Safari: 共有 -> ホーム画面に追加。',
+        'bookmark.2': 'Android Chrome: メニュー -> ホーム画面に追加。',
+        'bookmark.3': '追加後はワンタップで開いて、すぐに記帳できます。',
+        back: 'ホームへ戻る'
+      },
+      'es': {
+        title: 'AI Expense Registro Rápido',
+        subtitle: 'Enviar directo al bot de AI',
+        label: 'Mensaje de gasto',
+        cta: 'Registrar',
+        reportCta: 'Ver Resumen de Gastos',
+        ph: 'Usa voz para registrar gastos, por ejemplo "Ayer desayuno 300", "Adidas zapatos 3350" o "Souvenirs Japón 2000 JPY tarjeta Taishin". También puedes ingresar varios a la vez.',
+        'bookmark.summary': 'Agregar a inicio para registrar más rápido',
+        'bookmark.title': 'Agregar rápido a pantalla de inicio',
+        'bookmark.1': 'iPhone Safari: Compartir -> Agregar a pantalla de inicio.',
+        'bookmark.2': 'Android Chrome: menú -> Agregar a pantalla principal.',
+        'bookmark.3': 'Después podrás abrirla con un toque y registrar gastos al instante.',
+        back: 'Volver al inicio'
+      }
+    };
+
+    function applyLanguage(lang) {
+      const use = translations[lang] ? lang : 'zh-TW';
+      document.documentElement.lang = use;
+      const t = translations[use];
+
+      document.querySelectorAll('[data-i18n]').forEach((el) => {
+        const key = el.getAttribute('data-i18n');
+        if (t[key]) el.textContent = t[key];
+      });
+
+      input.placeholder = t.ph;
+      localStorage.setItem('quick-add-lang', use);
+      langSelect.value = use;
+    }
+
+    function setTheme(theme) {
+      const use = theme === 'dark' ? 'dark' : 'light';
+      root.setAttribute('data-theme', use);
+      localStorage.setItem('quick-add-theme', use);
+      themeLight.classList.toggle('active-theme', use === 'light');
+      themeDark.classList.toggle('active-theme', use === 'dark');
+    }
+
+    submitBtn.addEventListener('click', () => {
+      const message = (input.value || '').trim();
+      if (!message) {
+        input.focus();
+        return;
+      }
+      input.value = '';
+      if (isMobileDevice()) {
+        window.location.href = lineMessageBase + encodeURIComponent(message);
+      } else {
+        window.location.href = lineDesktopJoinUrl;
+      }
+    });
+
+    reportBtn.addEventListener('click', () => {
+      if (isMobileDevice()) {
+        window.location.href = lineMessageBase + encodeURIComponent('report');
+      } else {
+        window.location.href = lineDesktopJoinUrl;
+      }
+    });
+
+    input.addEventListener('keydown', (event) => {
+      if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
+        submitBtn.click();
+      }
+    });
+
+    langSelect.addEventListener('change', (e) => applyLanguage(e.target.value));
+    themeLight.addEventListener('click', () => setTheme('light'));
+    themeDark.addEventListener('click', () => setTheme('dark'));
+
+    const savedLang = localStorage.getItem('quick-add-lang') || 'zh-TW';
+    applyLanguage(savedLang);
+
+    const savedTheme = localStorage.getItem('quick-add-theme');
+    if (savedTheme) {
+      setTheme(savedTheme);
+    } else {
+      const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      setTheme(prefersDark ? 'dark' : 'light');
+    }
+
+    // Focus input on page entry for fastest capture flow.
+    window.requestAnimationFrame(() => input.focus());
+  </script>
+</body>
+</html>

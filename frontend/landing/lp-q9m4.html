@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="zh-TW" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AIExpense - 在聊天中記帳，輕鬆分享開支</title>
+  <meta name="description" content="用你最常用的 LINE、Telegram 直接聊天就能記帳。不用下載新 app，一個機器人搞定個人記帳、家庭分享和群組分帳。">
+  <link rel="icon" type="image/jpeg" href="./assets/ai-bot-icon.jpeg">
+  <link rel="apple-touch-icon" href="./assets/ai-bot-icon.jpeg">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Fira Sans"', 'sans-serif'],
+            mono: ['"Fira Code"', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    :root {
+      --bg: #0f172a;
+      --bg-soft: #111827;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --card: rgba(15, 23, 42, 0.62);
+      --card-border: rgba(255, 255, 255, 0.1);
+      --accent: #f59e0b;
+      --accent-2: #8b5cf6;
+      --line: rgba(255, 255, 255, 0.1);
+      --chip: rgba(255, 255, 255, 0.08);
+      --hero-gradient: linear-gradient(180deg, rgba(245, 158, 11, 0.12) 0%, rgba(15, 23, 42, 0) 55%);
+    }
+
+    [data-theme="light"] {
+      --bg: #f8fafc;
+      --bg-soft: #ffffff;
+      --text: #0f172a;
+      --text-muted: #475569;
+      --card: rgba(255, 255, 255, 0.88);
+      --card-border: rgba(15, 23, 42, 0.12);
+      --accent: #ea580c;
+      --accent-2: #2563eb;
+      --line: rgba(15, 23, 42, 0.12);
+      --chip: rgba(15, 23, 42, 0.06);
+      --hero-gradient: linear-gradient(180deg, rgba(37, 99, 235, 0.12) 0%, rgba(248, 250, 252, 0) 55%);
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Fira Sans', sans-serif;
+      transition: background-color 0.2s ease, color 0.2s ease;
+    }
+
+    .bg-atmosphere { background: var(--hero-gradient); }
+    .glass {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+    .theme-chip {
+      background: var(--chip);
+      border: 1px solid var(--line);
+      color: var(--text);
+    }
+    .muted { color: var(--text-muted); }
+
+    .card-hover {
+      transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+    }
+    .card-hover:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 14px 28px rgba(0,0,0,.16);
+      border-color: rgba(245, 158, 11, 0.35);
+    }
+
+    .active-theme {
+      background: var(--accent);
+      color: white;
+      border-color: transparent;
+    }
+  </style>
+</head>
+<body>
+  <div class="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
+    <div class="absolute top-[-20%] left-[-10%] w-[48%] h-[48%] rounded-full blur-[120px]" style="background: color-mix(in srgb, var(--accent) 24%, transparent);"></div>
+    <div class="absolute bottom-[-20%] right-[-10%] w-[45%] h-[45%] rounded-full blur-[120px]" style="background: color-mix(in srgb, var(--accent-2) 20%, transparent);"></div>
+  </div>
+
+  <nav class="fixed top-0 w-full z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+      <div class="glass rounded-2xl px-5 py-4 flex items-center justify-between gap-3">
+        <a href="/" class="flex items-center gap-2">
+          <span class="w-8 h-8 rounded-lg text-white font-bold font-mono flex items-center justify-center" style="background: linear-gradient(135deg, var(--accent), #ea580c);">AI</span>
+          <span class="font-bold tracking-tight">Expense</span>
+        </a>
+
+        <div class="hidden md:flex items-center gap-6 text-sm">
+          <a href="#features" class="muted hover:text-current transition-colors" data-i18n="nav.features">功能</a>
+          <a href="#how" class="muted hover:text-current transition-colors" data-i18n="nav.how">如何運作</a>
+          <a href="#usecases" class="muted hover:text-current transition-colors" data-i18n="nav.usecases">使用場景</a>
+          <a href="./user-manual.html" class="muted hover:text-current transition-colors" data-i18n="nav.manual">使用手冊</a>
+        </div>
+
+        <div class="flex items-center gap-2 sm:gap-3">
+          <select id="lang-select" class="theme-chip rounded-lg px-2 py-1.5 text-xs sm:text-sm focus:outline-none">
+            <option value="zh-TW">繁中</option>
+            <option value="en">EN</option>
+            <option value="ja">JP</option>
+            <option value="es">ES</option>
+          </select>
+          <div class="theme-chip rounded-lg p-1 flex items-center gap-1">
+            <button id="theme-dark" class="px-2.5 py-1.5 text-xs sm:text-sm rounded-md">Dark</button>
+            <button id="theme-light" class="px-2.5 py-1.5 text-xs sm:text-sm rounded-md">Light</button>
+          </div>
+          <a href="./quick-add.html" class="px-4 sm:px-5 py-2 rounded-lg text-sm font-semibold text-white" style="background: linear-gradient(135deg, var(--accent), #ea580c);" data-i18n="nav.cta">開始使用</a>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <main>
+    <section class="pt-32 sm:pt-36 pb-16 px-4 bg-atmosphere">
+      <div class="max-w-7xl mx-auto grid lg:grid-cols-2 gap-10 items-center">
+        <div>
+          <h1 class="text-4xl md:text-6xl font-bold tracking-tight mb-6" data-i18n="hero.title">在聊天中記帳，輕鬆分享開支</h1>
+          <p class="text-lg md:text-xl muted mb-8 leading-relaxed" data-i18n="hero.desc">
+            用你最常用的 LINE、Telegram 直接聊天就能記帳。不用下載新 app，一個機器人搞定個人記帳、家庭分享和群組分帳。
+          </p>
+          <div class="flex flex-col sm:flex-row gap-3">
+            <a href="./quick-add.html" class="px-7 py-3.5 rounded-xl text-white font-semibold text-center" style="background: #06c755;" data-i18n="hero.cta1">立即開始使用</a>
+            <a href="./user-manual.html" class="px-7 py-3.5 rounded-xl font-semibold text-center theme-chip" data-i18n="hero.cta2">查看使用手冊</a>
+          </div>
+        </div>
+
+        <div class="glass rounded-2xl p-4 sm:p-5">
+          <div class="rounded-xl border" style="border-color: var(--line); background: color-mix(in srgb, var(--bg-soft) 88%, transparent);">
+            <div class="h-9 px-4 border-b flex items-center gap-2" style="border-color: var(--line);">
+              <span class="w-2.5 h-2.5 rounded-full bg-rose-400"></span>
+              <span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+            </div>
+            <div class="p-4 sm:p-5 space-y-3 text-sm">
+              <div class="flex justify-end">
+                <div class="px-3 py-2 rounded-xl text-white" style="background: var(--accent);" data-i18n="chat.user1">早上咖啡 120 信用卡</div>
+              </div>
+              <div class="flex justify-start">
+                <div class="px-3 py-2 rounded-xl" style="background: var(--chip); border: 1px solid var(--line);">
+                  <span data-i18n="chat.bot1a">✓ 已記錄 - 飲食</span><br><span class="muted text-xs" data-i18n="chat.bot1b">120 TWD · 信用卡 💳</span>
+                </div>
+              </div>
+              <div class="flex justify-end">
+                <div class="px-3 py-2 rounded-xl text-white" style="background: var(--accent);" data-i18n="chat.user2">日本拉麵 500 日幣</div>
+              </div>
+              <div class="flex justify-start">
+                <div class="px-3 py-2 rounded-xl" style="background: var(--chip); border: 1px solid var(--line);">
+                  <span data-i18n="chat.bot2a">✓ 已記錄 - 飲食</span><br><span class="muted text-xs" data-i18n="chat.bot2b">500 JPY ≈ 110 TWD 🇯🇵</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="how" class="py-16 px-4">
+      <div class="max-w-7xl mx-auto">
+        <h2 class="text-3xl md:text-4xl font-bold text-center mb-3" data-i18n="how.title">三個簡單步驟開始</h2>
+        <p class="muted text-center mb-10" data-i18n="how.desc">像聊天一樣簡單，機器人會自動幫你處理</p>
+        <div class="grid md:grid-cols-3 gap-5">
+          <div class="glass rounded-2xl p-6 card-hover">
+            <div class="text-4xl mb-3">🤖</div>
+            <h3 class="font-bold text-xl mb-2" data-i18n="how.s1t">加入機器人</h3>
+            <p class="muted" data-i18n="how.s1d">在 LINE 或 Telegram 中加入機器人，馬上開始對話。</p>
+          </div>
+          <div class="glass rounded-2xl p-6 card-hover">
+            <div class="text-4xl mb-3">💬</div>
+            <h3 class="font-bold text-xl mb-2" data-i18n="how.s2t">聊天記帳</h3>
+            <p class="muted" data-i18n="how.s2d">像平常聊天輸入「午餐 200」、「電影票 350」即可。</p>
+          </div>
+          <div class="glass rounded-2xl p-6 card-hover">
+            <div class="text-4xl mb-3">📊</div>
+            <h3 class="font-bold text-xl mb-2" data-i18n="how.s3t">自動分析</h3>
+            <p class="muted" data-i18n="how.s3d">系統自動分類、換算幣別並生成圖表與報告。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="features" class="py-16 px-4">
+      <div class="max-w-7xl mx-auto">
+        <h2 class="text-3xl md:text-4xl font-bold text-center mb-10" data-i18n="features.title">強大的功能</h2>
+        <div class="grid md:grid-cols-2 gap-5">
+          <div class="glass rounded-2xl p-6 card-hover"><h3 class="font-bold text-xl mb-2" data-i18n="features.f1t">自然語言輸入</h3><p class="muted" data-i18n="features.f1d">無需複雜表單，自然說出開支即可完成記帳與分類。</p></div>
+          <div class="glass rounded-2xl p-6 card-hover"><h3 class="font-bold text-xl mb-2" data-i18n="features.f2t">多支付方式</h3><p class="muted" data-i18n="features.f2d">支援信用卡、現金與多種支付方式，紀錄更完整。</p></div>
+          <div class="glass rounded-2xl p-6 card-hover"><h3 class="font-bold text-xl mb-2" data-i18n="features.f3t">多幣別支持</h3><p class="muted" data-i18n="features.f3d">自動辨識幣別並換算主幣，跨國消費也能輕鬆追蹤。</p></div>
+          <div class="glass rounded-2xl p-6 card-hover"><h3 class="font-bold text-xl mb-2" data-i18n="features.f4t">群組分帳</h3><p class="muted" data-i18n="features.f4d">支援多人情境，協助你快速釐清誰付了什麼。</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="py-10 px-4">
+      <div class="max-w-5xl mx-auto glass rounded-2xl p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h3 class="text-xl font-bold mb-1" data-i18n="manual.title">完整教學與常見問題都在使用手冊</h3>
+          <p class="muted" data-i18n="manual.desc">包含聊天範例、報表連結、Dashboard 操作、分類管理與更新紀錄。</p>
+        </div>
+        <a href="./user-manual.html" class="px-5 py-3 rounded-xl font-semibold text-center theme-chip" data-i18n="manual.cta">前往使用手冊</a>
+      </div>
+    </section>
+
+    <section id="usecases" class="py-16 px-4">
+      <div class="max-w-7xl mx-auto">
+        <h2 class="text-3xl md:text-4xl font-bold text-center mb-10" data-i18n="usecases.title">適用於各種情境</h2>
+        <div class="grid md:grid-cols-2 gap-5">
+          <div class="glass rounded-2xl p-6 card-hover"><h3 class="font-bold text-xl mb-2" data-i18n="usecases.u1t">👤 個人記帳</h3><p class="muted" data-i18n="usecases.u1d">每筆支出即時追蹤，掌握自己的花費習慣。</p></div>
+          <div class="glass rounded-2xl p-6 card-hover"><h3 class="font-bold text-xl mb-2" data-i18n="usecases.u2t">👨‍👩‍👧‍👦 家庭共享</h3><p class="muted" data-i18n="usecases.u2d">讓家庭財務更透明，分工與預算更好控管。</p></div>
+          <div class="glass rounded-2xl p-6 card-hover"><h3 class="font-bold text-xl mb-2" data-i18n="usecases.u3t">👥 旅遊聚餐</h3><p class="muted" data-i18n="usecases.u3d">外出多人開銷集中記錄，不再來回對帳。</p></div>
+          <div class="glass rounded-2xl p-6 card-hover"><h3 class="font-bold text-xl mb-2" data-i18n="usecases.u4t">📈 消費優化</h3><p class="muted" data-i18n="usecases.u4d">透過報表看見趨勢，逐步調整你的消費結構。</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="py-16 px-4">
+      <div class="max-w-4xl mx-auto text-center glass rounded-2xl p-8 sm:p-10">
+        <h2 class="text-3xl md:text-4xl font-bold mb-3" data-i18n="final.title">準備好輕鬆記帳了嗎？</h2>
+        <p class="muted mb-7" data-i18n="final.desc">現在就開始，讓每一筆支出都有清楚紀錄。</p>
+        <div class="flex flex-col sm:flex-row gap-3 justify-center">
+          <a href="./quick-add.html" class="px-7 py-3.5 rounded-xl text-white font-semibold" style="background: #06c755;" data-i18n="final.cta1">立即開始使用</a>
+          <a href="./user-manual.html" class="px-7 py-3.5 rounded-xl font-semibold theme-chip" data-i18n="final.cta2">先看使用手冊</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="py-10 border-t" style="border-color: var(--line);">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row justify-between gap-4 sm:items-center">
+      <div class="text-sm muted" data-i18n="footer.copy">© 2026 AIExpense. All rights reserved.</div>
+      <div class="flex items-center gap-4 text-sm">
+        <a href="/" class="muted hover:text-current" data-i18n="footer.home">首頁</a>
+        <a href="./user-manual.html" class="muted hover:text-current" data-i18n="footer.manual">使用手冊</a>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    const translations = {
+      'zh-TW': {
+        'nav.features': '功能', 'nav.how': '如何運作', 'nav.usecases': '使用場景', 'nav.manual': '使用手冊', 'nav.cta': '開始使用',
+        'hero.title': '在聊天中記帳，輕鬆分享開支',
+        'hero.desc': '用你最常用的 LINE、Telegram 直接聊天就能記帳。不用下載新 app，一個機器人搞定個人記帳、家庭分享和群組分帳。',
+        'hero.cta1': '立即開始使用', 'hero.cta2': '查看使用手冊',
+        'chat.user1': '早上咖啡 120 信用卡', 'chat.bot1a': '✓ 已記錄 - 飲食', 'chat.bot1b': '120 TWD · 信用卡 💳',
+        'chat.user2': '日本拉麵 500 日幣', 'chat.bot2a': '✓ 已記錄 - 飲食', 'chat.bot2b': '500 JPY ≈ 110 TWD 🇯🇵',
+        'how.title': '三個簡單步驟開始', 'how.desc': '像聊天一樣簡單，機器人會自動幫你處理',
+        'how.s1t': '加入機器人', 'how.s1d': '在 LINE 或 Telegram 中加入機器人，馬上開始對話。',
+        'how.s2t': '聊天記帳', 'how.s2d': '像平常聊天輸入「午餐 200」、「電影票 350」即可。',
+        'how.s3t': '自動分析', 'how.s3d': '系統自動分類、換算幣別並生成圖表與報告。',
+        'features.title': '強大的功能',
+        'features.f1t': '自然語言輸入', 'features.f1d': '無需複雜表單，自然說出開支即可完成記帳與分類。',
+        'features.f2t': '多支付方式', 'features.f2d': '支援信用卡、現金與多種支付方式，紀錄更完整。',
+        'features.f3t': '多幣別支持', 'features.f3d': '自動辨識幣別並換算主幣，跨國消費也能輕鬆追蹤。',
+        'features.f4t': '群組分帳', 'features.f4d': '支援多人情境，協助你快速釐清誰付了什麼。',
+        'manual.title': '完整教學與常見問題都在使用手冊', 'manual.desc': '包含聊天範例、報表連結、Dashboard 操作、分類管理與更新紀錄。', 'manual.cta': '前往使用手冊',
+        'usecases.title': '適用於各種情境',
+        'usecases.u1t': '👤 個人記帳', 'usecases.u1d': '每筆支出即時追蹤，掌握自己的花費習慣。',
+        'usecases.u2t': '👨‍👩‍👧‍👦 家庭共享', 'usecases.u2d': '讓家庭財務更透明，分工與預算更好控管。',
+        'usecases.u3t': '👥 旅遊聚餐', 'usecases.u3d': '外出多人開銷集中記錄，不再來回對帳。',
+        'usecases.u4t': '📈 消費優化', 'usecases.u4d': '透過報表看見趨勢，逐步調整你的消費結構。',
+        'final.title': '準備好輕鬆記帳了嗎？', 'final.desc': '現在就開始，讓每一筆支出都有清楚紀錄。', 'final.cta1': '立即開始使用', 'final.cta2': '先看使用手冊',
+        'footer.copy': '© 2026 AIExpense. All rights reserved.', 'footer.home': '首頁', 'footer.manual': '使用手冊'
+      },
+      'en': {
+        'nav.features': 'Features', 'nav.how': 'How It Works', 'nav.usecases': 'Use Cases', 'nav.manual': 'User Manual', 'nav.cta': 'Get Started',
+        'hero.title': 'Track Expenses in Chat, Share Spending Easily',
+        'hero.desc': 'Use LINE or Telegram to track expenses directly in chat. No extra app needed for personal, family, or group spending.',
+        'hero.cta1': 'Start Now', 'hero.cta2': 'Open User Manual',
+        'chat.user1': 'Morning coffee 120 Credit Card', 'chat.bot1a': '✓ Recorded - Food', 'chat.bot1b': '120 TWD · Credit Card 💳',
+        'chat.user2': 'Tokyo ramen 500 JPY', 'chat.bot2a': '✓ Recorded - Food', 'chat.bot2b': '500 JPY ≈ 110 TWD 🇯🇵',
+        'how.title': 'Get Started in 3 Steps', 'how.desc': 'As simple as chatting. The bot handles the heavy lifting.',
+        'how.s1t': 'Add the Bot', 'how.s1d': 'Add AIExpense bot on LINE or Telegram and start chatting.',
+        'how.s2t': 'Send a Message', 'how.s2d': 'Type naturally like "Lunch 200" or "Movie 350".',
+        'how.s3t': 'Get Insights', 'how.s3d': 'Auto-categorization, currency conversion, and reports.',
+        'features.title': 'Powerful Features',
+        'features.f1t': 'Natural Language Input', 'features.f1d': 'No complex forms. Just say your expense naturally.',
+        'features.f2t': 'Multiple Payment Methods', 'features.f2d': 'Track cash, cards, and more in one place.',
+        'features.f3t': 'Multi-currency Support', 'features.f3d': 'Detect and convert currencies automatically.',
+        'features.f4t': 'Group Cost Splitting', 'features.f4d': 'Great for shared trips and dining expenses.',
+        'manual.title': 'Need full walkthroughs and FAQs?', 'manual.desc': 'The user manual covers chat examples, dashboard usage, and more.', 'manual.cta': 'Go to User Manual',
+        'usecases.title': 'Fits Different Scenarios',
+        'usecases.u1t': '👤 Personal Tracking', 'usecases.u1d': 'Understand your spending habits in real time.',
+        'usecases.u2t': '👨‍👩‍👧‍👦 Family Shared View', 'usecases.u2d': 'Make family expenses transparent and manageable.',
+        'usecases.u3t': '👥 Trips & Meals', 'usecases.u3d': 'Record shared expenses without manual reconciliation.',
+        'usecases.u4t': '📈 Spend Optimization', 'usecases.u4d': 'Use trends to gradually improve spending structure.',
+        'final.title': 'Ready to make tracking effortless?', 'final.desc': 'Start now and keep every expense clear and searchable.', 'final.cta1': 'Start Now', 'final.cta2': 'Read Manual First',
+        'footer.copy': '© 2026 AIExpense. All rights reserved.', 'footer.home': 'Home', 'footer.manual': 'User Manual'
+      },
+      'ja': {
+        'nav.features': '機能', 'nav.how': '使い方', 'nav.usecases': '利用シーン', 'nav.manual': 'ユーザーマニュアル', 'nav.cta': '開始する',
+        'hero.title': 'チャットで家計管理、支出共有をもっと簡単に',
+        'hero.desc': 'LINEやTelegramでそのまま記帳。新しいアプリ不要で、個人・家族・グループに対応。',
+        'hero.cta1': '今すぐ開始', 'hero.cta2': 'マニュアルを見る',
+        'chat.user1': '朝コーヒー 120 クレカ', 'chat.bot1a': '✓ 記録完了 - 食費', 'chat.bot1b': '120 TWD · クレカ 💳',
+        'chat.user2': 'ラーメン 500 JPY', 'chat.bot2a': '✓ 記録完了 - 食費', 'chat.bot2b': '500 JPY ≈ 110 TWD 🇯🇵',
+        'how.title': '3ステップで開始', 'how.desc': 'チャットするだけ。あとは自動で処理。',
+        'how.s1t': 'ボット追加', 'how.s1d': 'LINEまたはTelegramでボットを追加。',
+        'how.s2t': 'メッセージ送信', 'how.s2d': '「ランチ200」など自然入力でOK。',
+        'how.s3t': '分析確認', 'how.s3d': '自動分類・通貨換算・レポート作成。',
+        'features.title': '主要機能',
+        'features.f1t': '自然言語入力', 'features.f1d': 'フォーム不要。自然に入力するだけ。',
+        'features.f2t': '支払い方法対応', 'features.f2d': '現金・カードなどを一元管理。',
+        'features.f3t': '多通貨対応', 'features.f3d': '通貨を自動認識して換算。',
+        'features.f4t': 'グループ精算', 'features.f4d': '旅行・会食の共同支出に最適。',
+        'manual.title': '詳細ガイドとFAQはこちら', 'manual.desc': '入力例、ダッシュボード操作、分類管理まで掲載。', 'manual.cta': 'マニュアルへ',
+        'usecases.title': 'さまざまな利用シーン',
+        'usecases.u1t': '👤 個人記帳', 'usecases.u1d': '支出傾向をリアルタイムで把握。',
+        'usecases.u2t': '👨‍👩‍👧‍👦 家族共有', 'usecases.u2d': '家計の透明性と管理性を向上。',
+        'usecases.u3t': '👥 旅行・会食', 'usecases.u3d': '割り勘管理をシンプルに。',
+        'usecases.u4t': '📈 支出最適化', 'usecases.u4d': 'トレンドから改善ポイントを発見。',
+        'final.title': 'かんたん記帳を始めましょう', 'final.desc': 'すべての支出を、明確に、検索可能に。', 'final.cta1': '今すぐ開始', 'final.cta2': '先にマニュアル',
+        'footer.copy': '© 2026 AIExpense. All rights reserved.', 'footer.home': 'ホーム', 'footer.manual': 'ユーザーマニュアル'
+      },
+      'es': {
+        'nav.features': 'Funciones', 'nav.how': 'Cómo funciona', 'nav.usecases': 'Casos de uso', 'nav.manual': 'Manual de usuario', 'nav.cta': 'Comenzar',
+        'hero.title': 'Registra gastos por chat y comparte gastos fácilmente',
+        'hero.desc': 'Usa LINE o Telegram para registrar gastos sin instalar otra app. Ideal para uso personal, familiar y grupal.',
+        'hero.cta1': 'Empezar ahora', 'hero.cta2': 'Ver manual',
+        'chat.user1': 'Café 120 tarjeta', 'chat.bot1a': '✓ Registrado - Comida', 'chat.bot1b': '120 TWD · Tarjeta 💳',
+        'chat.user2': 'Ramen 500 JPY', 'chat.bot2a': '✓ Registrado - Comida', 'chat.bot2b': '500 JPY ≈ 110 TWD 🇯🇵',
+        'how.title': 'Empieza en 3 pasos', 'how.desc': 'Tan simple como chatear. El bot hace el resto.',
+        'how.s1t': 'Agregar bot', 'how.s1d': 'Agrega el bot en LINE o Telegram.',
+        'how.s2t': 'Enviar mensaje', 'how.s2d': 'Escribe natural: "Almuerzo 200".',
+        'how.s3t': 'Ver análisis', 'how.s3d': 'Categorías, conversión y reportes automáticos.',
+        'features.title': 'Funciones potentes',
+        'features.f1t': 'Entrada en lenguaje natural', 'features.f1d': 'Sin formularios complejos.',
+        'features.f2t': 'Múltiples métodos de pago', 'features.f2d': 'Efectivo, tarjeta y más en un solo lugar.',
+        'features.f3t': 'Soporte multimoneda', 'features.f3d': 'Detección y conversión automática.',
+        'features.f4t': 'División de gastos grupales', 'features.f4d': 'Perfecto para viajes y comidas compartidas.',
+        'manual.title': '¿Necesitas guía completa y FAQ?', 'manual.desc': 'El manual incluye ejemplos de chat y uso del dashboard.', 'manual.cta': 'Ir al manual',
+        'usecases.title': 'Para distintos escenarios',
+        'usecases.u1t': '👤 Uso personal', 'usecases.u1d': 'Controla tus hábitos de gasto en tiempo real.',
+        'usecases.u2t': '👨‍👩‍👧‍👦 Familia', 'usecases.u2d': 'Más transparencia en gastos familiares.',
+        'usecases.u3t': '👥 Viajes y comidas', 'usecases.u3d': 'Registra gastos compartidos sin fricción.',
+        'usecases.u4t': '📈 Optimización', 'usecases.u4d': 'Mejora tu estructura de gastos con datos.',
+        'final.title': '¿Listo para registrar sin esfuerzo?', 'final.desc': 'Empieza ahora y mantén todo claro y ordenado.', 'final.cta1': 'Empezar ahora', 'final.cta2': 'Leer manual primero',
+        'footer.copy': '© 2026 AIExpense. All rights reserved.', 'footer.home': 'Inicio', 'footer.manual': 'Manual de usuario'
+      }
+    };
+
+    const root = document.documentElement;
+    const darkBtn = document.getElementById('theme-dark');
+    const lightBtn = document.getElementById('theme-light');
+    const langSelect = document.getElementById('lang-select');
+
+    function applyLanguage(lang) {
+      const use = translations[lang] ? lang : 'zh-TW';
+      root.setAttribute('lang', use);
+      document.querySelectorAll('[data-i18n]').forEach((el) => {
+        const key = el.getAttribute('data-i18n');
+        if (translations[use][key]) {
+          el.textContent = translations[use][key];
+        }
+      });
+      localStorage.setItem('landing2-lang', use);
+      langSelect.value = use;
+    }
+
+    function setTheme(theme) {
+      const next = theme === 'light' ? 'light' : 'dark';
+      root.setAttribute('data-theme', next);
+      localStorage.setItem('landing2-theme', next);
+      darkBtn.classList.toggle('active-theme', next === 'dark');
+      lightBtn.classList.toggle('active-theme', next === 'light');
+    }
+
+    darkBtn.addEventListener('click', () => setTheme('dark'));
+    lightBtn.addEventListener('click', () => setTheme('light'));
+    langSelect.addEventListener('change', (e) => applyLanguage(e.target.value));
+
+    const savedTheme = localStorage.getItem('landing2-theme');
+    if (savedTheme) {
+      setTheme(savedTheme);
+    } else {
+      const systemLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+      setTheme(systemLight ? 'light' : 'dark');
+    }
+
+    const savedLang = localStorage.getItem('landing2-lang') || 'zh-TW';
+    applyLanguage(savedLang);
+  </script>
+</body>
+</html>
