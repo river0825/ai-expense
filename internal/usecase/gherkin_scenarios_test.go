@@ -19,7 +19,7 @@ import (
 func TestScenario_FirstTimeUserSignup(t *testing.T) {
 	userRepo := NewMockUserRepository()
 	categoryRepo := NewMockCategoryRepository()
-	uc := NewAutoSignupUseCase(userRepo, categoryRepo)
+	uc := NewAutoSignupUseCase(userRepo, categoryRepo, nil)
 
 	ctx := context.Background()
 	userID := "user_" + uuid.New().String()
@@ -84,7 +84,7 @@ func TestScenario_FirstTimeUserSignup(t *testing.T) {
 func TestScenario_ExistingUserMessage(t *testing.T) {
 	userRepo := NewMockUserRepository()
 	categoryRepo := NewMockCategoryRepository()
-	uc := NewAutoSignupUseCase(userRepo, categoryRepo)
+	uc := NewAutoSignupUseCase(userRepo, categoryRepo, nil)
 
 	ctx := context.Background()
 	userID := "existing_user"
@@ -143,7 +143,7 @@ func TestScenario_MultipleMessengerPlatforms(t *testing.T) {
 	// WHEN different messenger platforms connect
 	for _, platform := range platforms {
 		userID := baseUserID + "_" + platform
-		uc := NewAutoSignupUseCase(userRepo, categoryRepo)
+		uc := NewAutoSignupUseCase(userRepo, categoryRepo, nil)
 		err := uc.Execute(ctx, userID, platform)
 		if err != nil {
 			t.Fatalf("signup failed for platform %s: %v", platform, err)

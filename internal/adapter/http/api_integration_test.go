@@ -343,7 +343,7 @@ func TestAPIAutoSignupFlow(t *testing.T) {
 	policyRepo := &TestPolicyRepository{policies: make(map[string]*domain.Policy)}
 
 	handler := NewHandler(
-		usecase.NewAutoSignupUseCase(userRepo, categoryRepo),
+		usecase.NewAutoSignupUseCase(userRepo, categoryRepo, nil),
 		nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
 		usecase.NewGetPolicyUseCase(policyRepo),
 		nil,
@@ -381,7 +381,7 @@ func TestAPIAutoSignup(t *testing.T) {
 	policyRepo := &TestPolicyRepository{policies: make(map[string]*domain.Policy)}
 
 	handler := NewHandler(
-		usecase.NewAutoSignupUseCase(userRepo, categoryRepo),
+		usecase.NewAutoSignupUseCase(userRepo, categoryRepo, nil),
 		nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
 		usecase.NewGetPolicyUseCase(policyRepo),
 		nil,
@@ -427,7 +427,7 @@ func TestAPIParseExpenses(t *testing.T) {
 	costRepo := &TestAICostRepository{costs: make(map[string]*domain.AICostLog)}
 
 	handler := NewHandler(
-		usecase.NewAutoSignupUseCase(userRepo, categoryRepo),
+		usecase.NewAutoSignupUseCase(userRepo, categoryRepo, nil),
 		usecase.NewParseConversationUseCase(aiService, pricingRepo, costRepo, userRepo, categoryRepo, "gemini", "gemini-2.5-lite"),
 		nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
 		usecase.NewGetPolicyUseCase(policyRepo),
@@ -471,7 +471,7 @@ func TestAPICreateExpense(t *testing.T) {
 	costRepo := &TestAICostRepository{costs: make(map[string]*domain.AICostLog)}
 
 	handler := NewHandler(
-		usecase.NewAutoSignupUseCase(userRepo, categoryRepo),
+		usecase.NewAutoSignupUseCase(userRepo, categoryRepo, nil),
 		usecase.NewParseConversationUseCase(aiService, pricingRepo, costRepo, userRepo, categoryRepo, "gemini", "gemini-2.5-lite"),
 		usecase.NewCreateExpenseUseCase(expenseRepo, categoryRepo, nil, nil, nil, nil, aiService),
 		nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
@@ -529,7 +529,7 @@ func TestAPIGetExpenses(t *testing.T) {
 	policyRepo := &TestPolicyRepository{policies: make(map[string]*domain.Policy)}
 
 	handler := NewHandler(
-		usecase.NewAutoSignupUseCase(userRepo, categoryRepo),
+		usecase.NewAutoSignupUseCase(userRepo, categoryRepo, nil),
 		nil, nil,
 		usecase.NewGetExpensesUseCase(expenseRepo, categoryRepo),
 		nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
@@ -563,6 +563,7 @@ func TestAPIMissingRequired(t *testing.T) {
 		usecase.NewAutoSignupUseCase(
 			&TestUserRepository{users: make(map[string]*domain.User)},
 			&TestCategoryRepository{categories: make(map[string]*domain.Category)},
+			nil,
 		),
 		nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
 		usecase.NewGetPolicyUseCase(policyRepo),
@@ -596,7 +597,7 @@ func TestAPINotFound(t *testing.T) {
 	policyRepo := &TestPolicyRepository{policies: make(map[string]*domain.Policy)}
 
 	handler := NewHandler(
-		usecase.NewAutoSignupUseCase(userRepo, categoryRepo),
+		usecase.NewAutoSignupUseCase(userRepo, categoryRepo, nil),
 		nil, nil,
 		usecase.NewGetExpensesUseCase(expenseRepo, categoryRepo),
 		nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
@@ -634,7 +635,7 @@ func TestAPICategoryManagement(t *testing.T) {
 	expenseRepo := &TestExpenseRepository{expenses: make(map[string]*domain.Expense)}
 
 	handler := NewHandler(
-		usecase.NewAutoSignupUseCase(userRepo, categoryRepo),
+		usecase.NewAutoSignupUseCase(userRepo, categoryRepo, nil),
 		nil, nil, nil, nil, nil,
 		usecase.NewManageCategoryUseCase(categoryRepo, expenseRepo),
 		nil, nil, nil, nil, nil, nil, nil, nil,
@@ -683,7 +684,7 @@ func TestAPIMultipleExpenses(t *testing.T) {
 	policyRepo := &TestPolicyRepository{policies: make(map[string]*domain.Policy)}
 
 	handler := NewHandler(
-		usecase.NewAutoSignupUseCase(userRepo, categoryRepo),
+		usecase.NewAutoSignupUseCase(userRepo, categoryRepo, nil),
 		nil,
 		usecase.NewCreateExpenseUseCase(expenseRepo, categoryRepo, nil, nil, nil, nil, aiService),
 		nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
@@ -736,7 +737,7 @@ func TestAPIConcurrentRequests(t *testing.T) {
 	policyRepo := &TestPolicyRepository{policies: make(map[string]*domain.Policy)}
 
 	handler := NewHandler(
-		usecase.NewAutoSignupUseCase(userRepo, categoryRepo),
+		usecase.NewAutoSignupUseCase(userRepo, categoryRepo, nil),
 		nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
 		usecase.NewGetPolicyUseCase(policyRepo),
 		nil,
@@ -792,7 +793,7 @@ func TestAPICreateExpense_WithAccountField(t *testing.T) {
 	policyRepo := &TestPolicyRepository{policies: make(map[string]*domain.Policy)}
 
 	handler := NewHandler(
-		usecase.NewAutoSignupUseCase(userRepo, categoryRepo),
+		usecase.NewAutoSignupUseCase(userRepo, categoryRepo, nil),
 		nil,
 		usecase.NewCreateExpenseUseCase(expenseRepo, categoryRepo, nil, nil, nil, nil, aiService),
 		nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
@@ -936,7 +937,7 @@ func TestAPIGetExpenses_IncludesAccount(t *testing.T) {
 	policyRepo := &TestPolicyRepository{policies: make(map[string]*domain.Policy)}
 
 	handler := NewHandler(
-		usecase.NewAutoSignupUseCase(userRepo, categoryRepo),
+		usecase.NewAutoSignupUseCase(userRepo, categoryRepo, nil),
 		nil, nil,
 		usecase.NewGetExpensesUseCase(expenseRepo, categoryRepo),
 		nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,

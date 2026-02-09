@@ -14,6 +14,7 @@ import (
 type Client struct {
 	channelToken string
 	apiURL       string
+	profileURL   string
 	httpClient   *http.Client
 }
 
@@ -26,6 +27,7 @@ func NewClient(channelToken string) (*Client, error) {
 	return &Client{
 		channelToken: channelToken,
 		apiURL:       "https://api.line.me/v2/bot/message",
+		profileURL:   "https://api.line.me/v2/bot/profile",
 		httpClient:   &http.Client{},
 	}, nil
 }
@@ -45,6 +47,19 @@ type TextMessage struct {
 // LineAPIResponse represents the response from LINE API
 type LineAPIResponse struct {
 	Message string `json:"message,omitempty"`
+}
+
+// FlexReplyRequest represents the request to send a Flex Message reply
+type FlexReplyRequest struct {
+	ReplyToken string        `json:"replyToken"`
+	Messages   []FlexMessage `json:"messages"`
+}
+
+// FlexMessage represents a LINE Flex Message
+type FlexMessage struct {
+	Type     string      `json:"type"`
+	AltText  string      `json:"altText"`
+	Contents interface{} `json:"contents"`
 }
 
 // SendMessage sends a reply message to a user via LINE Messaging API
@@ -104,4 +119,56 @@ func (c *Client) SendMessage(ctx context.Context, replyToken, text string) error
 // SendReply sends a reply message
 func (c *Client) SendReply(ctx context.Context, replyToken, text string) error {
 	return c.SendMessage(ctx, replyToken, text)
+}
+
+// SendFlexReply sends a Flex Message reply to a user via LINE Messaging API
+func (c *Client) SendFlexReply(ctx context.Context, replyToken, altText string, contents interface{}) error {
+	req := FlexReplyRequest{
+		ReplyToken: replyToken,
+		Messages: []FlexMessage{
+			{
+				Type:     "flex",
+				AltText:  altText,
+				Contents: contents,
+			},
+		},
+	}
+
+	payload, err := json.Marshal(req)
+	if err != nil {
+		log.Printf("Error marshaling flex request: %v", err)
+		return fmt.Errorf("failed to marshal flex request: %w", err)
+	}
+
+	httpReq, err := http.NewRequestWithContext(ctx, "POST", fmt.Sprintf("%s/reply", c.apiURL), bytes.NewReader(payload))
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.channelToken))
+
+	resp, err := c.httpClient.Do(httpReq)
+	if err != nil {
+		log.Printf("Error sending flex message to LINE: %v", err)
+		return fmt.Errorf("failed to send flex message: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to read response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
+		log.Printf("[LINE API Error] Status: %d, Body: %s", resp.StatusCode, string(body))
+		var apiResp LineAPIResponse
+		if err := json.Unmarshal(body, &apiResp); err == nil && apiResp.Message != "" {
+			return fmt.Errorf("line api error: %s (status: %d)", apiResp.Message, resp.StatusCode)
+		}
+		return fmt.Errorf("line api error: status %d, body: %s", resp.StatusCode, string(body))
+	}
+
+	log.Printf("[LINE] Flex message sent to reply token %s", replyToken)
+	return nil
 }

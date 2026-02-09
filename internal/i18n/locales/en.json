@@ -1,0 +1,19 @@
+{
+  "expense.recorded": "Recorded {count} expense(s), total: {amount} {currency}",
+  "expense.item": "{description}: {amount} {currency}",
+  "expense.item.detail": "{category} · {date} · {account}",
+  "expense.item.converted": "≈ {originalAmount} {originalCurrency}",
+  "expense.none": "No expenses detected in message",
+  "expense.none.hint": "Try something like: \"Lunch bento $85\"",
+  "expense.count": "{count} expense(s) recorded successfully",
+  "report.title": "Expense Report",
+  "report.description": "Your personal expense report is ready",
+  "report.validity": "Link valid for 5 minutes",
+  "report.button": "View Report",
+  "report.error": "Sorry, couldn't generate the report link. Please try again later.",
+  "error.title": "Error",
+  "error.signup": "Failed to sign up user: {error}",
+  "error.parse": "Failed to parse message: {error}",
+  "flex.app_name": "AIExpense",
+  "flex.total": "Total"
+}

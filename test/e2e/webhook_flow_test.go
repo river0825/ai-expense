@@ -358,7 +358,7 @@ func TestE2ENewUserWebhookFlow(t *testing.T) {
 	pricingRepo := &E2EPricingRepository{pricing: make(map[string]*domain.PricingConfig)}
 	costRepo := &E2EAICostRepository{costs: make(map[string]*domain.AICostLog)}
 
-	autoSignupUC := usecase.NewAutoSignupUseCase(userRepo, categoryRepo)
+	autoSignupUC := usecase.NewAutoSignupUseCase(userRepo, categoryRepo, nil)
 	parseUC := usecase.NewParseConversationUseCase(aiService, pricingRepo, costRepo, userRepo, categoryRepo, "gemini", "gemini-2.5-lite")
 	createExpenseUC := usecase.NewCreateExpenseUseCase(expenseRepo, categoryRepo, userRepo, nil, nil, nil, aiService)
 
@@ -419,7 +419,7 @@ func TestE2EExistingUserWebhookFlow(t *testing.T) {
 	expenseRepo := &E2EExpenseRepository{expenses: make(map[string]*domain.Expense)}
 	aiService := &E2EAIService{parseResponses: make(map[string][]*domain.ParsedExpense)}
 
-	autoSignupUC := usecase.NewAutoSignupUseCase(userRepo, categoryRepo)
+	autoSignupUC := usecase.NewAutoSignupUseCase(userRepo, categoryRepo, nil)
 	createExpenseUC := usecase.NewCreateExpenseUseCase(expenseRepo, categoryRepo, userRepo, nil, nil, nil, aiService)
 
 	userID := "e2e_existing_user_1"
@@ -528,7 +528,7 @@ func TestE2EConcurrentWebhookProcessing(t *testing.T) {
 	expenseRepo := &E2EExpenseRepository{expenses: make(map[string]*domain.Expense)}
 	aiService := &E2EAIService{parseResponses: make(map[string][]*domain.ParsedExpense)}
 
-	autoSignupUC := usecase.NewAutoSignupUseCase(userRepo, categoryRepo)
+	autoSignupUC := usecase.NewAutoSignupUseCase(userRepo, categoryRepo, nil)
 	createExpenseUC := usecase.NewCreateExpenseUseCase(expenseRepo, categoryRepo, userRepo, nil, nil, nil, aiService)
 
 	numRequests := 10

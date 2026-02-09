@@ -1,0 +1,19 @@
+{
+  "expense.recorded": "已記錄 {count} 筆支出，合計：{amount} {currency}",
+  "expense.item": "{description}: {amount} {currency}",
+  "expense.item.detail": "{category} · {date} · {account}",
+  "expense.item.converted": "≈ {originalAmount} {originalCurrency}",
+  "expense.none": "訊息中未偵測到任何支出",
+  "expense.none.hint": "請嘗試輸入如：「午餐 便當 85元」",
+  "expense.count": "{count} 筆支出已成功記錄",
+  "report.title": "支出報告",
+  "report.description": "您的個人支出報告已準備好",
+  "report.validity": "連結有效期 5 分鐘",
+  "report.button": "查看報告",
+  "report.error": "抱歉，無法產生報告連結，請稍後再試。",
+  "error.title": "處理失敗",
+  "error.signup": "使用者註冊失敗：{error}",
+  "error.parse": "訊息解析失敗：{error}",
+  "flex.app_name": "AIExpense",
+  "flex.total": "合計"
+}

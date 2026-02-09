@@ -2,16 +2,27 @@ package usecase
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/riverlin/aiexpense/internal/domain"
 )
 
+// MockProfileFetcher is a mock implementation for testing
+type MockProfileFetcher struct {
+	language string
+	err      error
+}
+
+func (m *MockProfileFetcher) GetLanguage(ctx context.Context, userID string) (string, error) {
+	return m.language, m.err
+}
+
 func TestAutoSignup(t *testing.T) {
 	userRepo := NewMockUserRepository()
 	categoryRepo := NewMockCategoryRepository()
-	uc := NewAutoSignupUseCase(userRepo, categoryRepo)
+	uc := NewAutoSignupUseCase(userRepo, categoryRepo, nil)
 
 	ctx := context.Background()
 	userID := "test_user_123"
@@ -51,7 +62,7 @@ func TestAutoSignup(t *testing.T) {
 func TestAutoSignupExistingUser(t *testing.T) {
 	userRepo := NewMockUserRepository()
 	categoryRepo := NewMockCategoryRepository()
-	uc := NewAutoSignupUseCase(userRepo, categoryRepo)
+	uc := NewAutoSignupUseCase(userRepo, categoryRepo, nil)
 
 	ctx := context.Background()
 	userID := "existing_user"
@@ -80,7 +91,7 @@ func TestAutoSignupExistingUser(t *testing.T) {
 func TestAutoSignupIdempotent(t *testing.T) {
 	userRepo := NewMockUserRepository()
 	categoryRepo := NewMockCategoryRepository()
-	uc := NewAutoSignupUseCase(userRepo, categoryRepo)
+	uc := NewAutoSignupUseCase(userRepo, categoryRepo, nil)
 
 	ctx := context.Background()
 	userID := "test_user_456"
@@ -113,7 +124,7 @@ func TestAutoSignupIdempotent(t *testing.T) {
 func TestDefaultCategoriesCreated(t *testing.T) {
 	userRepo := NewMockUserRepository()
 	categoryRepo := NewMockCategoryRepository()
-	uc := NewAutoSignupUseCase(userRepo, categoryRepo)
+	uc := NewAutoSignupUseCase(userRepo, categoryRepo, nil)
 
 	ctx := context.Background()
 	userID := "test_user_789"
@@ -143,5 +154,73 @@ func TestDefaultCategoriesCreated(t *testing.T) {
 		if !found {
 			t.Errorf("expected category %s not found", name)
 		}
+	}
+}
+
+func TestAutoSignup_WithProfileFetcher_SetsLocale(t *testing.T) {
+	userRepo := NewMockUserRepository()
+	categoryRepo := NewMockCategoryRepository()
+	fetcher := &MockProfileFetcher{language: "zh-TW"}
+	uc := NewAutoSignupUseCase(userRepo, categoryRepo, fetcher)
+
+	ctx := context.Background()
+	userID := "locale_user_1"
+
+	err := uc.Execute(ctx, userID, "line")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	user, _ := userRepo.GetByID(ctx, userID)
+	if user == nil {
+		t.Fatal("expected user to be created")
+	}
+	if user.Locale != "zh-TW" {
+		t.Errorf("expected locale zh-TW, got %s", user.Locale)
+	}
+}
+
+func TestAutoSignup_ProfileFetcherError_StillCreatesUser(t *testing.T) {
+	userRepo := NewMockUserRepository()
+	categoryRepo := NewMockCategoryRepository()
+	fetcher := &MockProfileFetcher{err: fmt.Errorf("api error")}
+	uc := NewAutoSignupUseCase(userRepo, categoryRepo, fetcher)
+
+	ctx := context.Background()
+	userID := "locale_user_2"
+
+	err := uc.Execute(ctx, userID, "line")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	user, _ := userRepo.GetByID(ctx, userID)
+	if user == nil {
+		t.Fatal("expected user to be created")
+	}
+	if user.Locale != "" {
+		t.Errorf("expected empty locale on error, got %s", user.Locale)
+	}
+}
+
+func TestAutoSignup_NilProfileFetcher_NoLocale(t *testing.T) {
+	userRepo := NewMockUserRepository()
+	categoryRepo := NewMockCategoryRepository()
+	uc := NewAutoSignupUseCase(userRepo, categoryRepo, nil)
+
+	ctx := context.Background()
+	userID := "locale_user_3"
+
+	err := uc.Execute(ctx, userID, "line")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	user, _ := userRepo.GetByID(ctx, userID)
+	if user == nil {
+		t.Fatal("expected user to be created")
+	}
+	if user.Locale != "" {
+		t.Errorf("expected empty locale with nil fetcher, got %s", user.Locale)
 	}
 }
