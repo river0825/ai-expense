@@ -80,8 +80,20 @@ func main() {
 		log.Fatalf("Failed to initialize AI service: %v", err)
 	}
 
+	// Initialize LINE client early (needed for profile fetcher in auto-signup)
+	var lineClient *line.Client
+	var lineProfileFetcher usecase.ProfileFetcher
+	if cfg.IsMessengerEnabled("line") {
+		var err error
+		lineClient, err = line.NewClient(cfg.LineChannelToken)
+		if err != nil {
+			log.Fatalf("Failed to initialize LINE client: %v", err)
+		}
+		lineProfileFetcher = line.NewLineProfileFetcher(lineClient)
+	}
+
 	// Initialize use cases
-	autoSignupUseCase := usecase.NewAutoSignupUseCase(userRepo, categoryRepo)
+	autoSignupUseCase := usecase.NewAutoSignupUseCase(userRepo, categoryRepo, lineProfileFetcher)
 
 	// Initialize exchange rate service
 	exchangeRateProvider := exchangerate.NewFrankfurterProvider(nil)
@@ -191,16 +203,10 @@ func main() {
 	mux := http.NewServeMux()
 	httpAdapter.RegisterRoutes(mux, handler, aiCostHandler, pricingHandler, reportHandler, shortLinkHandler)
 
-	// Initialize LINE client (if enabled)
+	// Initialize LINE webhook handler (if enabled)
 	var lineHandler *line.Handler
-	if cfg.IsMessengerEnabled("line") {
-		lineClient, err := line.NewClient(cfg.LineChannelToken)
-		if err != nil {
-			log.Fatalf("Failed to initialize LINE client: %v", err)
-		}
-
-		// Initialize LINE webhook handler with Unified Message Processor
-		lineHandler = line.NewHandler(cfg.LineChannelSecret, processMessageUseCase, lineClient)
+	if lineClient != nil {
+		lineHandler = line.NewHandler(cfg.LineChannelSecret, processMessageUseCase, lineClient, userRepo)
 	}
 
 	// Initialize Terminal messenger (if enabled)

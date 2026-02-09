@@ -390,7 +390,7 @@ func TestLoadConcurrentSignups(t *testing.T) {
 	userRepo := &LoadTestUserRepository{users: make(map[string]*domain.User)}
 	categoryRepo := &LoadTestCategoryRepository{categories: make(map[string]*domain.Category)}
 
-	uc := usecase.NewAutoSignupUseCase(userRepo, categoryRepo)
+	uc := usecase.NewAutoSignupUseCase(userRepo, categoryRepo, nil)
 	ctx := context.Background()
 	metrics := &LoadTestMetrics{}
 

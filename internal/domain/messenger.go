@@ -12,8 +12,17 @@ type UserMessage struct {
 	Timestamp time.Time              `json:"timestamp"`
 }
 
+// MessageResponseType constants
+const (
+	ResponseTypeExpense = "expense"
+	ResponseTypeReport  = "report"
+	ResponseTypeError   = "error"
+	ResponseTypeInfo    = "info"
+)
+
 // MessageResponse represents a standard response to be sent back to the user
 type MessageResponse struct {
+	Type string      `json:"type"`
 	Text string      `json:"text"`
 	Data interface{} `json:"data,omitempty"`
 }

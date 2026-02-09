@@ -96,6 +96,7 @@ func (u *ProcessMessageUseCase) Execute(ctx context.Context, msg *domain.UserMes
 	if err = u.autoSignup.Execute(ctx, msg.UserID, msg.Source); err != nil {
 		botReply = fmt.Sprintf("Failed to signup user: %v", err)
 		return &domain.MessageResponse{
+			Type: domain.ResponseTypeError,
 			Text: botReply,
 		}, nil // We return success to the adapter so it can send the error message back to user
 	}
@@ -108,12 +109,17 @@ func (u *ProcessMessageUseCase) Execute(ctx context.Context, msg *domain.UserMes
 			// Log the error for debugging
 			fmt.Printf("Error generating report link: %v\n", err)
 			botReply = "Sorry, I couldn't generate the report link. Please try again later."
-		} else {
-			botReply = fmt.Sprintf("Here is your expense report:\n%s\n(Link valid for 5 minutes)", link)
+			return &domain.MessageResponse{
+				Type: domain.ResponseTypeError,
+				Text: botReply,
+			}, nil
 		}
 
+		botReply = fmt.Sprintf("Here is your expense report:\n%s\n(Link valid for 5 minutes)", link)
 		return &domain.MessageResponse{
+			Type: domain.ResponseTypeReport,
 			Text: botReply,
+			Data: map[string]string{"link": link},
 		}, nil
 	}
 
@@ -123,6 +129,7 @@ func (u *ProcessMessageUseCase) Execute(ctx context.Context, msg *domain.UserMes
 	if err != nil {
 		botReply = fmt.Sprintf("Failed to parse message: %v", err)
 		return &domain.MessageResponse{
+			Type: domain.ResponseTypeError,
 			Text: botReply,
 		}, nil
 	}
@@ -134,6 +141,7 @@ func (u *ProcessMessageUseCase) Execute(ctx context.Context, msg *domain.UserMes
 	if len(expenses) == 0 {
 		botReply = "No expenses detected in message"
 		return &domain.MessageResponse{
+			Type: domain.ResponseTypeInfo,
 			Text: botReply,
 		}, nil
 	}
@@ -218,6 +226,7 @@ func (u *ProcessMessageUseCase) Execute(ctx context.Context, msg *domain.UserMes
 	botReply = sb.String()
 
 	return &domain.MessageResponse{
+		Type: domain.ResponseTypeExpense,
 		Text: botReply,
 		Data: createdExpenses,
 	}, nil
