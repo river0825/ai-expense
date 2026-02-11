@@ -6,12 +6,12 @@ import (
 
 // BuildErrorBubble creates a LINE Flex Message bubble for error messages.
 func BuildErrorBubble(message, hint, locale string) map[string]interface{} {
-	return buildMessageBubble(message, hint, locale, "#DC2626", i18n.T(locale, "error.title"))
+	return buildMessageBubble(message, hint, locale, "#B91C1C", i18n.T(locale, "error.title"))
 }
 
 // BuildInfoBubble creates a LINE Flex Message bubble for informational messages.
 func BuildInfoBubble(message, hint, locale string) map[string]interface{} {
-	return buildMessageBubble(message, hint, locale, "#64748B", i18n.T(locale, "flex.app_name"))
+	return buildMessageBubble(message, hint, locale, "#334155", i18n.T(locale, "flex.app_name"))
 }
 
 func buildMessageBubble(message, hint, locale, headerColor, title string) map[string]interface{} {
@@ -19,19 +19,20 @@ func buildMessageBubble(message, hint, locale, headerColor, title string) map[st
 		"type":            "box",
 		"layout":          "vertical",
 		"backgroundColor": headerColor,
-		"paddingAll":      "16px",
+		"paddingAll":      "18px",
 		"contents": []interface{}{
 			map[string]interface{}{
-				"type":  "text",
-				"text":  i18n.T(locale, "flex.app_name"),
-				"color": "#FFFFFF",
-				"size":  "xs",
+				"type":   "text",
+				"text":   i18n.T(locale, "flex.app_name"),
+				"color":  "#E2E8F0",
+				"size":   "xs",
+				"weight": "bold",
 			},
 			map[string]interface{}{
 				"type":   "text",
 				"text":   title,
 				"color":  "#FFFFFF",
-				"size":   "xl",
+				"size":   "lg",
 				"weight": "bold",
 				"margin": "sm",
 			},
@@ -43,19 +44,28 @@ func buildMessageBubble(message, hint, locale, headerColor, title string) map[st
 			"type":  "text",
 			"text":  message,
 			"size":  "sm",
-			"color": "#1E293B",
+			"color": "#0F172A",
 			"wrap":  true,
 		},
 	}
 
 	if hint != "" {
 		bodyContents = append(bodyContents, map[string]interface{}{
-			"type":   "text",
-			"text":   hint,
-			"size":   "xxs",
-			"color":  "#64748B",
-			"margin": "md",
-			"wrap":   true,
+			"type":            "box",
+			"layout":          "vertical",
+			"backgroundColor": "#F8FAFC",
+			"cornerRadius":    "10px",
+			"paddingAll":      "10px",
+			"margin":          "md",
+			"contents": []interface{}{
+				map[string]interface{}{
+					"type":  "text",
+					"text":  hint,
+					"size":  "xxs",
+					"color": "#475569",
+					"wrap":  true,
+				},
+			},
 		})
 	}
 

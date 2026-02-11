@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 )
 
@@ -78,7 +77,7 @@ func (c *Client) SendMessage(ctx context.Context, replyToken, text string) error
 
 	payload, err := json.Marshal(req)
 	if err != nil {
-		log.Printf("Error marshaling request: %v", err)
+		lineLogger.ErrorContext(ctx, "failed to marshal LINE text reply payload", "error", err)
 		return fmt.Errorf("failed to marshal request: %w", err)
 	}
 
@@ -92,7 +91,7 @@ func (c *Client) SendMessage(ctx context.Context, replyToken, text string) error
 
 	resp, err := c.httpClient.Do(httpReq)
 	if err != nil {
-		log.Printf("Error sending message to LINE: %v", err)
+		lineLogger.ErrorContext(ctx, "failed to send LINE text reply request", "error", err, "reply_token", maskToken(replyToken))
 		return fmt.Errorf("failed to send message: %w", err)
 	}
 	defer resp.Body.Close()
@@ -104,7 +103,13 @@ func (c *Client) SendMessage(ctx context.Context, replyToken, text string) error
 
 	// Check HTTP status code
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
-		log.Printf("[LINE API Error] Status: %d, Body: %s", resp.StatusCode, string(body))
+		lineLogger.ErrorContext(
+			ctx,
+			"LINE API returned error for text reply",
+			"status", resp.StatusCode,
+			"body_preview", previewText(string(body), 400),
+			"reply_token", maskToken(replyToken),
+		)
 		var apiResp LineAPIResponse
 		if err := json.Unmarshal(body, &apiResp); err == nil && apiResp.Message != "" {
 			return fmt.Errorf("line api error: %s (status: %d)", apiResp.Message, resp.StatusCode)
@@ -112,7 +117,7 @@ func (c *Client) SendMessage(ctx context.Context, replyToken, text string) error
 		return fmt.Errorf("line api error: status %d, body: %s", resp.StatusCode, string(body))
 	}
 
-	log.Printf("[LINE] Message sent to reply token %s", replyToken)
+	lineLogger.InfoContext(ctx, "LINE text reply sent", "reply_token", maskToken(replyToken))
 	return nil
 }
 
@@ -136,9 +141,17 @@ func (c *Client) SendFlexReply(ctx context.Context, replyToken, altText string, 
 
 	payload, err := json.Marshal(req)
 	if err != nil {
-		log.Printf("Error marshaling flex request: %v", err)
+		lineLogger.ErrorContext(ctx, "failed to marshal LINE flex reply payload", "error", err)
 		return fmt.Errorf("failed to marshal flex request: %w", err)
 	}
+	lineLogger.DebugContext(
+		ctx,
+		"sending LINE flex reply",
+		"reply_token", maskToken(replyToken),
+		"alt_text_len", len(altText),
+		"contents_type", fmt.Sprintf("%T", contents),
+		"payload_preview", previewText(string(payload), 400),
+	)
 
 	httpReq, err := http.NewRequestWithContext(ctx, "POST", fmt.Sprintf("%s/reply", c.apiURL), bytes.NewReader(payload))
 	if err != nil {
@@ -150,7 +163,7 @@ func (c *Client) SendFlexReply(ctx context.Context, replyToken, altText string, 
 
 	resp, err := c.httpClient.Do(httpReq)
 	if err != nil {
-		log.Printf("Error sending flex message to LINE: %v", err)
+		lineLogger.ErrorContext(ctx, "failed to send LINE flex reply request", "error", err, "reply_token", maskToken(replyToken))
 		return fmt.Errorf("failed to send flex message: %w", err)
 	}
 	defer resp.Body.Close()
@@ -161,7 +174,13 @@ func (c *Client) SendFlexReply(ctx context.Context, replyToken, altText string, 
 	}
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
-		log.Printf("[LINE API Error] Status: %d, Body: %s", resp.StatusCode, string(body))
+		lineLogger.ErrorContext(
+			ctx,
+			"LINE API returned error for flex reply",
+			"status", resp.StatusCode,
+			"body_preview", previewText(string(body), 400),
+			"reply_token", maskToken(replyToken),
+		)
 		var apiResp LineAPIResponse
 		if err := json.Unmarshal(body, &apiResp); err == nil && apiResp.Message != "" {
 			return fmt.Errorf("line api error: %s (status: %d)", apiResp.Message, resp.StatusCode)
@@ -169,6 +188,6 @@ func (c *Client) SendFlexReply(ctx context.Context, replyToken, altText string, 
 		return fmt.Errorf("line api error: status %d, body: %s", resp.StatusCode, string(body))
 	}
 
-	log.Printf("[LINE] Flex message sent to reply token %s", replyToken)
+	lineLogger.InfoContext(ctx, "LINE flex reply sent", "reply_token", maskToken(replyToken))
 	return nil
 }

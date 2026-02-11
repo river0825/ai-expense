@@ -24,19 +24,20 @@ func BuildExpenseBubble(expenses []ExpenseData, totalAmount float64, totalCurren
 	header := map[string]interface{}{
 		"type":            "box",
 		"layout":          "vertical",
-		"backgroundColor": "#059669",
-		"paddingAll":      "16px",
+		"backgroundColor": "#0F172A",
+		"paddingAll":      "18px",
 		"contents": []interface{}{
 			map[string]interface{}{
-				"type":  "text",
-				"text":  i18n.T(locale, "flex.app_name"),
-				"color": "#FFFFFF",
-				"size":  "xs",
+				"type":   "text",
+				"text":   i18n.T(locale, "flex.app_name"),
+				"color":  "#CBD5E1",
+				"size":   "xs",
+				"weight": "bold",
 			},
 			map[string]interface{}{
 				"type":   "text",
 				"text":   i18n.Tf(locale, "expense.recorded", map[string]string{"count": fmt.Sprintf("%d", len(expenses)), "amount": formatAmount(totalAmount), "currency": totalCurrency}),
-				"color":  "#FFFFFF",
+				"color":  "#F8FAFC",
 				"size":   "sm",
 				"margin": "sm",
 				"wrap":   true,
@@ -47,7 +48,7 @@ func BuildExpenseBubble(expenses []ExpenseData, totalAmount float64, totalCurren
 				"color":  "#FFFFFF",
 				"size":   "xxl",
 				"weight": "bold",
-				"margin": "sm",
+				"margin": "md",
 			},
 		},
 	}
@@ -58,42 +59,53 @@ func BuildExpenseBubble(expenses []ExpenseData, totalAmount float64, totalCurren
 			bodyContents = append(bodyContents, map[string]interface{}{
 				"type":   "separator",
 				"color":  "#E2E8F0",
-				"margin": "md",
+				"margin": "lg",
 			})
 		}
 
 		amountText := fmt.Sprintf("%s %s", formatAmount(exp.HomeAmount), exp.HomeCurrency)
 		row := map[string]interface{}{
-			"type":   "box",
-			"layout": "horizontal",
-			"margin": "md",
+			"type":            "box",
+			"layout":          "vertical",
+			"paddingAll":      "12px",
+			"backgroundColor": "#F8FAFC",
+			"cornerRadius":    "12px",
+			"margin":          "md",
 			"contents": []interface{}{
 				map[string]interface{}{
-					"type":   "text",
-					"text":   exp.Description,
-					"size":   "sm",
-					"color":  "#1E293B",
-					"weight": "bold",
-					"flex":   4,
-				},
-				map[string]interface{}{
-					"type":   "text",
-					"text":   amountText,
-					"size":   "sm",
-					"color":  "#059669",
-					"weight": "bold",
-					"align":  "end",
-					"flex":   3,
+					"type":   "box",
+					"layout": "horizontal",
+					"contents": []interface{}{
+						map[string]interface{}{
+							"type":   "text",
+							"text":   exp.Description,
+							"size":   "sm",
+							"color":  "#0F172A",
+							"weight": "bold",
+							"wrap":   true,
+							"flex":   4,
+						},
+						map[string]interface{}{
+							"type":   "text",
+							"text":   amountText,
+							"size":   "sm",
+							"color":  "#0EA5A4",
+							"weight": "bold",
+							"align":  "end",
+							"flex":   3,
+						},
+					},
 				},
 			},
 		}
-		bodyContents = append(bodyContents, row)
 
 		detailParts := []string{}
 		if exp.Category != "" {
 			detailParts = append(detailParts, exp.Category)
 		}
-		detailParts = append(detailParts, exp.Date.Format("2006-01-02"))
+		if !exp.Date.IsZero() {
+			detailParts = append(detailParts, exp.Date.Format("2006-01-02"))
+		}
 		if exp.Account != "" {
 			detailParts = append(detailParts, exp.Account)
 		}
@@ -104,25 +116,28 @@ func BuildExpenseBubble(expenses []ExpenseData, totalAmount float64, totalCurren
 			}
 			detailText += p
 		}
-		detail := map[string]interface{}{
-			"type":   "text",
-			"text":   detailText,
-			"size":   "xxs",
-			"color":  "#64748B",
-			"margin": "xs",
+		if detailText != "" {
+			row["contents"] = append(row["contents"].([]interface{}), map[string]interface{}{
+				"type":   "text",
+				"text":   detailText,
+				"size":   "xxs",
+				"color":  "#64748B",
+				"margin": "xs",
+				"wrap":   true,
+			})
 		}
-		bodyContents = append(bodyContents, detail)
 
 		if exp.OriginalCurrency != "" && exp.OriginalCurrency != exp.HomeCurrency && exp.OriginalAmount > 0 {
-			converted := map[string]interface{}{
+			row["contents"] = append(row["contents"].([]interface{}), map[string]interface{}{
 				"type":   "text",
 				"text":   fmt.Sprintf("≈ %s %s", formatAmount(exp.OriginalAmount), exp.OriginalCurrency),
 				"size":   "xxs",
 				"color":  "#64748B",
 				"margin": "xs",
-			}
-			bodyContents = append(bodyContents, converted)
+			})
 		}
+
+		bodyContents = append(bodyContents, row)
 	}
 
 	body := map[string]interface{}{
@@ -133,15 +148,16 @@ func BuildExpenseBubble(expenses []ExpenseData, totalAmount float64, totalCurren
 	}
 
 	footer := map[string]interface{}{
-		"type":       "box",
-		"layout":     "vertical",
-		"paddingAll": "12px",
+		"type":            "box",
+		"layout":          "vertical",
+		"paddingAll":      "14px",
+		"backgroundColor": "#F8FAFC",
 		"contents": []interface{}{
 			map[string]interface{}{
 				"type":  "text",
 				"text":  i18n.Tf(locale, "expense.count", map[string]string{"count": fmt.Sprintf("%d", len(expenses))}),
 				"size":  "xxs",
-				"color": "#64748B",
+				"color": "#475569",
 				"align": "center",
 			},
 		},
