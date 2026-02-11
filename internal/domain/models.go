@@ -229,6 +229,17 @@ type InteractionLog struct {
 	Timestamp     time.Time `db:"timestamp" json:"timestamp"`
 }
 
+// ConversationState represents pending multi-turn conversation context for a user.
+type ConversationState struct {
+	UserID       string            `db:"user_id" json:"user_id"`
+	ActiveIntent string            `db:"active_intent" json:"active_intent"`
+	PendingSlots map[string]string `db:"pending_slots" json:"pending_slots"`
+	Status       string            `db:"status" json:"status"`
+	ExpiresAt    time.Time         `db:"expires_at" json:"expires_at"`
+	CreatedAt    time.Time         `db:"created_at" json:"created_at"`
+	UpdatedAt    time.Time         `db:"updated_at" json:"updated_at"`
+}
+
 // PricingProvider defines the contract for fetching pricing from an AI provider
 type PricingProvider interface {
 	// Fetch retrieves current pricing from the provider
