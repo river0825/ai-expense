@@ -9,20 +9,21 @@ func BuildReportBubble(reportURL, locale string) map[string]interface{} {
 	header := map[string]interface{}{
 		"type":            "box",
 		"layout":          "vertical",
-		"backgroundColor": "#4F46E5",
-		"paddingAll":      "16px",
+		"backgroundColor": "#0F172A",
+		"paddingAll":      "18px",
 		"contents": []interface{}{
 			map[string]interface{}{
-				"type":  "text",
-				"text":  i18n.T(locale, "flex.app_name"),
-				"color": "#FFFFFF",
-				"size":  "xs",
+				"type":   "text",
+				"text":   i18n.T(locale, "flex.app_name"),
+				"color":  "#CBD5E1",
+				"size":   "xs",
+				"weight": "bold",
 			},
 			map[string]interface{}{
 				"type":   "text",
 				"text":   i18n.T(locale, "report.title"),
 				"color":  "#FFFFFF",
-				"size":   "xl",
+				"size":   "lg",
 				"weight": "bold",
 				"margin": "sm",
 			},
@@ -38,8 +39,25 @@ func BuildReportBubble(reportURL, locale string) map[string]interface{} {
 				"type":  "text",
 				"text":  i18n.T(locale, "report.description"),
 				"size":  "sm",
-				"color": "#1E293B",
+				"color": "#0F172A",
 				"wrap":  true,
+			},
+			map[string]interface{}{
+				"type":            "box",
+				"layout":          "vertical",
+				"backgroundColor": "#F8FAFC",
+				"cornerRadius":    "12px",
+				"paddingAll":      "12px",
+				"margin":          "md",
+				"contents": []interface{}{
+					map[string]interface{}{
+						"type":  "text",
+						"text":  reportURL,
+						"size":  "xxs",
+						"color": "#334155",
+						"wrap":  true,
+					},
+				},
 			},
 			map[string]interface{}{
 				"type":   "text",
@@ -52,14 +70,15 @@ func BuildReportBubble(reportURL, locale string) map[string]interface{} {
 	}
 
 	footer := map[string]interface{}{
-		"type":       "box",
-		"layout":     "vertical",
-		"paddingAll": "12px",
+		"type":            "box",
+		"layout":          "vertical",
+		"paddingAll":      "14px",
+		"backgroundColor": "#F8FAFC",
 		"contents": []interface{}{
 			map[string]interface{}{
 				"type":  "button",
 				"style": "primary",
-				"color": "#4F46E5",
+				"color": "#0EA5A4",
 				"action": map[string]interface{}{
 					"type":  "uri",
 					"label": i18n.T(locale, "report.button"),

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 
 	"github.com/riverlin/aiexpense/internal/usecase"
@@ -32,7 +31,7 @@ func (c *Client) GetProfile(ctx context.Context, userID string) (*LineProfile, e
 
 	resp, err := c.httpClient.Do(httpReq)
 	if err != nil {
-		log.Printf("Error fetching LINE profile: %v", err)
+		lineLogger.ErrorContext(ctx, "failed to fetch LINE profile", "error", err, "user_id", userID)
 		return nil, fmt.Errorf("failed to fetch profile: %w", err)
 	}
 	defer resp.Body.Close()
@@ -43,7 +42,13 @@ func (c *Client) GetProfile(ctx context.Context, userID string) (*LineProfile, e
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		log.Printf("[LINE Profile API Error] Status: %d, Body: %s", resp.StatusCode, string(body))
+		lineLogger.ErrorContext(
+			ctx,
+			"LINE profile API returned error",
+			"status", resp.StatusCode,
+			"body_preview", previewText(string(body), 400),
+			"user_id", userID,
+		)
 		return nil, fmt.Errorf("line profile api error: status %d", resp.StatusCode)
 	}
 
@@ -51,6 +56,7 @@ func (c *Client) GetProfile(ctx context.Context, userID string) (*LineProfile, e
 	if err := json.Unmarshal(body, &profile); err != nil {
 		return nil, fmt.Errorf("failed to parse profile: %w", err)
 	}
+	lineLogger.DebugContext(ctx, "LINE profile fetched", "user_id", userID, "language", profile.Language)
 
 	return &profile, nil
 }

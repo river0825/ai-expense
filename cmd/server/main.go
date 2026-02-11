@@ -3,7 +3,9 @@ package main
 import (
 	"fmt"
 	"log"
+	"log/slog"
 	"net/http"
+	"os"
 
 	"github.com/riverlin/aiexpense/internal/adapter/exchangerate"
 	httpAdapter "github.com/riverlin/aiexpense/internal/adapter/http"
@@ -27,6 +29,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to load configuration: %v", err)
 	}
+	configureLogger(cfg.LogLevel)
 
 	// Open database based on configuration
 	var userRepo domain.UserRepository
@@ -340,6 +343,28 @@ func main() {
 	if err := http.ListenAndServe(addr, loggingHandler); err != nil {
 		log.Fatalf("Server failed: %v", err)
 	}
+}
+
+func configureLogger(levelName string) {
+	level := slog.LevelInfo
+	switch levelName {
+	case "debug":
+		level = slog.LevelDebug
+	case "info":
+		level = slog.LevelInfo
+	case "warn", "warning":
+		level = slog.LevelWarn
+	case "error":
+		level = slog.LevelError
+	default:
+		log.Printf("Invalid LOG_LEVEL=%q, fallback to info", levelName)
+	}
+
+	handler := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		Level: level,
+	})
+	slog.SetDefault(slog.New(handler))
+	slog.Info("configured structured logger", "level", level.String())
 }
 
 // withCORS wraps HTTP handler with CORS headers
