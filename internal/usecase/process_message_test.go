@@ -93,6 +93,7 @@ func TestProcessMessageUseCase_Execute(t *testing.T) {
 
 		// Verify
 		assert.NoError(t, err)
+		assert.Equal(t, domain.ResponseTypeExpense, resp.Type)
 		assert.Contains(t, resp.Text, "Recorded 1 expense")
 		assert.Contains(t, resp.Text, "Lunch")
 		assert.Contains(t, resp.Text, "100 TWD")
@@ -120,6 +121,7 @@ func TestProcessMessageUseCase_Execute(t *testing.T) {
 
 		// Verify
 		assert.NoError(t, err) // Should not return error to caller, but handle it in response
+		assert.Equal(t, domain.ResponseTypeError, resp.Type)
 		assert.Contains(t, resp.Text, "Failed to parse message")
 	})
 }
