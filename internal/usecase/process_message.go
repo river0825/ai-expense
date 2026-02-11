@@ -16,8 +16,10 @@ type ProcessMessageUseCase struct {
 	parseConversation  ParseConversation
 	createExpense      CreateExpense
 	getExpenses        GetExpenses
+	userRepo           domain.UserRepository
 	generateReportLink domain.GenerateReportLinkUseCase
 	interactionRepo    domain.InteractionLogRepository
+	conversationRepo   domain.ConversationStateRepository
 }
 
 // Interfaces to break dependency cycles (if needed) or mock easier
@@ -43,16 +45,20 @@ func NewProcessMessageUseCase(
 	parseConversation ParseConversation,
 	createExpense CreateExpense,
 	getExpenses GetExpenses,
+	userRepo domain.UserRepository,
 	generateReportLink domain.GenerateReportLinkUseCase,
 	interactionRepo domain.InteractionLogRepository,
+	conversationRepo domain.ConversationStateRepository,
 ) *ProcessMessageUseCase {
 	return &ProcessMessageUseCase{
 		autoSignup:         autoSignup,
 		parseConversation:  parseConversation,
 		createExpense:      createExpense,
 		getExpenses:        getExpenses,
+		userRepo:           userRepo,
 		generateReportLink: generateReportLink,
 		interactionRepo:    interactionRepo,
+		conversationRepo:   conversationRepo,
 	}
 }
 
@@ -103,6 +109,47 @@ func (u *ProcessMessageUseCase) Execute(ctx context.Context, msg *domain.UserMes
 
 	// 1.5. Check for "View Report" intent
 	msgLower := strings.ToLower(strings.TrimSpace(msg.Content))
+
+	if pendingResp, handled := u.handlePendingConversation(ctx, msg, msgLower); handled {
+		botReply = pendingResp.Text
+		return pendingResp, nil
+	}
+
+	if u.isSetCurrencyIntent(msgLower) {
+		currency := u.extractCurrencyCode(msg.Content)
+		if currency == "" {
+			locale := u.getUserLocale(ctx, msg.UserID)
+			if err := u.savePendingCurrencyClarification(ctx, msg.UserID); err != nil {
+				botReply = "Sorry, I couldn't save your request. Please try again."
+				return &domain.MessageResponse{
+					Type: domain.ResponseTypeError,
+					Text: botReply,
+				}, nil
+			}
+
+			botReply = u.currencyClarificationPrompt(locale)
+			return &domain.MessageResponse{
+				Type: domain.ResponseTypeInfo,
+				Text: botReply,
+			}, nil
+		}
+
+		locale := u.getUserLocale(ctx, msg.UserID)
+		if err := u.updateUserHomeCurrency(ctx, msg.UserID, currency); err != nil {
+			botReply = "Sorry, I couldn't update your currency. Please try again later."
+			return &domain.MessageResponse{
+				Type: domain.ResponseTypeError,
+				Text: botReply,
+			}, nil
+		}
+
+		botReply = u.currencyUpdatedReply(locale, currency)
+		return &domain.MessageResponse{
+			Type: domain.ResponseTypeInfo,
+			Text: botReply,
+		}, nil
+	}
+
 	if u.isReportIntent(msgLower) {
 		link, err := u.generateReportLink.Execute(msg.UserID)
 		if err != nil {
@@ -233,13 +280,172 @@ func (u *ProcessMessageUseCase) Execute(ctx context.Context, msg *domain.UserMes
 }
 
 func (u *ProcessMessageUseCase) isReportIntent(text string) bool {
-	keywords := []string{"report", "summary", "stats", "chart", "analysis", "expense report", "show report"}
+	keywords := []string{"report", "summary", "stats", "chart", "analysis", "expense report", "show report", "報表", "報告", "統計"}
 	for _, k := range keywords {
 		if strings.Contains(text, k) {
 			return true
 		}
 	}
 	return false
+}
+
+func (u *ProcessMessageUseCase) isSetCurrencyIntent(text string) bool {
+	actionKeywords := []string{"set", "change", "switch", "default", "currency", "切換", "改成", "預設", "幣別"}
+	hasAction := false
+	for _, k := range actionKeywords {
+		if strings.Contains(text, k) {
+			hasAction = true
+			break
+		}
+	}
+	if !hasAction {
+		return false
+	}
+
+	currencyKeywords := []string{"jpy", "usd", "twd", "eur", "cny", "krw", "thb", "日幣", "美元", "台幣", "歐元", "人民幣", "韓元", "泰銖", "currency", "幣別"}
+	for _, k := range currencyKeywords {
+		if strings.Contains(text, k) {
+			return true
+		}
+	}
+
+	return strings.Contains(text, "幣") || strings.Contains(text, "currency")
+}
+
+func (u *ProcessMessageUseCase) handlePendingConversation(ctx context.Context, msg *domain.UserMessage, msgLower string) (*domain.MessageResponse, bool) {
+	if u.conversationRepo == nil {
+		return nil, false
+	}
+
+	state, err := u.conversationRepo.GetByUserID(ctx, msg.UserID)
+	if err != nil || state == nil {
+		return nil, false
+	}
+
+	locale := u.getUserLocale(ctx, msg.UserID)
+
+	if time.Now().After(state.ExpiresAt) {
+		_ = u.conversationRepo.DeleteByUserID(ctx, msg.UserID)
+		if u.extractCurrencyCode(msg.Content) != "" {
+			return &domain.MessageResponse{Type: domain.ResponseTypeInfo, Text: u.pendingStateExpiredReply(locale)}, true
+		}
+		return nil, false
+	}
+
+	if msgLower == "cancel" || msgLower == "取消" {
+		_ = u.conversationRepo.DeleteByUserID(ctx, msg.UserID)
+		return &domain.MessageResponse{Type: domain.ResponseTypeInfo, Text: u.pendingStateCancelledReply(locale)}, true
+	}
+
+	if state.ActiveIntent != "settings.currency.set" {
+		return nil, false
+	}
+
+	targetCurrency := u.extractCurrencyCode(msg.Content)
+	if targetCurrency == "" {
+		return &domain.MessageResponse{Type: domain.ResponseTypeInfo, Text: u.currencyClarificationPrompt(locale)}, true
+	}
+
+	if err := u.updateUserHomeCurrency(ctx, msg.UserID, targetCurrency); err != nil {
+		return &domain.MessageResponse{Type: domain.ResponseTypeError, Text: "Sorry, I couldn't update your currency. Please try again later."}, true
+	}
+	_ = u.conversationRepo.DeleteByUserID(ctx, msg.UserID)
+
+	return &domain.MessageResponse{Type: domain.ResponseTypeInfo, Text: u.currencyUpdatedReply(locale, targetCurrency)}, true
+}
+
+func (u *ProcessMessageUseCase) savePendingCurrencyClarification(ctx context.Context, userID string) error {
+	if u.conversationRepo == nil {
+		return nil
+	}
+	now := time.Now()
+	return u.conversationRepo.Upsert(ctx, &domain.ConversationState{
+		UserID:       userID,
+		ActiveIntent: "settings.currency.set",
+		PendingSlots: map[string]string{"target_currency": ""},
+		Status:       "pending",
+		ExpiresAt:    now.Add(10 * time.Minute),
+		CreatedAt:    now,
+		UpdatedAt:    now,
+	})
+}
+
+func (u *ProcessMessageUseCase) updateUserHomeCurrency(ctx context.Context, userID, currency string) error {
+	if u.userRepo == nil {
+		return fmt.Errorf("user repository is not configured")
+	}
+	user, err := u.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		return err
+	}
+	if user == nil {
+		return fmt.Errorf("user not found")
+	}
+	user.HomeCurrency = currency
+	return u.userRepo.Update(ctx, user)
+}
+
+func (u *ProcessMessageUseCase) getUserLocale(ctx context.Context, userID string) string {
+	if u.userRepo == nil {
+		return "zh-TW"
+	}
+	user, err := u.userRepo.GetByID(ctx, userID)
+	if err != nil || user == nil || user.Locale == "" {
+		return "zh-TW"
+	}
+	return user.Locale
+}
+
+func (u *ProcessMessageUseCase) extractCurrencyCode(content string) string {
+	normalized := strings.ToLower(strings.TrimSpace(content))
+	replacer := strings.NewReplacer(" ", "", "-", "", "_", "")
+	normalized = replacer.Replace(normalized)
+
+	aliasToCode := map[string]string{
+		"twd": "TWD", "ntd": "TWD", "nt$": "TWD", "台幣": "TWD", "新台幣": "TWD",
+		"usd": "USD", "美金": "USD", "美元": "USD",
+		"jpy": "JPY", "yen": "JPY", "日幣": "JPY", "日元": "JPY", "円": "JPY",
+		"eur": "EUR", "euro": "EUR", "歐元": "EUR",
+		"cny": "CNY", "rmb": "CNY", "人民幣": "CNY", "人民币": "CNY",
+		"krw": "KRW", "韓元": "KRW", "韩元": "KRW", "won": "KRW",
+		"thb": "THB", "泰銖": "THB", "泰铢": "THB", "baht": "THB",
+	}
+
+	for alias, code := range aliasToCode {
+		if strings.Contains(normalized, strings.ToLower(alias)) {
+			return code
+		}
+	}
+
+	return ""
+}
+
+func (u *ProcessMessageUseCase) currencyClarificationPrompt(locale string) string {
+	if strings.HasPrefix(strings.ToLower(locale), "en") {
+		return "Which currency would you like to switch to? (e.g. JPY, USD, TWD)"
+	}
+	return "你要切換成哪個幣別？（例如 JPY、USD、TWD）"
+}
+
+func (u *ProcessMessageUseCase) currencyUpdatedReply(locale, currency string) string {
+	if strings.HasPrefix(strings.ToLower(locale), "en") {
+		return fmt.Sprintf("Done. Your default currency is now %s.", currency)
+	}
+	return fmt.Sprintf("已更新，預設幣別現在是 %s。", currency)
+}
+
+func (u *ProcessMessageUseCase) pendingStateExpiredReply(locale string) string {
+	if strings.HasPrefix(strings.ToLower(locale), "en") {
+		return "Your previous currency-switch request expired. Please ask again, for example: switch default currency to JPY."
+	}
+	return "先前的幣別切換已逾時，請重新告訴我要切換成哪個幣別。"
+}
+
+func (u *ProcessMessageUseCase) pendingStateCancelledReply(locale string) string {
+	if strings.HasPrefix(strings.ToLower(locale), "en") {
+		return "Got it. I cancelled the pending request."
+	}
+	return "好的，已取消目前的待確認操作。"
 }
 
 func getPrimaryCurrency(expenses []map[string]interface{}) string {

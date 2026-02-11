@@ -39,6 +39,7 @@ func main() {
 	var aiCostRepo domain.AICostRepository
 	var policyRepo domain.PolicyRepository
 	var interactionLogRepo domain.InteractionLogRepository
+	var conversationStateRepo domain.ConversationStateRepository
 	var dbCloser interface{ Close() error }
 
 	var pricingRepo domain.PricingRepository
@@ -65,6 +66,7 @@ func main() {
 	policyRepo = postgresRepo.NewPolicyRepository(db)
 	pricingRepo = postgresRepo.NewPricingRepository(db)
 	interactionLogRepo = postgresRepo.NewInteractionLogRepository(db)
+	conversationStateRepo = postgresRepo.NewConversationStateRepository(db)
 	shortLinkRepo = postgresRepo.NewShortLinkRepository(db)
 	exchangeRateRepo = postgresRepo.NewExchangeRateRepository(db)
 	accountRepo = postgresRepo.NewAccountRepository(db)
@@ -146,8 +148,10 @@ func main() {
 		parseConversationUseCase,
 		createExpenseUseCase,
 		getExpensesUseCase,
+		userRepo,
 		generateReportLinkUseCase,
 		interactionLogRepo,
+		conversationStateRepo,
 	)
 
 	// Determine if running in development mode

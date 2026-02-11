@@ -160,3 +160,10 @@ type InteractionLogRepository interface {
 	// Create creates a new interaction log entry
 	Create(ctx context.Context, log *InteractionLog) error
 }
+
+// ConversationStateRepository defines operations for pending conversation state.
+type ConversationStateRepository interface {
+	GetByUserID(ctx context.Context, userID string) (*ConversationState, error)
+	Upsert(ctx context.Context, state *ConversationState) error
+	DeleteByUserID(ctx context.Context, userID string) error
+}
