@@ -266,7 +266,7 @@ func (s *BenchAIService) SuggestCategory(ctx context.Context, description string
 func BenchmarkAutoSignup(b *testing.B) {
 	userRepo := &BenchUserRepository{users: make(map[string]*domain.User)}
 	categoryRepo := &BenchCategoryRepository{categories: make(map[string]*domain.Category)}
-	uc := usecase.NewAutoSignupUseCase(userRepo, categoryRepo)
+	uc := usecase.NewAutoSignupUseCase(userRepo, categoryRepo, nil)
 	ctx := context.Background()
 
 	b.ResetTimer()
@@ -379,7 +379,7 @@ func BenchmarkMultipleCreateExpenses(b *testing.B) {
 func BenchmarkUserRegistration(b *testing.B) {
 	userRepo := &BenchUserRepository{users: make(map[string]*domain.User)}
 	categoryRepo := &BenchCategoryRepository{categories: make(map[string]*domain.Category)}
-	autoSignupUC := usecase.NewAutoSignupUseCase(userRepo, categoryRepo)
+	autoSignupUC := usecase.NewAutoSignupUseCase(userRepo, categoryRepo, nil)
 	ctx := context.Background()
 
 	b.ResetTimer()

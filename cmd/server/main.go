@@ -3,7 +3,9 @@ package main
 import (
 	"fmt"
 	"log"
+	"log/slog"
 	"net/http"
+	"os"
 
 	"github.com/riverlin/aiexpense/internal/adapter/exchangerate"
 	httpAdapter "github.com/riverlin/aiexpense/internal/adapter/http"
@@ -27,6 +29,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to load configuration: %v", err)
 	}
+	configureLogger(cfg.LogLevel)
 
 	// Open database based on configuration
 	var userRepo domain.UserRepository
@@ -80,8 +83,20 @@ func main() {
 		log.Fatalf("Failed to initialize AI service: %v", err)
 	}
 
+	// Initialize LINE client early (needed for profile fetcher in auto-signup)
+	var lineClient *line.Client
+	var lineProfileFetcher usecase.ProfileFetcher
+	if cfg.IsMessengerEnabled("line") {
+		var err error
+		lineClient, err = line.NewClient(cfg.LineChannelToken)
+		if err != nil {
+			log.Fatalf("Failed to initialize LINE client: %v", err)
+		}
+		lineProfileFetcher = line.NewLineProfileFetcher(lineClient)
+	}
+
 	// Initialize use cases
-	autoSignupUseCase := usecase.NewAutoSignupUseCase(userRepo, categoryRepo)
+	autoSignupUseCase := usecase.NewAutoSignupUseCase(userRepo, categoryRepo, lineProfileFetcher)
 
 	// Initialize exchange rate service
 	exchangeRateProvider := exchangerate.NewFrankfurterProvider(nil)
@@ -191,16 +206,10 @@ func main() {
 	mux := http.NewServeMux()
 	httpAdapter.RegisterRoutes(mux, handler, aiCostHandler, pricingHandler, reportHandler, shortLinkHandler)
 
-	// Initialize LINE client (if enabled)
+	// Initialize LINE webhook handler (if enabled)
 	var lineHandler *line.Handler
-	if cfg.IsMessengerEnabled("line") {
-		lineClient, err := line.NewClient(cfg.LineChannelToken)
-		if err != nil {
-			log.Fatalf("Failed to initialize LINE client: %v", err)
-		}
-
-		// Initialize LINE webhook handler with Unified Message Processor
-		lineHandler = line.NewHandler(cfg.LineChannelSecret, processMessageUseCase, lineClient)
+	if lineClient != nil {
+		lineHandler = line.NewHandler(cfg.LineChannelSecret, processMessageUseCase, lineClient, userRepo)
 	}
 
 	// Initialize Terminal messenger (if enabled)
@@ -334,6 +343,28 @@ func main() {
 	if err := http.ListenAndServe(addr, loggingHandler); err != nil {
 		log.Fatalf("Server failed: %v", err)
 	}
+}
+
+func configureLogger(levelName string) {
+	level := slog.LevelInfo
+	switch levelName {
+	case "debug":
+		level = slog.LevelDebug
+	case "info":
+		level = slog.LevelInfo
+	case "warn", "warning":
+		level = slog.LevelWarn
+	case "error":
+		level = slog.LevelError
+	default:
+		log.Printf("Invalid LOG_LEVEL=%q, fallback to info", levelName)
+	}
+
+	handler := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		Level: level,
+	})
+	slog.SetDefault(slog.New(handler))
+	slog.Info("configured structured logger", "level", level.String())
 }
 
 // withCORS wraps HTTP handler with CORS headers

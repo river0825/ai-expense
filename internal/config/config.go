@@ -56,6 +56,9 @@ type Config struct {
 
 	// Environment
 	Environment string
+
+	// Logging
+	LogLevel string
 }
 
 func Load() (*Config, error) {
@@ -87,6 +90,7 @@ func Load() (*Config, error) {
 		DashboardURL:          getEnv("DASHBOARD_URL", "http://localhost:3000"),
 		APIPublicURL:          getEnv("API_PUBLIC_URL", "http://localhost:8080"),
 		AdminAPIKey:           getEnv("ADMIN_API_KEY", ""),
+		LogLevel:              strings.ToLower(getEnv("LOG_LEVEL", "info")),
 	}
 
 	// Parse enabled messengers
