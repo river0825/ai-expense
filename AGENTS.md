@@ -30,7 +30,7 @@ Keep this managed block so 'openspec update' can refresh the instructions.
 ### Backend (Go)
 - Build: `go build ./cmd/server`
 - Build named binary: `go build -o aiexpense ./cmd/server`
-- Run server (manual): `go run ./cmd/server`
+- Run server (manual): `set -a; source .env; set +a; go run ./cmd/server`
 
 ### Frontend (Dashboard)
 - **Package Manager**: Use `bun` (NOT npm)
@@ -149,6 +149,12 @@ Keep this managed block so 'openspec update' can refresh the instructions.
     -H "Content-Type: application/json" \
     -d '{"user_id": "test_user", "message": "report"}'
     ```
+*   **Add Expense URL**:
+    ```bash
+    curl -X POST http://localhost:8080/api/chat/terminal \
+    -H "Content-Type: application/json" \
+    -d '{"user_id": "test_user", "message": "100 lunch Credit Card"}'
+    ```
 ### 3. Specific Scenarios
 *   **404 on API**: Check `internal/adapter/http/handler.go` to verify route registration and method (PUT vs POST).
 *   **Frontend Data Not Updating**: Check `refreshKey` patterns or `useEffect` dependencies.
@@ -169,6 +175,38 @@ curl -X POST http://localhost:8080/api/chat/terminal \
   -H "Content-Type: application/json" \
   -d '{"user_id": "test_user_2", "message": "report"}'
 ```
+
+## Development Workflow (Feature/Bug)
+
+Follow this process for all feature work and bug fixes:
+
+### Step 1: Create a GitHub Issue
+- Use `gh issue create` to create a tracking issue
+- Include clear title, description, and acceptance criteria
+- Label appropriately (e.g., `feat`, `fix`, `chore`)
+
+### Step 2: Create a Branch from the Issue
+- Use `gh issue develop <issue-number>` to create a branch linked to the issue
+- This auto-generates a branch name from the issue title and links it in GitHub
+- Add `--checkout` to switch to it immediately: `gh issue develop <issue-number> --checkout`
+
+### Step 3: Work in a Git Worktree
+- Create worktrees inside the `.worktrees/` folder: `git worktree add .worktrees/<branch-name> <branch-name>`
+- Use `superpowers:using-git-worktrees` skill for guided setup
+- This keeps the main workspace clean and enables parallel work
+- All implementation happens inside the worktree directory
+
+### Step 4: Commit, Push, and Create PR
+- Follow TDD: write tests first, implement, verify all tests pass
+- Commit frequently with conventional commit messages (`feat:`, `fix:`, `refactor:`, etc.)
+- Push branch and create PR using `gh pr create`
+- Reference the GitHub issue in the PR body (e.g., `Closes #123`)
+
+### Step 5: Address Review Comments
+- Use `superpowers:receiving-code-review` skill when receiving feedback
+- Use `gh-address-comments` skill to review and respond to PR comments
+- Push fixes as new commits (do not force-push during review)
+- Re-request review after addressing all comments
 
 ## Notes
 - No dedicated Go linter config found (.golangci.yml not present)

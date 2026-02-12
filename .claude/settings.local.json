@@ -38,7 +38,11 @@
       "Bash(gcloud run services list:*)",
       "Bash(npm install:*)",
       "Bash(grep:*)",
-      "Bash(git -C /Users/riverlin/Documents/workspace/aiexpense log --oneline --all)"
+      "Bash(git -C /Users/riverlin/Documents/workspace/aiexpense log --oneline --all)",
+      "Bash(gh pr view:*)",
+      "Bash(git checkout:*)",
+      "Bash(git -C /Users/riverlin/Documents/workspace/aiexpense/.worktrees/compact-expenses-page log --oneline main..feature/compact-expenses-page)",
+      "WebFetch(domain:developers.line.biz)"
     ]
   }
 }

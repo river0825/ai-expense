@@ -48,6 +48,51 @@ func (m *mockGenerateReportLink) Execute(userID string) (string, error) {
 	return args.String(0), args.Error(1)
 }
 
+type mockUserRepoForProcess struct{ mock.Mock }
+
+func (m *mockUserRepoForProcess) Create(ctx context.Context, user *domain.User) error {
+	args := m.Called(ctx, user)
+	return args.Error(0)
+}
+
+func (m *mockUserRepoForProcess) GetByID(ctx context.Context, userID string) (*domain.User, error) {
+	args := m.Called(ctx, userID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.User), args.Error(1)
+}
+
+func (m *mockUserRepoForProcess) Exists(ctx context.Context, userID string) (bool, error) {
+	args := m.Called(ctx, userID)
+	return args.Bool(0), args.Error(1)
+}
+
+func (m *mockUserRepoForProcess) Update(ctx context.Context, user *domain.User) error {
+	args := m.Called(ctx, user)
+	return args.Error(0)
+}
+
+type mockConversationStateRepo struct{ mock.Mock }
+
+func (m *mockConversationStateRepo) GetByUserID(ctx context.Context, userID string) (*domain.ConversationState, error) {
+	args := m.Called(ctx, userID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.ConversationState), args.Error(1)
+}
+
+func (m *mockConversationStateRepo) Upsert(ctx context.Context, state *domain.ConversationState) error {
+	args := m.Called(ctx, state)
+	return args.Error(0)
+}
+
+func (m *mockConversationStateRepo) DeleteByUserID(ctx context.Context, userID string) error {
+	args := m.Called(ctx, userID)
+	return args.Error(0)
+}
+
 func TestProcessMessageUseCase_Execute(t *testing.T) {
 	t.Run("Success - Single Expense", func(t *testing.T) {
 		// Setup
@@ -60,6 +105,7 @@ func TestProcessMessageUseCase_Execute(t *testing.T) {
 
 		logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 		uc := NewProcessMessageUseCase(autoSignup, parser, creator, nil, reportLink, nil, expenseRepo, logger)
+		uc := NewProcessMessageUseCase(autoSignup, parser, creator, nil, nil, reportLink, nil, nil)
 
 		// Expectations
 		autoSignup.On("Execute", mock.Anything, "user1", "terminal").Return(nil)
@@ -118,6 +164,7 @@ func TestProcessMessageUseCase_Execute(t *testing.T) {
 
 		logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 		uc := NewProcessMessageUseCase(autoSignup, parser, creator, nil, reportLink, nil, expenseRepo, logger)
+		uc := NewProcessMessageUseCase(autoSignup, parser, creator, nil, nil, reportLink, nil, nil)
 
 		// Expectations
 		autoSignup.On("Execute", mock.Anything, "user1", "terminal").Return(nil)
@@ -135,6 +182,7 @@ func TestProcessMessageUseCase_Execute(t *testing.T) {
 
 	t.Run("Success - Idempotency (Duplicate Message)", func(t *testing.T) {
 		// Setup
+	t.Run("Currency intent asks clarification and stores pending state", func(t *testing.T) {
 		autoSignup := new(mockAutoSignup)
 		parser := new(mockParseConversation)
 		creator := new(mockCreateExpense)
@@ -183,5 +231,84 @@ func TestProcessMessageUseCase_Execute(t *testing.T) {
 		// Verify no extra calls
 		parser.AssertNotCalled(t, "Execute", mock.Anything, mock.Anything, mock.Anything)
 		creator.AssertNotCalled(t, "Execute", mock.Anything, mock.Anything)
+		userRepo := new(mockUserRepoForProcess)
+		stateRepo := new(mockConversationStateRepo)
+
+		uc := NewProcessMessageUseCase(autoSignup, parser, creator, nil, userRepo, reportLink, nil, stateRepo)
+
+		autoSignup.On("Execute", mock.Anything, "user1", "terminal").Return(nil)
+		stateRepo.On("GetByUserID", mock.Anything, "user1").Return(nil, nil)
+		stateRepo.On("Upsert", mock.Anything, mock.MatchedBy(func(state *domain.ConversationState) bool {
+			return state.UserID == "user1" && state.ActiveIntent == "settings.currency.set"
+		})).Return(nil)
+		userRepo.On("GetByID", mock.Anything, "user1").Return(&domain.User{UserID: "user1", Locale: "zh-TW"}, nil)
+
+		msg := &domain.UserMessage{UserID: "user1", Content: "把預設幣別改成", Source: "terminal"}
+		resp, err := uc.Execute(context.Background(), msg)
+
+		assert.NoError(t, err)
+		assert.Equal(t, domain.ResponseTypeInfo, resp.Type)
+		assert.Contains(t, resp.Text, "你要切換成哪個幣別")
+	})
+
+	t.Run("Pending currency follow-up applies update and clears state", func(t *testing.T) {
+		autoSignup := new(mockAutoSignup)
+		parser := new(mockParseConversation)
+		creator := new(mockCreateExpense)
+		reportLink := new(mockGenerateReportLink)
+		userRepo := new(mockUserRepoForProcess)
+		stateRepo := new(mockConversationStateRepo)
+
+		uc := NewProcessMessageUseCase(autoSignup, parser, creator, nil, userRepo, reportLink, nil, stateRepo)
+
+		autoSignup.On("Execute", mock.Anything, "user1", "terminal").Return(nil)
+		stateRepo.On("GetByUserID", mock.Anything, "user1").Return(&domain.ConversationState{
+			UserID:       "user1",
+			ActiveIntent: "settings.currency.set",
+			PendingSlots: map[string]string{"target_currency": ""},
+			Status:       "pending",
+			ExpiresAt:    time.Now().Add(5 * time.Minute),
+		}, nil)
+		userRepo.On("GetByID", mock.Anything, "user1").Return(&domain.User{UserID: "user1", Locale: "zh-TW", HomeCurrency: "TWD"}, nil).Twice()
+		userRepo.On("Update", mock.Anything, mock.MatchedBy(func(user *domain.User) bool {
+			return user.UserID == "user1" && user.HomeCurrency == "JPY"
+		})).Return(nil)
+		stateRepo.On("DeleteByUserID", mock.Anything, "user1").Return(nil)
+
+		msg := &domain.UserMessage{UserID: "user1", Content: "JPY", Source: "terminal"}
+		resp, err := uc.Execute(context.Background(), msg)
+
+		assert.NoError(t, err)
+		assert.Equal(t, domain.ResponseTypeInfo, resp.Type)
+		assert.Contains(t, resp.Text, "JPY")
+	})
+
+	t.Run("Expired pending state asks to restate request", func(t *testing.T) {
+		autoSignup := new(mockAutoSignup)
+		parser := new(mockParseConversation)
+		creator := new(mockCreateExpense)
+		reportLink := new(mockGenerateReportLink)
+		userRepo := new(mockUserRepoForProcess)
+		stateRepo := new(mockConversationStateRepo)
+
+		uc := NewProcessMessageUseCase(autoSignup, parser, creator, nil, userRepo, reportLink, nil, stateRepo)
+
+		autoSignup.On("Execute", mock.Anything, "user1", "terminal").Return(nil)
+		stateRepo.On("GetByUserID", mock.Anything, "user1").Return(&domain.ConversationState{
+			UserID:       "user1",
+			ActiveIntent: "settings.currency.set",
+			PendingSlots: map[string]string{"target_currency": ""},
+			Status:       "pending",
+			ExpiresAt:    time.Now().Add(-1 * time.Minute),
+		}, nil)
+		stateRepo.On("DeleteByUserID", mock.Anything, "user1").Return(nil)
+		userRepo.On("GetByID", mock.Anything, "user1").Return(&domain.User{UserID: "user1", Locale: "zh-TW"}, nil)
+
+		msg := &domain.UserMessage{UserID: "user1", Content: "JPY", Source: "terminal"}
+		resp, err := uc.Execute(context.Background(), msg)
+
+		assert.NoError(t, err)
+		assert.Equal(t, domain.ResponseTypeInfo, resp.Type)
+		assert.Contains(t, resp.Text, "逾時")
 	})
 }
