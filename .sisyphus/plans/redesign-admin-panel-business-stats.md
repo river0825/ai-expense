@@ -60,10 +60,10 @@ Deliver a production-ready V1 admin analytics experience that enables daily and 
 - [x] OpenSpec proposal validated with `openspec validate <change-id> --strict`
 - [x] Revenue/retention endpoints return schema-validated responses for happy and edge cases
 - [x] Admin auth protects new analytics routes with explicit unauthorized behavior
-- [ ] New admin panel renders KPI tree (L1/L2/L3), filters, and drill-down actions
-- [ ] `go test ./...` passes
-- [ ] `bun run test` and Playwright suite for admin pass in `frontend/admin`
-- [ ] CI runs dashboard/admin unit tests and e2e checks for changed surface
+- [x] New admin panel renders KPI tree (L1/L2/L3), filters, and drill-down actions
+- [x] `go test ./...` passes
+- [x] `bun run test` and Playwright suite for admin pass in `frontend/admin`
+- [x] CI runs dashboard/admin unit tests and e2e checks for changed surface
 
 ### Must Have
 - Revenue/Retention-first information architecture (not generic vanity dashboard)
@@ -542,7 +542,7 @@ Critical Path: 1 -> 2 -> 3 -> 4 -> 6 -> 7
     Evidence: .sisyphus/evidence/task-6-empty-state.png
   ```
 
-- [ ] 7. Harden tests, CI gates, and release verification for admin analytics
+- [x] 7. Harden tests, CI gates, and release verification for admin analytics
 
   **What to do**:
   - Ensure backend and admin/frontend test suites run in CI for affected scope
@@ -575,10 +575,10 @@ Critical Path: 1 -> 2 -> 3 -> 4 -> 6 -> 7
   - `frontend/dashboard/tests/dashboard.spec.ts` - Playwright assertion style
 
   **Acceptance Criteria**:
-  - [ ] CI config includes required unit + e2e checks for admin analytics surface
-  - [ ] `go test ./...` passes
-  - [ ] frontend unit tests pass (admin app)
-  - [ ] Playwright admin smoke and negative flows pass
+  - [x] CI config includes required unit + e2e checks for admin analytics surface
+  - [x] `go test ./...` passes
+  - [x] frontend unit tests pass (admin app)
+  - [x] Playwright admin smoke and negative flows pass
 
   **Agent-Executed QA Scenarios**:
   ```text
