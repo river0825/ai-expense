@@ -229,6 +229,17 @@ type InteractionLog struct {
 	Timestamp     time.Time `db:"timestamp" json:"timestamp"`
 }
 
+// ConversationState represents pending multi-turn conversation context for a user.
+type ConversationState struct {
+	UserID       string            `db:"user_id" json:"user_id"`
+	ActiveIntent string            `db:"active_intent" json:"active_intent"`
+	PendingSlots map[string]string `db:"pending_slots" json:"pending_slots"`
+	Status       string            `db:"status" json:"status"`
+	ExpiresAt    time.Time         `db:"expires_at" json:"expires_at"`
+	CreatedAt    time.Time         `db:"created_at" json:"created_at"`
+	UpdatedAt    time.Time         `db:"updated_at" json:"updated_at"`
+}
+
 // PricingProvider defines the contract for fetching pricing from an AI provider
 type PricingProvider interface {
 	// Fetch retrieves current pricing from the provider
@@ -236,4 +247,25 @@ type PricingProvider interface {
 
 	// Provider returns the provider name (e.g., "gemini", "claude")
 	Provider() string
+}
+
+type RevenueRetentionReport struct {
+	PeriodStart      time.Time `json:"period_start"`
+	PeriodEnd        time.Time `json:"period_end"`
+	StartingMRR      float64   `json:"starting_mrr"`
+	EndingMRR        float64   `json:"ending_mrr"`
+	NewMRR           float64   `json:"new_mrr"`
+	ExpansionMRR     float64   `json:"expansion_mrr"`
+	ContractionMRR   float64   `json:"contraction_mrr"`
+	ChurnedMRR       float64   `json:"churned_mrr"`
+	NRR              float64   `json:"nrr"`
+	GRR              float64   `json:"grr"`
+	ChurnRate        float64   `json:"churn_rate"`
+	LogoChurnRate    float64   `json:"logo_churn_rate"`
+	ActiveUsers      int       `json:"active_users"`
+	NewUsers         int       `json:"new_users"`
+	ChurnedUsers     int       `json:"churned_users"`
+	ComparisonPeriod string    `json:"comparison_period,omitempty"`
+	NRRDelta         float64   `json:"nrr_delta,omitempty"`
+	GRRDelta         float64   `json:"grr_delta,omitempty"`
 }

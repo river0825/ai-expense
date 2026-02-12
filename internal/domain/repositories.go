@@ -113,6 +113,12 @@ type MetricsRepository interface {
 	GetNewUsersPerDay(ctx context.Context, from, to time.Time) ([]*DailyMetrics, error)
 }
 
+type RevenueRetentionRepository interface {
+	GetReport(ctx context.Context, periodStart, periodEnd time.Time) (*RevenueRetentionReport, error)
+
+	GetReportSeries(ctx context.Context, from, to time.Time, comparisonPeriod string) ([]*RevenueRetentionReport, error)
+}
+
 // AICostRepository defines operations for AI cost logging
 type AICostRepository interface {
 	// Create creates a new cost log entry
@@ -168,4 +174,11 @@ type AdminAuthRepository interface {
 	CreateSession(ctx context.Context, session *AdminSession) error
 	GetSessionByTokenHash(ctx context.Context, tokenHash string) (*AdminSession, error)
 	DeleteSessionByTokenHash(ctx context.Context, tokenHash string) error
+}
+
+// ConversationStateRepository defines operations for pending conversation state.
+type ConversationStateRepository interface {
+	GetByUserID(ctx context.Context, userID string) (*ConversationState, error)
+	Upsert(ctx context.Context, state *ConversationState) error
+	DeleteByUserID(ctx context.Context, userID string) error
 }
