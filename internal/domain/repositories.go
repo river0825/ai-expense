@@ -119,6 +119,14 @@ type RevenueRetentionRepository interface {
 	GetReportSeries(ctx context.Context, from, to time.Time, comparisonPeriod string) ([]*RevenueRetentionReport, error)
 }
 
+// AdminAuthRepository defines operations for admin authentication and session management
+type AdminAuthRepository interface {
+	GetAdminByUsername(ctx context.Context, username string) (*AdminCredentials, error)
+	CreateSession(ctx context.Context, session *AdminSession) error
+	GetSessionByToken(ctx context.Context, token string) (*AdminSession, error)
+	DeleteSession(ctx context.Context, sessionID string) error
+}
+
 // AICostRepository defines operations for AI cost logging
 type AICostRepository interface {
 	// Create creates a new cost log entry

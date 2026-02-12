@@ -269,3 +269,18 @@ type RevenueRetentionReport struct {
 	NRRDelta         float64   `json:"nrr_delta,omitempty"`
 	GRRDelta         float64   `json:"grr_delta,omitempty"`
 }
+
+// AdminSession represents an admin authentication session
+type AdminSession struct {
+	ID        string    `db:"id" json:"id"`
+	AdminID   string    `db:"admin_id" json:"admin_id"`
+	Token     string    `db:"token" json:"token"`
+	ExpiresAt time.Time `db:"expires_at" json:"expires_at"`
+	CreatedAt time.Time `db:"created_at" json:"created_at"`
+}
+
+// AdminCredentials represents admin authentication credentials
+type AdminCredentials struct {
+	Username     string `db:"username" json:"username"`
+	PasswordHash string `db:"password_hash" json:"-"`
+}
