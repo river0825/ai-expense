@@ -1,0 +1,20 @@
+{
+  "expense.recorded": "Registrado {count} gasto(s), total: {amount} {currency}",
+  "expense.item": "{description}: {amount} {currency}",
+  "expense.item.detail": "{category} · {date} · {account}",
+  "expense.item.converted": "≈ {originalAmount} {originalCurrency}",
+  "expense.none": "No se detectaron gastos en el mensaje",
+  "expense.none.hint": "Intenta algo como: \"Almuerzo bento $85\"",
+  "expense.count": "{count} gasto(s) registrado(s) exitosamente",
+  "report.title": "Informe de Gastos",
+  "report.description": "Tu informe personal de gastos está listo",
+  "report.validity": "Enlace válido por 5 minutos",
+  "report.button": "Ver Informe",
+  "report.error": "Lo sentimos, no pudimos generar el enlace del informe. Por favor, inténtalo de nuevo más tarde.",
+  "error.title": "Error",
+  "error.signup": "Error al registrar usuario: {error}",
+  "error.parse": "Error al analizar mensaje: {error}",
+  "flex.app_name": "AIExpense",
+  "flex.total": "Total",
+  "flex.edit_button": "Editar"
+}

@@ -15,5 +15,6 @@
   "error.signup": "使用者註冊失敗：{error}",
   "error.parse": "訊息解析失敗：{error}",
   "flex.app_name": "AIExpense",
-  "flex.total": "合計"
+  "flex.total": "合計",
+  "flex.edit_button": "編輯"
 }

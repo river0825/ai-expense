@@ -15,5 +15,6 @@
   "error.signup": "Failed to sign up user: {error}",
   "error.parse": "Failed to parse message: {error}",
   "flex.app_name": "AIExpense",
-  "flex.total": "Total"
+  "flex.total": "Total",
+  "flex.edit_button": "Edit"
 }

@@ -9,6 +9,7 @@ import (
 
 // ExpenseData holds the data needed to render a single expense in a Flex Message
 type ExpenseData struct {
+	ID               string
 	Description      string
 	HomeAmount       float64
 	HomeCurrency     string
@@ -20,7 +21,7 @@ type ExpenseData struct {
 }
 
 // BuildExpenseBubble creates a LINE Flex Message bubble for expense confirmation.
-func BuildExpenseBubble(expenses []ExpenseData, totalAmount float64, totalCurrency, locale string) map[string]interface{} {
+func BuildExpenseBubble(expenses []ExpenseData, totalAmount float64, totalCurrency, locale, dashboardURL string) map[string]interface{} {
 	header := map[string]interface{}{
 		"type":            "box",
 		"layout":          "vertical",
@@ -134,6 +135,22 @@ func BuildExpenseBubble(expenses []ExpenseData, totalAmount float64, totalCurren
 				"size":   "xxs",
 				"color":  "#64748B",
 				"margin": "xs",
+			})
+		}
+
+		// Add edit button if expense has ID and dashboard URL is provided
+		if exp.ID != "" && dashboardURL != "" {
+			editURL := fmt.Sprintf("%s/dashboard/expenses?edit=%s", dashboardURL, exp.ID)
+			row["contents"] = append(row["contents"].([]interface{}), map[string]interface{}{
+				"type":   "button",
+				"action": map[string]interface{}{
+					"type":  "uri",
+					"label": i18n.T(locale, "flex.edit_button"),
+					"uri":   editURL,
+				},
+				"style":  "link",
+				"height": "sm",
+				"margin": "md",
 			})
 		}
 

@@ -221,7 +221,7 @@ func main() {
 	// Initialize LINE webhook handler (if enabled)
 	var lineHandler *line.Handler
 	if lineClient != nil {
-		lineHandler = line.NewHandler(cfg.LineChannelSecret, processMessageUseCase, lineClient, userRepo)
+		lineHandler = line.NewHandler(cfg.LineChannelSecret, processMessageUseCase, lineClient, userRepo, cfg.DashboardURL)
 	}
 
 	// Initialize Terminal messenger (if enabled)

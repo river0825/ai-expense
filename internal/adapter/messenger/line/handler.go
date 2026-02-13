@@ -28,15 +28,17 @@ type Handler struct {
 	useCase       MessageProcessor
 	client        *Client
 	userRepo      domain.UserRepository
+	dashboardURL  string
 }
 
 // NewHandler creates a new LINE webhook handler
-func NewHandler(channelSecret string, useCase MessageProcessor, client *Client, userRepo domain.UserRepository) *Handler {
+func NewHandler(channelSecret string, useCase MessageProcessor, client *Client, userRepo domain.UserRepository, dashboardURL string) *Handler {
 	return &Handler{
 		channelSecret: channelSecret,
 		useCase:       useCase,
 		client:        client,
 		userRepo:      userRepo,
+		dashboardURL:  dashboardURL,
 	}
 }
 
@@ -195,13 +197,14 @@ func (h *Handler) sendFlexReply(ctx context.Context, replyToken string, resp *do
 		if data, ok := resp.Data.([]map[string]interface{}); ok {
 			expenseData := convertToExpenseData(data)
 			totalAmount, totalCurrency := extractTotal(data)
-			flexBubble = flex.BuildExpenseBubble(expenseData, totalAmount, totalCurrency, locale)
+			flexBubble = flex.BuildExpenseBubble(expenseData, totalAmount, totalCurrency, locale, h.dashboardURL)
 			lineLogger.DebugContext(
 				ctx,
 				"built expense flex bubble",
 				"items", len(expenseData),
 				"total_amount", totalAmount,
 				"total_currency", totalCurrency,
+				"dashboard_url", h.dashboardURL,
 			)
 		} else {
 			lineLogger.WarnContext(ctx, "expense response data type mismatch", "data_type", fmt.Sprintf("%T", resp.Data))
@@ -251,6 +254,7 @@ func convertToExpenseData(data []map[string]interface{}) []flex.ExpenseData {
 	result := make([]flex.ExpenseData, 0, len(data))
 	for _, d := range data {
 		exp := flex.ExpenseData{
+			ID:           stringVal(d, "id"),
 			Description:  stringVal(d, "description"),
 			HomeAmount:   floatVal(d, "home_amount"),
 			HomeCurrency: stringVal(d, "home_currency"),
