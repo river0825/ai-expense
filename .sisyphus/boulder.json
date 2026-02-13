@@ -1,8 +1,10 @@
 {
   "active_plan": null,
-  "completed_plans": ["integration-test"],
-  "started_at": "2026-02-06T19:48:37.606Z",
-  "session_ids": ["ses_3cc88f206ffeVNVbyLMCKuWbeR"],
-  "plan_name": "integration-test",
+  "completed_plans": ["admin-login-end-to-end"],
+  "started_at": "2026-02-13T02:44:55.268Z",
+  "session_ids": [
+    "ses_3afe09637ffewuJCK9kffrP5SV"
+  ],
+  "plan_name": "admin-login-end-to-end",
   "status": "ALL_COMPLETE"
 }
