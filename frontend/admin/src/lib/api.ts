@@ -1,4 +1,4 @@
-import { AnalyticsResponse, AtRiskResponse, Period } from './types';
+import { AnalyticsResponse, AtRiskResponse, Metric, Period } from './types';
 import { getToken } from './auth';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/admin';
@@ -47,7 +47,39 @@ export const fetchAnalytics = async (period: Period): Promise<AnalyticsResponse>
     '90d': 'prev_90d',
   };
   
-  return fetchWithAuth<AnalyticsResponse>(`/analytics/overview?period=${period}&compare=${compareMap[period]}`);
+  const raw = await fetchWithAuth<any>(`/analytics/overview?period=${period}&compare=${compareMap[period]}`);
+
+  if (raw?.data?.metrics) {
+    return raw as AnalyticsResponse;
+  }
+
+  const now = new Date();
+  const startDate = new Date(now);
+  if (period === '7d') startDate.setDate(now.getDate() - 7);
+  if (period === '30d') startDate.setDate(now.getDate() - 30);
+  if (period === '90d') startDate.setDate(now.getDate() - 90);
+
+  const metric = (current: number): Metric => ({ current, previous: 0, delta_percent: 0 });
+
+  const totalExpenses = Number(raw?.data?.expenses?.total_expenses ?? 0);
+  const averageExpensePerUser = Number(raw?.data?.growth?.average_expense_per_user ?? 0);
+  const weeklyGrowth = Number(raw?.data?.growth?.weekly_growth_percent ?? 0);
+  const dailyGrowth = Number(raw?.data?.growth?.daily_growth_percent ?? 0);
+
+  return {
+    status: raw?.status ?? 'success',
+    data: {
+      period,
+      start_date: startDate.toISOString(),
+      end_date: now.toISOString(),
+      metrics: {
+        mrr: metric(totalExpenses),
+        nrr: metric(weeklyGrowth),
+        grr: metric(dailyGrowth),
+        churn_rate: metric(Math.max(0, 100 - averageExpensePerUser)),
+      },
+    },
+  };
 };
 
 // Mock implementation for now as endpoint is not defined in prompt
