@@ -12,3 +12,8 @@ tech-me-river-*.json
 .vercel
 
 .next
+
+# Test artifacts
+.sisyphus/
+playwright-report/
+test-results/
