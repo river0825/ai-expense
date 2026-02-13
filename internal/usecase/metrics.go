@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"github.com/riverlin/aiexpense/internal/domain"
@@ -196,12 +197,18 @@ func (u *MetricsUseCase) GetGrowthMetrics(ctx context.Context, req *GrowthMetric
 	}
 
 	// Convert map to typed response
+	totalUsers := getIntMetric(metricsData, "total_users")
+	newUsersToday := getIntMetric(metricsData, "new_users_today")
+	newUsersThisWeek := getIntMetric(metricsData, "new_users_this_week")
+	newUsersThisMonth := getIntMetric(metricsData, "new_users_this_month", "new_users")
+	totalExpenses := getFloatMetric(metricsData, "total_expenses")
+
 	resp := &GrowthMetricsResponse{
-		TotalUsers:        metricsData["total_users"].(int),
-		NewUsersToday:     metricsData["new_users_today"].(int),
-		NewUsersThisWeek:  metricsData["new_users_this_week"].(int),
-		NewUsersThisMonth: metricsData["new_users_this_month"].(int),
-		TotalExpenses:     metricsData["total_expenses"].(float64),
+		TotalUsers:        totalUsers,
+		NewUsersToday:     newUsersToday,
+		NewUsersThisWeek:  newUsersThisWeek,
+		NewUsersThisMonth: newUsersThisMonth,
+		TotalExpenses:     totalExpenses,
 	}
 
 	// Calculate derived metrics
@@ -216,4 +223,88 @@ func (u *MetricsUseCase) GetGrowthMetrics(ctx context.Context, req *GrowthMetric
 	}
 
 	return resp, nil
+}
+
+func getIntMetric(data map[string]interface{}, keys ...string) int {
+	for _, key := range keys {
+		value, ok := data[key]
+		if !ok || value == nil {
+			continue
+		}
+
+		switch v := value.(type) {
+		case int:
+			return v
+		case int8:
+			return int(v)
+		case int16:
+			return int(v)
+		case int32:
+			return int(v)
+		case int64:
+			return int(v)
+		case uint:
+			return int(v)
+		case uint8:
+			return int(v)
+		case uint16:
+			return int(v)
+		case uint32:
+			return int(v)
+		case uint64:
+			return int(v)
+		case float32:
+			return int(v)
+		case float64:
+			return int(v)
+		case json.Number:
+			if parsed, err := v.Int64(); err == nil {
+				return int(parsed)
+			}
+		}
+	}
+
+	return 0
+}
+
+func getFloatMetric(data map[string]interface{}, keys ...string) float64 {
+	for _, key := range keys {
+		value, ok := data[key]
+		if !ok || value == nil {
+			continue
+		}
+
+		switch v := value.(type) {
+		case int:
+			return float64(v)
+		case int8:
+			return float64(v)
+		case int16:
+			return float64(v)
+		case int32:
+			return float64(v)
+		case int64:
+			return float64(v)
+		case uint:
+			return float64(v)
+		case uint8:
+			return float64(v)
+		case uint16:
+			return float64(v)
+		case uint32:
+			return float64(v)
+		case uint64:
+			return float64(v)
+		case float32:
+			return float64(v)
+		case float64:
+			return v
+		case json.Number:
+			if parsed, err := v.Float64(); err == nil {
+				return parsed
+			}
+		}
+	}
+
+	return 0
 }

@@ -11,14 +11,14 @@ test.describe('Admin Panel', () => {
       await page.goto('/login');
       await expect(page.getByLabel(/username/i)).toBeVisible();
       await expect(page.getByLabel(/password/i)).toBeVisible();
-      await expect(page.getByRole('button', { name: /sign in/i })).toBeVisible();
+      await expect(page.getByRole('button', { name: /login/i })).toBeVisible();
     });
 
     test('should login with valid credentials', async ({ page }) => {
       await page.goto('/login');
       await page.getByLabel(/username/i).fill('admin');
       await page.getByLabel(/password/i).fill('admin123');
-      await page.getByRole('button', { name: /sign in/i }).click();
+      await page.getByRole('button', { name: /login/i }).click();
       
       await expect(page).toHaveURL('/dashboard');
     });
@@ -29,7 +29,7 @@ test.describe('Admin Panel', () => {
       await page.goto('/login');
       await page.getByLabel(/username/i).fill('admin');
       await page.getByLabel(/password/i).fill('admin123');
-      await page.getByRole('button', { name: /sign in/i }).click();
+      await page.getByRole('button', { name: /login/i }).click();
       await expect(page).toHaveURL('/dashboard');
     });
 
