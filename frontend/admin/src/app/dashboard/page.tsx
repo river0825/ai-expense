@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAnalytics, useAtRiskAccounts } from '@/hooks/useAnalytics';
 import { Period } from '@/lib/types';
 import { KPIGrid } from '@/components/KPIGrid';
@@ -8,11 +9,30 @@ import { KPICard } from '@/components/KPICard';
 import { TrendChart } from '@/components/TrendChart';
 import { PeriodFilter } from '@/components/PeriodFilter';
 import { AtRiskTable } from '@/components/AtRiskTable';
+import { isAuthenticated } from '@/lib/auth';
 
 export default function DashboardPage() {
+  const router = useRouter();
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [period, setPeriod] = useState<Period>('30d');
   const { data: analytics, loading: analyticsLoading, error: analyticsError } = useAnalytics(period);
   const { data: atRisk, loading: atRiskLoading, error: atRiskError } = useAtRiskAccounts();
+
+  useEffect(() => {
+    if (!isAuthenticated()) {
+      router.push('/login');
+    } else {
+      setIsCheckingAuth(false);
+    }
+  }, [router]);
+
+  if (isCheckingAuth) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-background text-foreground">
+        <div className="animate-pulse">Checking authentication...</div>
+      </div>
+    );
+  }
 
   if (analyticsLoading || atRiskLoading) {
     return (
