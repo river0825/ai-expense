@@ -160,3 +160,9 @@ type InteractionLogRepository interface {
 	// Create creates a new interaction log entry
 	Create(ctx context.Context, log *InteractionLog) error
 }
+
+type AdminAuthRepository interface {
+	CreateSession(ctx context.Context, session *AdminSession) error
+	GetSessionByTokenHash(ctx context.Context, tokenHash string) (*AdminSession, error)
+	DeleteSessionByTokenHash(ctx context.Context, tokenHash string) error
+}

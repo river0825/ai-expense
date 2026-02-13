@@ -50,6 +50,7 @@ type Config struct {
 
 	// Admin API Key for metrics
 	AdminAPIKey string
+	JWTSecret   string
 
 	// Enabled Messengers
 	EnabledMessengers []string
@@ -90,6 +91,7 @@ func Load() (*Config, error) {
 		DashboardURL:          getEnv("DASHBOARD_URL", "http://localhost:3000"),
 		APIPublicURL:          getEnv("API_PUBLIC_URL", "http://localhost:8080"),
 		AdminAPIKey:           getEnv("ADMIN_API_KEY", ""),
+		JWTSecret:             getEnv("JWT_SECRET", "default-secret-do-not-use-in-prod"),
 		LogLevel:              strings.ToLower(getEnv("LOG_LEVEL", "info")),
 	}
 

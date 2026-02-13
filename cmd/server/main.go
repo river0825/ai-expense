@@ -16,6 +16,7 @@ import (
 	"github.com/riverlin/aiexpense/internal/adapter/messenger/telegram"
 	"github.com/riverlin/aiexpense/internal/adapter/messenger/terminal"
 	"github.com/riverlin/aiexpense/internal/adapter/messenger/whatsapp"
+	memoryRepo "github.com/riverlin/aiexpense/internal/adapter/repository/memory"
 	postgresRepo "github.com/riverlin/aiexpense/internal/adapter/repository/postgresql"
 	"github.com/riverlin/aiexpense/internal/ai"
 	"github.com/riverlin/aiexpense/internal/config"
@@ -139,6 +140,10 @@ func main() {
 	generateReportLinkUseCase := usecase.NewGenerateReportLinkUseCase(cfg.APIPublicURL, shortLinkRepo)
 	getUserAggregateUseCase := usecase.NewGetUserAggregateUseCase(userRepo, categoryRepo, accountRepo)
 	updateUserAggregateUseCase := usecase.NewUpdateUserAggregateUseCase(userRepo, categoryRepo, accountRepo, expenseRepo)
+	adminAuthRepo := memoryRepo.NewAdminAuthRepository()
+	adminLoginUseCase := usecase.NewAdminLoginUseCase(adminAuthRepo, cfg.JWTSecret)
+	adminVerifyTokenUseCase := usecase.NewAdminVerifyTokenUseCase(adminAuthRepo, cfg.JWTSecret)
+	adminLogoutUseCase := usecase.NewAdminLogoutUseCase(adminAuthRepo)
 
 	// Initialize Unified Message Processor
 	processMessageUseCase := usecase.NewProcessMessageUseCase(
@@ -201,10 +206,17 @@ func main() {
 		cfg.AdminAPIKey,
 		pricingProviders,
 	)
+	adminAuthHandler := httpAdapter.NewAdminAuthHandler(
+		adminLoginUseCase,
+		adminVerifyTokenUseCase,
+		adminLogoutUseCase,
+	)
+	adminAnalyticsHandler := httpAdapter.NewAdminAnalyticsHandler(metricsUseCase)
 
 	// Initialize HTTP server
 	mux := http.NewServeMux()
 	httpAdapter.RegisterRoutes(mux, handler, aiCostHandler, pricingHandler, reportHandler, shortLinkHandler)
+	registerAdminRoutes(mux, adminAuthHandler, adminAnalyticsHandler)
 
 	// Initialize LINE webhook handler (if enabled)
 	var lineHandler *line.Handler
@@ -383,4 +395,15 @@ func withCORS(next http.Handler) http.Handler {
 
 		next.ServeHTTP(w, r)
 	})
+}
+
+func registerAdminRoutes(
+	mux *http.ServeMux,
+	adminAuthHandler *httpAdapter.AdminAuthHandler,
+	adminAnalyticsHandler *httpAdapter.AdminAnalyticsHandler,
+) {
+	mux.HandleFunc("POST /api/admin/auth/login", adminAuthHandler.Login)
+	mux.HandleFunc("GET /api/admin/auth/verify", adminAuthHandler.Verify)
+	mux.HandleFunc("POST /api/admin/auth/logout", adminAuthHandler.Logout)
+	mux.HandleFunc("GET /api/admin/analytics/overview", adminAuthHandler.RequireAuth(adminAnalyticsHandler.Overview))
 }
