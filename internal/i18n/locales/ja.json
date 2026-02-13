@@ -1,0 +1,20 @@
+{
+  "expense.recorded": "{count} 件の支出を記録しました、合計: {amount} {currency}",
+  "expense.item": "{description}: {amount} {currency}",
+  "expense.item.detail": "{category} · {date} · {account}",
+  "expense.item.converted": "≈ {originalAmount} {originalCurrency}",
+  "expense.none": "メッセージから支出が検出されませんでした",
+  "expense.none.hint": "例: 「ランチ弁当 85円」",
+  "expense.count": "{count} 件の支出が正常に記録されました",
+  "report.title": "支出レポート",
+  "report.description": "個人支出レポートの準備ができました",
+  "report.validity": "リンクの有効期限は5分間です",
+  "report.button": "レポートを表示",
+  "report.error": "申し訳ございません、レポートリンクを生成できませんでした。後でもう一度お試しください。",
+  "error.title": "エラー",
+  "error.signup": "ユーザー登録に失敗しました: {error}",
+  "error.parse": "メッセージの解析に失敗しました: {error}",
+  "flex.app_name": "AIExpense",
+  "flex.total": "合計",
+  "flex.edit_button": "編集"
+}
