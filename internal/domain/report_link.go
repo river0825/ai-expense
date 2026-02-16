@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"context"
 	"time"
 )
 
@@ -12,4 +13,9 @@ type ReportTokenClaims struct {
 
 type GenerateReportLinkUseCase interface {
 	Execute(userID string) (string, error)
+}
+
+// GenerateExpenseLinkUseCase defines the interface for generating expense edit links
+type GenerateExpenseLinkUseCase interface {
+	Execute(ctx context.Context, userID, expenseID string) (string, error)
 }

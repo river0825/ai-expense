@@ -21,7 +21,7 @@ type ExpenseData struct {
 }
 
 // BuildExpenseBubble creates a LINE Flex Message bubble for expense confirmation.
-func BuildExpenseBubble(expenses []ExpenseData, totalAmount float64, totalCurrency, locale, dashboardURL string) map[string]interface{} {
+func BuildExpenseBubble(expenses []ExpenseData, totalAmount float64, totalCurrency, locale, dashboardURL string, editLinks map[string]string) map[string]interface{} {
 	header := map[string]interface{}{
 		"type":            "box",
 		"layout":          "vertical",
@@ -65,6 +65,65 @@ func BuildExpenseBubble(expenses []ExpenseData, totalAmount float64, totalCurren
 		}
 
 		amountText := fmt.Sprintf("%s %s", formatAmount(exp.HomeAmount), exp.HomeCurrency)
+
+		// Build the first row: description | amount | edit icon
+		headerRowContents := []interface{}{
+			map[string]interface{}{
+				"type":   "text",
+				"text":   exp.Description,
+				"size":   "sm",
+				"color":  "#0F172A",
+				"weight": "bold",
+				"wrap":   true,
+				"flex":   4,
+			},
+			map[string]interface{}{
+				"type":   "text",
+				"text":   amountText,
+				"size":   "sm",
+				"color":  "#0EA5A4",
+				"weight": "bold",
+				"align":  "end",
+				"flex":   3,
+			},
+		}
+
+		// Add edit icon on the right if expense has ID and dashboard URL or short link
+		editURL := ""
+		if exp.ID != "" {
+			if link, ok := editLinks[exp.ID]; ok && link != "" {
+				editURL = link
+			} else if dashboardURL != "" {
+				editURL = fmt.Sprintf("%s/en/expenses?edit=%s", dashboardURL, exp.ID)
+			}
+		}
+
+		if editURL != "" {
+			headerRowContents = append(headerRowContents, map[string]interface{}{
+				"type":           "box",
+				"layout":         "vertical",
+				"flex":           0,
+				"width":          "24px",
+				"height":         "24px",
+				"alignItems":     "center",
+				"justifyContent": "center",
+				"margin":         "sm",
+				"action": map[string]interface{}{
+					"type":  "uri",
+					"label": i18n.T(locale, "flex.edit_button"),
+					"uri":   editURL,
+				},
+				"contents": []interface{}{
+					map[string]interface{}{
+						"type":  "text",
+						"text":  "🖊️",
+						"size":  "sm",
+						"align": "center",
+					},
+				},
+			})
+		}
+
 		row := map[string]interface{}{
 			"type":            "box",
 			"layout":          "vertical",
@@ -74,28 +133,9 @@ func BuildExpenseBubble(expenses []ExpenseData, totalAmount float64, totalCurren
 			"margin":          "md",
 			"contents": []interface{}{
 				map[string]interface{}{
-					"type":   "box",
-					"layout": "horizontal",
-					"contents": []interface{}{
-						map[string]interface{}{
-							"type":   "text",
-							"text":   exp.Description,
-							"size":   "sm",
-							"color":  "#0F172A",
-							"weight": "bold",
-							"wrap":   true,
-							"flex":   4,
-						},
-						map[string]interface{}{
-							"type":   "text",
-							"text":   amountText,
-							"size":   "sm",
-							"color":  "#0EA5A4",
-							"weight": "bold",
-							"align":  "end",
-							"flex":   3,
-						},
-					},
+					"type":     "box",
+					"layout":   "horizontal",
+					"contents": headerRowContents,
 				},
 			},
 		}
@@ -135,22 +175,6 @@ func BuildExpenseBubble(expenses []ExpenseData, totalAmount float64, totalCurren
 				"size":   "xxs",
 				"color":  "#64748B",
 				"margin": "xs",
-			})
-		}
-
-		// Add edit button if expense has ID and dashboard URL is provided
-		if exp.ID != "" && dashboardURL != "" {
-			editURL := fmt.Sprintf("%s/dashboard/expenses?edit=%s", dashboardURL, exp.ID)
-			row["contents"] = append(row["contents"].([]interface{}), map[string]interface{}{
-				"type":   "button",
-				"action": map[string]interface{}{
-					"type":  "uri",
-					"label": i18n.T(locale, "flex.edit_button"),
-					"uri":   editURL,
-				},
-				"style":  "link",
-				"height": "sm",
-				"margin": "md",
 			})
 		}
 

@@ -2,7 +2,6 @@ package usecase
 
 import (
 	"context"
-	"crypto/rand"
 	"fmt"
 	"os"
 	"time"
@@ -52,7 +51,10 @@ func (u *GenerateReportLinkUseCase) Execute(userID string) (string, error) {
 	}
 
 	// 3. Generate Short Link (no time limit - expires with JWT)
-	shortID := generateShortID()
+	shortID, err := domain.GenerateShortID(6)
+	if err != nil {
+		return "", fmt.Errorf("failed to generate short ID: %w", err)
+	}
 	expiresAt := time.Now().Add(7 * 24 * time.Hour)
 
 	shortLink := &domain.ShortLink{
@@ -70,18 +72,4 @@ func (u *GenerateReportLinkUseCase) Execute(userID string) (string, error) {
 
 	// 4. Return Short Link URL
 	return fmt.Sprintf("%s/r/%s", u.baseURL, shortID), nil
-}
-
-func generateShortID() string {
-	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-	const length = 6
-	b := make([]byte, length)
-	if _, err := rand.Read(b); err != nil {
-		// Fallback to less secure random if crypto/rand fails (unlikely)
-		return fmt.Sprintf("%d", time.Now().UnixNano())
-	}
-	for i := 0; i < length; i++ {
-		b[i] = charset[int(b[i])%len(charset)]
-	}
-	return string(b)
 }
