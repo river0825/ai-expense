@@ -21,10 +21,10 @@ func NewShortLinkRepository(db *sql.DB) *ShortLinkRepository {
 
 func (r *ShortLinkRepository) Create(ctx context.Context, link *domain.ShortLink) error {
 	query := `
-		INSERT INTO short_links (id, user_id, target_token, expires_at, created_at)
-		VALUES ($1, $2, $3, $4, $5)
+		INSERT INTO short_links (id, user_id, target_token, redirect_path, expires_at, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6)
 	`
-	_, err := r.db.ExecContext(ctx, query, link.ID, link.UserID, link.TargetToken, link.ExpiresAt, link.CreatedAt)
+	_, err := r.db.ExecContext(ctx, query, link.ID, link.UserID, link.TargetToken, link.RedirectPath, link.ExpiresAt, link.CreatedAt)
 	if err != nil {
 		return fmt.Errorf("failed to create short link: %w", err)
 	}
@@ -33,14 +33,18 @@ func (r *ShortLinkRepository) Create(ctx context.Context, link *domain.ShortLink
 
 func (r *ShortLinkRepository) Get(ctx context.Context, id string) (*domain.ShortLink, error) {
 	query := `
-		SELECT id, user_id, target_token, expires_at, created_at
+		SELECT id, user_id, target_token, redirect_path, expires_at, created_at
 		FROM short_links
 		WHERE id = $1 AND expires_at > $2 AND deprecated_at IS NULL
 	`
 	row := r.db.QueryRowContext(ctx, query, id, time.Now())
 
 	var link domain.ShortLink
-	err := row.Scan(&link.ID, &link.UserID, &link.TargetToken, &link.ExpiresAt, &link.CreatedAt)
+	var redirectPath sql.NullString
+	err := row.Scan(&link.ID, &link.UserID, &link.TargetToken, &redirectPath, &link.ExpiresAt, &link.CreatedAt)
+	if redirectPath.Valid {
+		link.RedirectPath = redirectPath.String
+	}
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("short link not found or expired")

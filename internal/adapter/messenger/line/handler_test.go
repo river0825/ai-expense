@@ -70,7 +70,7 @@ func createLineWebhookPayload(userID, text string) ([]byte, string) {
 func TestLineHandler_HandleWebhook_Success(t *testing.T) {
 	// Setup
 	mockUC := new(MockMessageProcessor)
-	handler := NewHandler("test_channel_secret", mockUC, nil, nil)
+	handler := NewHandler("test_channel_secret", mockUC, nil, nil, nil, "")
 
 	// Expectations
 	mockUC.On("Execute", mock.Anything, mock.MatchedBy(func(msg *domain.UserMessage) bool {
@@ -98,7 +98,7 @@ func TestLineHandler_HandleWebhook_Success(t *testing.T) {
 func TestLineHandler_HandleWebhook_InvalidSignature(t *testing.T) {
 	// Setup
 	mockUC := new(MockMessageProcessor)
-	handler := NewHandler("test_channel_secret", mockUC, nil, nil)
+	handler := NewHandler("test_channel_secret", mockUC, nil, nil, nil, "")
 
 	// Create webhook with invalid signature
 	payload, _ := createLineWebhookPayload("line_test_user", "breakfast $20")
@@ -121,7 +121,7 @@ func TestLineHandler_HandleWebhook_InvalidSignature(t *testing.T) {
 func TestLineHandler_HandleWebhook_ExecuteError(t *testing.T) {
 	// Setup
 	mockUC := new(MockMessageProcessor)
-	handler := NewHandler("test_channel_secret", mockUC, nil, nil)
+	handler := NewHandler("test_channel_secret", mockUC, nil, nil, nil, "")
 
 	// Expectations
 	mockUC.On("Execute", mock.Anything, mock.Anything).Return(nil, fmt.Errorf("processing failed"))

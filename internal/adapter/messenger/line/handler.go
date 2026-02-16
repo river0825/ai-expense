@@ -24,21 +24,30 @@ type MessageProcessor interface {
 
 // Handler handles LINE bot webhook events
 type Handler struct {
-	channelSecret string
-	useCase       MessageProcessor
-	client        *Client
-	userRepo      domain.UserRepository
-	dashboardURL  string
+	channelSecret       string
+	useCase             MessageProcessor
+	generateExpenseLink domain.GenerateExpenseLinkUseCase
+	client              *Client
+	userRepo            domain.UserRepository
+	dashboardURL        string
 }
 
 // NewHandler creates a new LINE webhook handler
-func NewHandler(channelSecret string, useCase MessageProcessor, client *Client, userRepo domain.UserRepository, dashboardURL string) *Handler {
+func NewHandler(
+	channelSecret string,
+	useCase MessageProcessor,
+	generateExpenseLink domain.GenerateExpenseLinkUseCase,
+	client *Client,
+	userRepo domain.UserRepository,
+	dashboardURL string,
+) *Handler {
 	return &Handler{
-		channelSecret: channelSecret,
-		useCase:       useCase,
-		client:        client,
-		userRepo:      userRepo,
-		dashboardURL:  dashboardURL,
+		channelSecret:       channelSecret,
+		useCase:             useCase,
+		generateExpenseLink: generateExpenseLink,
+		client:              client,
+		userRepo:            userRepo,
+		dashboardURL:        dashboardURL,
 	}
 }
 
@@ -164,7 +173,7 @@ func (h *Handler) HandleWebhook(w http.ResponseWriter, r *http.Request) {
 		// Send reply as Flex Message
 		if h.client != nil {
 			locale := h.getUserLocale(execCtx, e.Source.UserID)
-			h.sendFlexReply(execCtx, e.ReplyToken, resp, locale)
+			h.sendFlexReply(execCtx, e.ReplyToken, e.Source.UserID, resp, locale)
 		} else {
 			lineLogger.WarnContext(ctx, "LINE client is nil; response not sent")
 		}
@@ -182,7 +191,7 @@ func (h *Handler) getUserLocale(ctx context.Context, userID string) string {
 	return i18n.DefaultLocale()
 }
 
-func (h *Handler) sendFlexReply(ctx context.Context, replyToken string, resp *domain.MessageResponse, locale string) {
+func (h *Handler) sendFlexReply(ctx context.Context, replyToken, userID string, resp *domain.MessageResponse, locale string) {
 	var flexBubble map[string]interface{}
 	lineLogger.DebugContext(
 		ctx,
@@ -197,7 +206,23 @@ func (h *Handler) sendFlexReply(ctx context.Context, replyToken string, resp *do
 		if data, ok := resp.Data.([]map[string]interface{}); ok {
 			expenseData := convertToExpenseData(data)
 			totalAmount, totalCurrency := extractTotal(data)
-			flexBubble = flex.BuildExpenseBubble(expenseData, totalAmount, totalCurrency, locale, h.dashboardURL)
+
+			// Generate short links for editing
+			editLinks := make(map[string]string)
+			if h.generateExpenseLink != nil {
+				for _, exp := range expenseData {
+					if exp.ID != "" {
+						link, err := h.generateExpenseLink.Execute(ctx, userID, exp.ID)
+						if err != nil {
+							lineLogger.WarnContext(ctx, "failed to generate expense link", "error", err, "expense_id", exp.ID)
+						} else {
+							editLinks[exp.ID] = link
+						}
+					}
+				}
+			}
+
+			flexBubble = flex.BuildExpenseBubble(expenseData, totalAmount, totalCurrency, locale, h.dashboardURL, editLinks)
 			lineLogger.DebugContext(
 				ctx,
 				"built expense flex bubble",
@@ -205,6 +230,7 @@ func (h *Handler) sendFlexReply(ctx context.Context, replyToken string, resp *do
 				"total_amount", totalAmount,
 				"total_currency", totalCurrency,
 				"dashboard_url", h.dashboardURL,
+				"edit_links_count", len(editLinks),
 			)
 		} else {
 			lineLogger.WarnContext(ctx, "expense response data type mismatch", "data_type", fmt.Sprintf("%T", resp.Data))

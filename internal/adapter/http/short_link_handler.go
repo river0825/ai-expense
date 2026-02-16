@@ -51,6 +51,27 @@ func (h *ShortLinkHandler) HandleRedirect(w http.ResponseWriter, r *http.Request
 
 	// Redirect to the actual report page (expenses page)
 	// The report page will check for the cookie or URL param
-	redirectURL := fmt.Sprintf("%s/expenses?token=%s", h.dashboardURL, link.TargetToken)
+	baseURL := fmt.Sprintf("%s/expenses", h.dashboardURL)
+	if link.RedirectPath != "" {
+		// Ensure RedirectPath starts with / if it's relative, or handle absolute URLs if needed.
+		// For now assuming relative path to dashboard URL.
+		// If RedirectPath already contains query params, we need to handle that.
+		if len(link.RedirectPath) > 0 && link.RedirectPath[0] == '/' {
+			baseURL = fmt.Sprintf("%s%s", h.dashboardURL, link.RedirectPath)
+		} else {
+			baseURL = fmt.Sprintf("%s/%s", h.dashboardURL, link.RedirectPath)
+		}
+	}
+
+	// Check if baseURL already has query params
+	separator := "?"
+	for _, char := range baseURL {
+		if char == '?' {
+			separator = "&"
+			break
+		}
+	}
+
+	redirectURL := fmt.Sprintf("%s%stoken=%s", baseURL, separator, link.TargetToken)
 	http.Redirect(w, r, redirectURL, http.StatusFound)
 }

@@ -144,6 +144,7 @@ func main() {
 	adminLoginUseCase := usecase.NewAdminLoginUseCase(adminAuthRepo, cfg.JWTSecret)
 	adminVerifyTokenUseCase := usecase.NewAdminVerifyTokenUseCase(adminAuthRepo, cfg.JWTSecret)
 	adminLogoutUseCase := usecase.NewAdminLogoutUseCase(adminAuthRepo)
+	generateExpenseLinkUseCase := usecase.NewGenerateExpenseLinkUseCase(shortLinkRepo, cfg.JWTSecret, cfg.APIPublicURL)
 
 	// Initialize Unified Message Processor
 	processMessageUseCase := usecase.NewProcessMessageUseCase(
@@ -221,7 +222,7 @@ func main() {
 	// Initialize LINE webhook handler (if enabled)
 	var lineHandler *line.Handler
 	if lineClient != nil {
-		lineHandler = line.NewHandler(cfg.LineChannelSecret, processMessageUseCase, lineClient, userRepo, cfg.DashboardURL)
+		lineHandler = line.NewHandler(cfg.LineChannelSecret, processMessageUseCase, generateExpenseLinkUseCase, lineClient, userRepo, cfg.DashboardURL)
 	}
 
 	// Initialize Terminal messenger (if enabled)

@@ -20,7 +20,7 @@ func TestBuildExpenseBubble_SingleExpense(t *testing.T) {
 		},
 	}
 
-	bubble := BuildExpenseBubble(expenses, 85, "TWD", "zh-TW", "")
+	bubble := BuildExpenseBubble(expenses, 85, "TWD", "zh-TW", "", nil)
 
 	require.NotNil(t, bubble)
 	assert.Equal(t, "bubble", bubble["type"])
@@ -43,7 +43,7 @@ func TestBuildExpenseBubble_MultiCurrency(t *testing.T) {
 		},
 	}
 
-	bubble := BuildExpenseBubble(expenses, 150, "TWD", "en", "")
+	bubble := BuildExpenseBubble(expenses, 150, "TWD", "en", "", nil)
 
 	require.NotNil(t, bubble)
 	assert.Equal(t, "bubble", bubble["type"])
@@ -56,7 +56,7 @@ func TestBuildExpenseBubble_MultipleExpenses(t *testing.T) {
 		{Description: "Coffee", HomeAmount: 100, HomeCurrency: "TWD", Category: "Food", Account: "Cash", Date: time.Date(2024, 2, 10, 0, 0, 0, 0, time.UTC)},
 	}
 
-	bubble := BuildExpenseBubble(expenses, 1250, "TWD", "zh-TW", "")
+	bubble := BuildExpenseBubble(expenses, 1250, "TWD", "zh-TW", "", nil)
 
 	require.NotNil(t, bubble)
 	body := bubble["body"].(map[string]interface{})
@@ -122,7 +122,7 @@ func TestBuildExpenseBubble_WithEditButton(t *testing.T) {
 		},
 	}
 
-	bubble := BuildExpenseBubble(expenses, 85, "TWD", "en", "https://dashboard.example.com")
+	bubble := BuildExpenseBubble(expenses, 85, "TWD", "en", "https://dashboard.example.com", nil)
 
 	require.NotNil(t, bubble)
 	body := bubble["body"].(map[string]interface{})
@@ -140,23 +140,19 @@ func TestBuildExpenseBubble_WithEditButton(t *testing.T) {
 	require.NotNil(t, expenseBox, "Should have expense box")
 	expenseContents := expenseBox["contents"].([]interface{})
 
-	// Check if edit button exists
-	var hasEditButton bool
-	for _, content := range expenseContents {
-		if btn, ok := content.(map[string]interface{}); ok {
-			if btn["type"] == "button" {
-				action := btn["action"].(map[string]interface{})
-				assert.Equal(t, "uri", action["type"])
-				assert.Equal(t, "Edit", action["label"])
-				assert.Contains(t, action["uri"], "https://dashboard.example.com")
-				assert.Contains(t, action["uri"], "?edit=exp_123")
-				hasEditButton = true
-				break
-			}
-		}
-	}
+	// The first content is the header row (horizontal box with description, amount, edit icon)
+	headerRow := expenseContents[0].(map[string]interface{})
+	headerContents := headerRow["contents"].([]interface{})
 
-	assert.True(t, hasEditButton, "Edit button should exist in expense box")
+	// Edit icon should be the 3rd element (after description and amount)
+	require.Len(t, headerContents, 3, "Header row should have description, amount, and edit icon")
+	editIcon := headerContents[2].(map[string]interface{})
+	assert.Equal(t, "box", editIcon["type"])
+	action := editIcon["action"].(map[string]interface{})
+	assert.Equal(t, "uri", action["type"])
+	assert.Equal(t, "Edit", action["label"])
+	assert.Contains(t, action["uri"], "https://dashboard.example.com")
+	assert.Contains(t, action["uri"], "?edit=exp_123")
 }
 
 func TestBuildExpenseBubble_EditButtonURL(t *testing.T) {
@@ -169,27 +165,28 @@ func TestBuildExpenseBubble_EditButtonURL(t *testing.T) {
 		},
 	}
 
-	bubble := BuildExpenseBubble(expenses, 50, "TWD", "en", "https://prod.example.com")
+	bubble := BuildExpenseBubble(expenses, 50, "TWD", "en", "https://prod.example.com", nil)
 
 	body := bubble["body"].(map[string]interface{})
 	contents := body["contents"].([]interface{})
 
-	// Extract button URI
+	// Extract edit icon URI from header row
 	var buttonURI string
 	for _, item := range contents {
 		if box, ok := item.(map[string]interface{}); ok && box["type"] == "box" {
 			expenseContents := box["contents"].([]interface{})
-			for _, content := range expenseContents {
-				if btn, ok := content.(map[string]interface{}); ok && btn["type"] == "button" {
-					action := btn["action"].(map[string]interface{})
-					buttonURI = action["uri"].(string)
-					break
-				}
+			headerRow := expenseContents[0].(map[string]interface{})
+			headerContents := headerRow["contents"].([]interface{})
+			if len(headerContents) >= 3 {
+				editIcon := headerContents[2].(map[string]interface{})
+				action := editIcon["action"].(map[string]interface{})
+				buttonURI = action["uri"].(string)
 			}
+			break
 		}
 	}
 
-	assert.Equal(t, "https://prod.example.com/dashboard/expenses?edit=exp_abc123", buttonURI)
+	assert.Equal(t, "https://prod.example.com/en/expenses?edit=exp_abc123", buttonURI)
 }
 
 func TestBuildExpenseBubble_MultipleExpensesHaveEditButtons(t *testing.T) {
@@ -198,24 +195,27 @@ func TestBuildExpenseBubble_MultipleExpensesHaveEditButtons(t *testing.T) {
 		{ID: "exp_2", Description: "Coffee", HomeAmount: 50, HomeCurrency: "TWD"},
 	}
 
-	bubble := BuildExpenseBubble(expenses, 135, "TWD", "en", "https://dashboard.example.com")
+	bubble := BuildExpenseBubble(expenses, 135, "TWD", "en", "https://dashboard.example.com", nil)
 
 	body := bubble["body"].(map[string]interface{})
 	contents := body["contents"].([]interface{})
 
-	editButtonCount := 0
+	editIconCount := 0
 	for _, item := range contents {
 		if box, ok := item.(map[string]interface{}); ok && box["type"] == "box" {
 			expenseContents := box["contents"].([]interface{})
-			for _, content := range expenseContents {
-				if btn, ok := content.(map[string]interface{}); ok && btn["type"] == "button" {
-					editButtonCount++
+			headerRow := expenseContents[0].(map[string]interface{})
+			headerContents := headerRow["contents"].([]interface{})
+			if len(headerContents) >= 3 {
+				editIcon := headerContents[2].(map[string]interface{})
+				if editIcon["type"] == "box" && editIcon["action"] != nil {
+					editIconCount++
 				}
 			}
 		}
 	}
 
-	assert.Equal(t, 2, editButtonCount, "Should have edit button for each expense")
+	assert.Equal(t, 2, editIconCount, "Should have edit icon for each expense")
 }
 
 func TestBuildExpenseBubble_EditButtonInternationalization(t *testing.T) {
@@ -235,7 +235,7 @@ func TestBuildExpenseBubble_EditButtonInternationalization(t *testing.T) {
 				{ID: "exp_123", Description: "Test", HomeAmount: 100, HomeCurrency: "TWD"},
 			}
 
-			bubble := BuildExpenseBubble(expenses, 100, "TWD", tc.locale, "https://example.com")
+			bubble := BuildExpenseBubble(expenses, 100, "TWD", tc.locale, "https://example.com", nil)
 
 			body := bubble["body"].(map[string]interface{})
 			contents := body["contents"].([]interface{})
@@ -244,13 +244,14 @@ func TestBuildExpenseBubble_EditButtonInternationalization(t *testing.T) {
 			for _, item := range contents {
 				if box, ok := item.(map[string]interface{}); ok && box["type"] == "box" {
 					expenseContents := box["contents"].([]interface{})
-					for _, content := range expenseContents {
-						if btn, ok := content.(map[string]interface{}); ok && btn["type"] == "button" {
-							action := btn["action"].(map[string]interface{})
-							buttonLabel = action["label"].(string)
-							break
-						}
+					headerRow := expenseContents[0].(map[string]interface{})
+					headerContents := headerRow["contents"].([]interface{})
+					if len(headerContents) >= 3 {
+						editIcon := headerContents[2].(map[string]interface{})
+						action := editIcon["action"].(map[string]interface{})
+						buttonLabel = action["label"].(string)
 					}
+					break
 				}
 			}
 
@@ -269,26 +270,21 @@ func TestBuildExpenseBubble_NoEditButtonWhenNoID(t *testing.T) {
 		},
 	}
 
-	bubble := BuildExpenseBubble(expenses, 85, "TWD", "en", "https://dashboard.example.com")
+	bubble := BuildExpenseBubble(expenses, 85, "TWD", "en", "https://dashboard.example.com", nil)
 
 	body := bubble["body"].(map[string]interface{})
 	contents := body["contents"].([]interface{})
 
-	// Check that no edit button exists
-	hasEditButton := false
+	// Header row should only have 2 elements (description + amount, no edit icon)
 	for _, item := range contents {
 		if box, ok := item.(map[string]interface{}); ok && box["type"] == "box" {
 			expenseContents := box["contents"].([]interface{})
-			for _, content := range expenseContents {
-				if btn, ok := content.(map[string]interface{}); ok && btn["type"] == "button" {
-					hasEditButton = true
-					break
-				}
-			}
+			headerRow := expenseContents[0].(map[string]interface{})
+			headerContents := headerRow["contents"].([]interface{})
+			assert.Len(t, headerContents, 2, "Header row should only have description and amount when no ID")
+			break
 		}
 	}
-
-	assert.False(t, hasEditButton, "Edit button should NOT exist when expense has no ID")
 }
 
 func TestBuildExpenseBubble_NoEditButtonWhenNoDashboardURL(t *testing.T) {
@@ -301,24 +297,51 @@ func TestBuildExpenseBubble_NoEditButtonWhenNoDashboardURL(t *testing.T) {
 		},
 	}
 
-	bubble := BuildExpenseBubble(expenses, 85, "TWD", "en", "") // Empty dashboard URL
+	bubble := BuildExpenseBubble(expenses, 85, "TWD", "en", "", nil) // Empty dashboard URL
 
 	body := bubble["body"].(map[string]interface{})
 	contents := body["contents"].([]interface{})
 
-	// Check that no edit button exists
-	hasEditButton := false
+	// Header row should only have 2 elements (description + amount, no edit icon)
 	for _, item := range contents {
 		if box, ok := item.(map[string]interface{}); ok && box["type"] == "box" {
 			expenseContents := box["contents"].([]interface{})
-			for _, content := range expenseContents {
-				if btn, ok := content.(map[string]interface{}); ok && btn["type"] == "button" {
-					hasEditButton = true
-					break
-				}
+			headerRow := expenseContents[0].(map[string]interface{})
+			headerContents := headerRow["contents"].([]interface{})
+			assert.Len(t, headerContents, 2, "Header row should only have description and amount when no dashboard URL")
+			break
+		}
+	}
+}
+
+func TestBuildExpenseBubble_WithEditLinks(t *testing.T) {
+	expenses := []ExpenseData{
+		{ID: "exp_1", Description: "Lunch", HomeAmount: 85, HomeCurrency: "TWD"},
+	}
+
+	editLinks := map[string]string{
+		"exp_1": "https://short.link/123",
+	}
+
+	bubble := BuildExpenseBubble(expenses, 85, "TWD", "en", "https://dashboard.example.com", editLinks)
+
+	body := bubble["body"].(map[string]interface{})
+	contents := body["contents"].([]interface{})
+
+	var buttonURI string
+	for _, item := range contents {
+		if box, ok := item.(map[string]interface{}); ok && box["type"] == "box" {
+			expenseContents := box["contents"].([]interface{})
+			headerRow := expenseContents[0].(map[string]interface{})
+			headerContents := headerRow["contents"].([]interface{})
+			if len(headerContents) >= 3 {
+				editIcon := headerContents[2].(map[string]interface{})
+				action := editIcon["action"].(map[string]interface{})
+				buttonURI = action["uri"].(string)
 			}
+			break
 		}
 	}
 
-	assert.False(t, hasEditButton, "Edit button should NOT exist when dashboard URL is empty")
+	assert.Equal(t, "https://short.link/123", buttonURI, "Should use provided short link")
 }
