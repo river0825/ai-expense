@@ -39,4 +39,13 @@ export interface ExpenseRepository {
     token: string,
     expense: Expense
   ): Promise<void>;
+
+  /**
+   * Delete an expense
+   */
+  deleteExpense(
+    token: string,
+    id: string,
+    userId: string
+  ): Promise<void>;
 }
