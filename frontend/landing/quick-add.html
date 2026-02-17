@@ -174,6 +174,17 @@
       >
         查看帳務總覽
       </button>
+      <label for="autoOpenChatbot" class="mt-4 flex items-start gap-3 rounded-xl border border-[var(--line)] p-3">
+        <input
+          id="autoOpenChatbot"
+          type="checkbox"
+          class="mt-0.5 h-4 w-4 accent-primary"
+        >
+        <span class="text-sm">
+          <span class="font-medium" data-i18n="autoOpen.label">每次進入都直接開啟聊天</span>
+          <span class="block muted text-xs mt-0.5" data-i18n="autoOpen.hint">勾選後，下次開啟此頁會直接前往 AI Chat bot。</span>
+        </span>
+      </label>
 
       <details class="collapsible mt-6 rounded-xl p-4">
         <summary class="flex items-center justify-between gap-3 cursor-pointer">
@@ -206,6 +217,8 @@
     const langSelect = document.getElementById('lang-select');
     const themeLight = document.getElementById('theme-light');
     const themeDark = document.getElementById('theme-dark');
+    const autoOpenChatbot = document.getElementById('autoOpenChatbot');
+    const autoOpenChatbotStorageKey = 'quick-add-auto-open-chatbot';
 
     function isMobileDevice() {
       const ua = navigator.userAgent || navigator.vendor || '';
@@ -219,6 +232,8 @@
         label: '記帳內容',
         cta: '記帳',
         reportCta: '查看帳務總覽',
+        'autoOpen.label': '每次進入都直接開啟聊天',
+        'autoOpen.hint': '勾選後，下次開啟此頁會直接前往 AI Chat bot。',
         ph: '請用語音輸入你想記的帳，如「昨天 早餐 300元」或「Adidas 球鞋 3350」、「日本行伴手禮 2000 日元 台新信用卡」。你也可以一次輸入多筆帳務。',
         'bookmark.summary': '加入手機桌面，快速記帳',
         'bookmark.title': '快速加入手機桌面',
@@ -233,6 +248,8 @@
         label: 'Expense Message',
         cta: 'Record',
         reportCta: 'View Expense Overview',
+        'autoOpen.label': 'Open chatbot immediately on every visit',
+        'autoOpen.hint': 'When enabled, opening this page will immediately bring you to the AI chatbot.',
         ph: 'Use voice input for expense logs, like "Yesterday breakfast 300", "Adidas shoes 3350", or "Japan souvenirs 2000 JPY Taishin credit card". You can also enter multiple records at once.',
         'bookmark.summary': 'Add to Home Screen for Faster Logging',
         'bookmark.title': 'Quickly Add to Home Screen',
@@ -247,6 +264,8 @@
         label: '記帳メッセージ',
         cta: '記帳する',
         reportCta: '支出ダッシュボードを見る',
+        'autoOpen.label': '毎回アクセス時にチャットをすぐ開く',
+        'autoOpen.hint': '有効にすると、このページを開くたびに AI チャットボットへ移動します。',
         ph: '音声入力で記帳できます。例：「昨日 朝食 300」「Adidas シューズ 3350」「日本お土産 2000 JPY 台新クレカ」。複数件をまとめて入力可能です。',
         'bookmark.summary': 'ホーム画面に追加して、すぐ記帳',
         'bookmark.title': 'ホーム画面にすばやく追加',
@@ -261,6 +280,8 @@
         label: 'Mensaje de gasto',
         cta: 'Registrar',
         reportCta: 'Ver Resumen de Gastos',
+        'autoOpen.label': 'Abrir el chatbot automáticamente en cada visita',
+        'autoOpen.hint': 'Si está activado, al abrir esta página irás directo al chatbot de AI.',
         ph: 'Usa voz para registrar gastos, por ejemplo "Ayer desayuno 300", "Adidas zapatos 3350" o "Souvenirs Japón 2000 JPY tarjeta Taishin". También puedes ingresar varios a la vez.',
         'bookmark.summary': 'Agregar a inicio para registrar más rápido',
         'bookmark.title': 'Agregar rápido a pantalla de inicio',
@@ -294,6 +315,16 @@
       themeDark.classList.toggle('active-theme', use === 'dark');
     }
 
+    function openLineChat(message) {
+      let url;
+      if (isMobileDevice()) {
+        url = lineMessageBase + encodeURIComponent(message || '');
+      } else {
+        url = lineDesktopJoinUrl;
+      }
+      window.location.href = url;
+    }
+
     submitBtn.addEventListener('click', () => {
       const message = (input.value || '').trim();
       if (!message) {
@@ -301,19 +332,15 @@
         return;
       }
       input.value = '';
-      if (isMobileDevice()) {
-        window.location.href = lineMessageBase + encodeURIComponent(message);
-      } else {
-        window.location.href = lineDesktopJoinUrl;
-      }
+      openLineChat(message);
     });
 
     reportBtn.addEventListener('click', () => {
-      if (isMobileDevice()) {
-        window.location.href = lineMessageBase + encodeURIComponent('report');
-      } else {
-        window.location.href = lineDesktopJoinUrl;
-      }
+      openLineChat('report');
+    });
+
+    autoOpenChatbot.addEventListener('change', (event) => {
+      localStorage.setItem(autoOpenChatbotStorageKey, event.target.checked ? '1' : '0');
     });
 
     input.addEventListener('keydown', (event) => {
@@ -335,6 +362,16 @@
     } else {
       const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
       setTheme(prefersDark ? 'dark' : 'light');
+    }
+
+    const autoOpenEnabled = localStorage.getItem(autoOpenChatbotStorageKey) === '1';
+    autoOpenChatbot.checked = autoOpenEnabled;
+
+    const pageParams = new URLSearchParams(window.location.search);
+    const stayOnQuickAdd = pageParams.get('stay') === '1';
+    if (autoOpenEnabled && !stayOnQuickAdd) {
+      openLineChat('');
+      return;
     }
 
     // Focus input on page entry for fastest capture flow.
