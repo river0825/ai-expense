@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { format } from 'date-fns';
 import { Expense } from '@/domain/models/Expense';
 import { CurrencyAmount } from './CurrencyAmount';
-import { 
-  MagnifyingGlassIcon, 
+import {
+  MagnifyingGlassIcon,
   FunnelIcon,
   ChevronUpIcon,
   ChevronDownIcon,
@@ -18,25 +18,28 @@ import {
   CreditCardIcon,
   BanknotesIcon,
   WalletIcon,
-  GlobeAltIcon
+  GlobeAltIcon,
+  TrashIcon,
 } from '@heroicons/react/24/outline';
 
 interface ExpenseListProps {
   expenses: Expense[];
   onCategoryFilter?: (categoryName: string | null) => void;
   onUpdateExpense?: (expense: Expense) => Promise<void>;
+  onDeleteExpense?: (expense: Expense) => Promise<void>;
   className?: string;
+  initialEditingId?: string | null;
 }
 
 type SortField = 'date' | 'amount' | 'category';
 type SortDirection = 'asc' | 'desc';
 
-export function ExpenseList({ expenses, onCategoryFilter, onUpdateExpense, className = '' }: ExpenseListProps) {
+export function ExpenseList({ expenses, onCategoryFilter, onUpdateExpense, onDeleteExpense, className = '', initialEditingId = null }: ExpenseListProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortField, setSortField] = useState<SortField>('date');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [groupBy, setGroupBy] = useState<'none' | 'category' | 'date'>('date');
-  
+
   // Editing state
   type EditFormState = {
     description: string;
@@ -61,6 +64,8 @@ export function ExpenseList({ expenses, onCategoryFilter, onUpdateExpense, class
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<EditFormState>(createEmptyEditForm);
   const [isSaving, setIsSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const deepLinkHandled = useRef(false);
 
   const userHomeCurrency = useMemo(() => {
     for (const expense of expenses) {
@@ -142,6 +147,31 @@ export function ExpenseList({ expenses, onCategoryFilter, onUpdateExpense, class
     return Array.from(unique);
   }, [expenses]);
 
+  // Auto-trigger editing when initialEditingId is provided (deep link from LINE flex message)
+  useEffect(() => {
+    if (deepLinkHandled.current || !initialEditingId || expenses.length === 0) return;
+    const expense = expenses.find(e => e.id === initialEditingId);
+    if (!expense) return;
+
+    deepLinkHandled.current = true;
+    setEditingId(expense.id);
+    const homeCurrency = expense.home_currency || userHomeCurrency;
+    const initialOriginalAmount = expense.original_amount ?? expense.amount;
+    const initialCurrency = expense.original_currency || expense.currency || homeCurrency;
+    const conversionRate = determineInitialRate(expense, initialCurrency, homeCurrency);
+    const preview = (initialOriginalAmount || 0) * conversionRate;
+
+    setEditForm({
+      description: expense.description,
+      originalAmount: initialOriginalAmount,
+      currency: initialCurrency,
+      account: expense.account || '',
+      conversionRate,
+      homePreview: Number.isNaN(preview) ? 0 : preview,
+      homeCurrency,
+    });
+  }, [initialEditingId, expenses, userHomeCurrency]);
+
   const startEditing = (expense: Expense, e: React.MouseEvent) => {
     e.stopPropagation();
     setEditingId(expense.id);
@@ -194,6 +224,21 @@ export function ExpenseList({ expenses, onCategoryFilter, onUpdateExpense, class
       console.error('Failed to update expense', error);
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleDelete = async (expense: Expense, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!onDeleteExpense) return;
+    if (!confirm(`Delete "${expense.description}"?`)) return;
+
+    try {
+      setDeletingId(expense.id);
+      await onDeleteExpense(expense);
+    } catch (error) {
+      console.error('Failed to delete expense', error);
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -263,8 +308,8 @@ export function ExpenseList({ expenses, onCategoryFilter, onUpdateExpense, class
 
   return (
     <div className={`flex flex-col h-full ${className}`}>
-      {/* Controls */}
-      <div className="mb-4 space-y-3">
+      {/* Controls - hidden on mobile */}
+      <div className="mb-4 space-y-3 hidden sm:block">
         {/* Search */}
         <div className="relative">
           <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-text/40" />
@@ -529,17 +574,38 @@ export function ExpenseList({ expenses, onCategoryFilter, onUpdateExpense, class
                               <PencilSquareIcon className="w-4 h-4" />
                             </button>
                           )}
+                          {onDeleteExpense && (
+                            <button
+                              onClick={(e) => handleDelete(expense, e)}
+                              disabled={deletingId === expense.id}
+                              className="p-2 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-white/10 text-text/40 hover:text-red-400 transition-all disabled:opacity-50"
+                              title="Delete expense"
+                            >
+                              <TrashIcon className="w-4 h-4" />
+                            </button>
+                          )}
                         </div>
-                        
-                        {/* Mobile Edit Trigger - Entire item could be edit trigger on mobile or we add a hidden/visible button */}
-                        {onUpdateExpense && (
-                          <button
-                            onClick={(e) => startEditing(expense, e)}
-                            className="sm:hidden p-2 -mr-2 text-text/30 hover:text-primary transition-colors"
-                          >
-                            <PencilSquareIcon className="w-4 h-4" />
-                          </button>
-                        )}
+
+                        {/* Mobile Action Triggers */}
+                        <div className="sm:hidden flex items-center -mr-2">
+                          {onUpdateExpense && (
+                            <button
+                              onClick={(e) => startEditing(expense, e)}
+                              className="p-2 text-text/30 hover:text-primary transition-colors"
+                            >
+                              <PencilSquareIcon className="w-4 h-4" />
+                            </button>
+                          )}
+                          {onDeleteExpense && (
+                            <button
+                              onClick={(e) => handleDelete(expense, e)}
+                              disabled={deletingId === expense.id}
+                              className="p-2 text-text/30 hover:text-red-400 transition-colors disabled:opacity-50"
+                            >
+                              <TrashIcon className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
                       </>
                     )}
                   </div>
@@ -552,7 +618,7 @@ export function ExpenseList({ expenses, onCategoryFilter, onUpdateExpense, class
       </div>
 
       {/* Footer Summary */}
-      <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-between text-sm">
+      <div className="sticky bottom-0 mt-4 pt-3 pb-1 border-t border-white/10 flex items-center justify-between text-sm bg-background">
         <span className="text-text/60">
           Showing <span className="font-semibold text-text">{processedExpenses.length}</span> of{' '}
           <span className="font-semibold text-text">{expenses.length}</span> expenses

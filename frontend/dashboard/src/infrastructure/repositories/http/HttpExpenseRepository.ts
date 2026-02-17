@@ -215,6 +215,18 @@ export class HttpExpenseRepository implements ExpenseRepository {
     }));
   }
 
+  async deleteExpense(token: string, id: string, userId: string): Promise<void> {
+    try {
+      const url = `${this.baseURL}/api/expenses?token=${token}`;
+      await axios.delete(url, {
+        data: { id, user_id: userId },
+      });
+    } catch (error) {
+      console.error('Failed to delete expense:', error);
+      throw error;
+    }
+  }
+
   async updateExpense(token: string, expense: Expense): Promise<void> {
     try {
       // Backend expects ID in the body for PUT /api/expenses, not as a path parameter

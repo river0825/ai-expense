@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { ExpenseList } from '@/components/ExpenseList';
@@ -11,27 +11,36 @@ import { getCookie, setCookie } from '@/utils/cookies';
 export default function ExpensesPage() {
   const searchParams = useSearchParams();
   const urlToken = searchParams.get('token');
+  const editExpenseId = searchParams.get('edit'); // Deep link from LINE flex message
+
+  // Capture token on first render so URL cleanup doesn't cause re-fetches
+  const tokenRef = useRef<string | null>(urlToken || getCookie('report_token'));
 
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Token management
+  // Token management + URL cleanup (runs once)
   useEffect(() => {
     if (urlToken) {
       setCookie('report_token', urlToken, 604800); // 7 days
-      const newUrl = new URL(window.location.href);
-      newUrl.searchParams.delete('token');
-      window.history.replaceState({}, '', newUrl.toString());
+      tokenRef.current = urlToken;
     }
-  }, [urlToken]);
+
+    // Clean up query params from URL
+    const newUrl = new URL(window.location.href);
+    let changed = false;
+    if (newUrl.searchParams.has('token')) { newUrl.searchParams.delete('token'); changed = true; }
+    if (newUrl.searchParams.has('edit')) { newUrl.searchParams.delete('edit'); changed = true; }
+    if (changed) window.history.replaceState({}, '', newUrl.toString());
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const getToken = useCallback(() => {
-    if (urlToken) return urlToken;
-    return getCookie('report_token');
-  }, [urlToken]);
+    return tokenRef.current;
+  }, []);
 
-  // Fetch expenses
+  // Fetch expenses (runs once)
   useEffect(() => {
     const fetchExpenses = async () => {
       const token = getToken();
@@ -80,6 +89,26 @@ export default function ExpensesPage() {
     [getToken]
   );
 
+  // Handle expense delete
+  const handleDeleteExpense = useCallback(
+    async (expense: Expense) => {
+      const token = getToken();
+      if (!token) return;
+
+      try {
+        const expenseRepo = RepositoryFactory.getExpenseRepository();
+        await expenseRepo.deleteExpense(token, expense.id, expense.user_id);
+
+        // Remove from local state
+        setExpenses((prev) => prev.filter((e) => e.id !== expense.id));
+      } catch (error) {
+        console.error('Failed to delete expense', error);
+        throw error;
+      }
+    },
+    [getToken]
+  );
+
   // Loading state
   if (loading && expenses.length === 0) {
     return (
@@ -110,9 +139,9 @@ export default function ExpensesPage() {
 
   return (
     <DashboardLayout>
-      <div className="h-screen flex flex-col p-6">
-        {/* Header */}
-        <div className="mb-4">
+      <div className="h-[calc(100vh-5rem)] flex flex-col p-3 sm:p-6">
+        {/* Header - hidden on mobile to save space */}
+        <div className="mb-4 hidden sm:block">
           <h1 className="text-2xl font-bold text-text tracking-tight">Expenses</h1>
           <p className="text-text/60 text-sm">{expenses.length} transactions</p>
         </div>
@@ -121,7 +150,9 @@ export default function ExpensesPage() {
         <ExpenseList
           expenses={expenses}
           onUpdateExpense={handleUpdateExpense}
+          onDeleteExpense={handleDeleteExpense}
           className="flex-1"
+          initialEditingId={editExpenseId}
         />
       </div>
     </DashboardLayout>
