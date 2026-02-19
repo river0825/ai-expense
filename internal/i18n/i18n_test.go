@@ -17,7 +17,7 @@ func TestT_ReturnsEnglish(t *testing.T) {
 }
 
 func TestT_FallsBackToZhTW(t *testing.T) {
-	result := T("ja", "expense.none")
+	result := T("xx-XX", "expense.none")
 	assert.Equal(t, "訊息中未偵測到任何支出", result)
 }
 

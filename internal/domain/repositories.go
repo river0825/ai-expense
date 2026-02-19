@@ -45,6 +45,9 @@ type ExpenseRepository interface {
 
 	// ReassignExpenses moves all expenses from one category to another
 	ReassignExpenses(ctx context.Context, fromCategoryID, toCategoryID string) (int, error)
+
+	// GetBySourceMessageID retrieves expenses by source message ID (prefix match)
+	GetBySourceMessageID(ctx context.Context, messageID string) ([]*Expense, error)
 }
 
 // CurrencyRepository defines operations for reference currency data

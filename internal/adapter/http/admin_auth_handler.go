@@ -94,26 +94,6 @@ func (h *AdminAuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	writeAdminJSON(w, http.StatusOK, &Response{Status: "success", Message: "Logged out"})
 }
 
-func (h *AdminAuthHandler) RequireAuth(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		token := extractBearerToken(r.Header.Get("Authorization"))
-		if token == "" {
-			writeAdminJSON(w, http.StatusUnauthorized, &Response{Status: "error", Error: "Missing bearer token"})
-			return
-		}
-
-		if _, err := h.verifyUC.Execute(r.Context(), token); err != nil {
-			if errors.Is(err, usecase.ErrInvalidAdminToken) {
-				writeAdminJSON(w, http.StatusUnauthorized, &Response{Status: "error", Error: "Invalid token"})
-				return
-			}
-			writeAdminJSON(w, http.StatusInternalServerError, &Response{Status: "error", Error: err.Error()})
-			return
-		}
-
-		next(w, r)
-	}
-}
 
 func extractBearerToken(authorizationHeader string) string {
 	parts := strings.SplitN(authorizationHeader, " ", 2)

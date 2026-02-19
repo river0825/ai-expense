@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/riverlin/aiexpense/internal/domain"
+	"github.com/riverlin/aiexpense/internal/pkg/jwtutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -40,9 +41,8 @@ func (m *MockShortLinkRepository) DeprecateByUserID(ctx context.Context, userID 
 func TestGenerateReportLinkUseCase_Execute(t *testing.T) {
 	baseURL := "http://localhost:3000"
 	mockRepo := new(MockShortLinkRepository)
-	uc := NewGenerateReportLinkUseCase(baseURL, mockRepo)
-
-	uc.jwtSecret = []byte("test-secret")
+	tokenManager := jwtutil.NewTokenManager("test-secret")
+	uc := NewGenerateReportLinkUseCase(baseURL, mockRepo, tokenManager)
 
 	userID := "user123"
 

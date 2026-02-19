@@ -21,6 +21,7 @@ import (
 	"github.com/riverlin/aiexpense/internal/ai"
 	"github.com/riverlin/aiexpense/internal/config"
 	"github.com/riverlin/aiexpense/internal/domain"
+	"github.com/riverlin/aiexpense/internal/pkg/jwtutil"
 	"github.com/riverlin/aiexpense/internal/usecase"
 )
 
@@ -137,14 +138,15 @@ func main() {
 	searchExpenseUseCase := usecase.NewSearchExpenseUseCase(expenseRepo, categoryRepo)
 	archiveUseCase := usecase.NewArchiveUseCase(expenseRepo)
 	getPolicyUseCase := usecase.NewGetPolicyUseCase(policyRepo)
-	generateReportLinkUseCase := usecase.NewGenerateReportLinkUseCase(cfg.APIPublicURL, shortLinkRepo)
+	tokenManager := jwtutil.NewTokenManager(cfg.JWTSecret)
+	generateReportLinkUseCase := usecase.NewGenerateReportLinkUseCase(cfg.APIPublicURL, shortLinkRepo, tokenManager)
 	getUserAggregateUseCase := usecase.NewGetUserAggregateUseCase(userRepo, categoryRepo, accountRepo)
 	updateUserAggregateUseCase := usecase.NewUpdateUserAggregateUseCase(userRepo, categoryRepo, accountRepo, expenseRepo)
 	adminAuthRepo := memoryRepo.NewAdminAuthRepository()
-	adminLoginUseCase := usecase.NewAdminLoginUseCase(adminAuthRepo, cfg.JWTSecret)
-	adminVerifyTokenUseCase := usecase.NewAdminVerifyTokenUseCase(adminAuthRepo, cfg.JWTSecret)
+	adminLoginUseCase := usecase.NewAdminLoginUseCase(adminAuthRepo, tokenManager)
+	adminVerifyTokenUseCase := usecase.NewAdminVerifyTokenUseCase(adminAuthRepo, tokenManager)
 	adminLogoutUseCase := usecase.NewAdminLogoutUseCase(adminAuthRepo)
-	generateExpenseLinkUseCase := usecase.NewGenerateExpenseLinkUseCase(shortLinkRepo, cfg.JWTSecret, cfg.APIPublicURL)
+	generateExpenseLinkUseCase := usecase.NewGenerateExpenseLinkUseCase(shortLinkRepo, tokenManager, cfg.APIPublicURL)
 
 	// Initialize Unified Message Processor
 	processMessageUseCase := usecase.NewProcessMessageUseCase(
@@ -154,6 +156,8 @@ func main() {
 		getExpensesUseCase,
 		generateReportLinkUseCase,
 		interactionLogRepo,
+		expenseRepo,
+		slog.Default(),
 	)
 
 	// Determine if running in development mode
@@ -179,12 +183,14 @@ func main() {
 		getPolicyUseCase,
 		getUserAggregateUseCase,
 		updateUserAggregateUseCase,
+		adminVerifyTokenUseCase,
 		exchangeRateSvc,
 		userRepo,
 		categoryRepo,
 		expenseRepo,
 		metricsRepo,
 		cfg.AdminAPIKey,
+		tokenManager,
 		isDev,
 	)
 
@@ -216,8 +222,9 @@ func main() {
 
 	// Initialize HTTP server
 	mux := http.NewServeMux()
-	httpAdapter.RegisterRoutes(mux, handler, aiCostHandler, pricingHandler, reportHandler, shortLinkHandler)
-	registerAdminRoutes(mux, adminAuthHandler, adminAnalyticsHandler)
+	httpAdapter.RegisterRoutes(mux, handler, aiCostHandler, pricingHandler, reportHandler, shortLinkHandler, adminAuthHandler, adminAnalyticsHandler)
+
+	// registerAdminRoutes removed - now in RegisterRoutes
 
 	// Initialize LINE webhook handler (if enabled)
 	var lineHandler *line.Handler
@@ -402,9 +409,12 @@ func registerAdminRoutes(
 	mux *http.ServeMux,
 	adminAuthHandler *httpAdapter.AdminAuthHandler,
 	adminAnalyticsHandler *httpAdapter.AdminAnalyticsHandler,
+	adminVerifyTokenUC *usecase.AdminVerifyTokenUseCase,
 ) {
 	mux.HandleFunc("POST /api/admin/auth/login", adminAuthHandler.Login)
 	mux.HandleFunc("GET /api/admin/auth/verify", adminAuthHandler.Verify)
 	mux.HandleFunc("POST /api/admin/auth/logout", adminAuthHandler.Logout)
-	mux.HandleFunc("GET /api/admin/analytics/overview", adminAuthHandler.RequireAuth(adminAnalyticsHandler.Overview))
+
+	adminSessionMiddleware := httpAdapter.NewAdminSessionMiddleware(adminVerifyTokenUC)
+	mux.Handle("GET /api/admin/analytics/overview", adminSessionMiddleware(http.HandlerFunc(adminAnalyticsHandler.Overview)))
 }
