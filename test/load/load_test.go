@@ -89,6 +89,12 @@ func (r *LoadTestExpenseRepository) ReassignExpenses(ctx context.Context, fromCa
 	return 0, nil
 }
 
+func (r *LoadTestExpenseRepository) GetBySourceMessageID(ctx context.Context, messageID string) ([]*domain.Expense, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return []*domain.Expense{}, nil
+}
+
 // LoadTestUserRepository implements in-memory user repository for load testing
 type LoadTestUserRepository struct {
 	users map[string]*domain.User

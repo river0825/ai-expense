@@ -29,8 +29,8 @@ func TestAPIGetPolicy(t *testing.T) {
 	handler := NewHandler(
 		nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
 		usecase.NewGetPolicyUseCase(policyRepo),
-		nil,
-		nil, nil, nil, nil, "", false,
+		nil, nil, nil, nil,
+		nil, nil, nil, nil, "", nil, false,
 	)
 
 	t.Run("GetPrivacyPolicy", func(t *testing.T) {

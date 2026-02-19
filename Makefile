@@ -46,11 +46,8 @@ update-price:
 	if [ -z "$$service_url" ]; then echo "SERVICE_URL not found; set SERVICE_URL or check Cloud Run service." >&2; exit 1; fi; \
 	curl -sS -X POST "$$service_url/api/pricing/sync?provider=$(PRICING_PROVIDER)" -H "X-API-Key: $$admin_key" -H "Content-Type: application/json"
 
-deploy-fe:
-	cd dashboard && vercel --prod --build-env NEXT_PUBLIC_API_URL=https://aiexpense-996531141309.us-central1.run.app --env NEXT_PUBLIC_API_URL=https://aiexpense-996531141309.us-central1.run.app
-
-deploy-fe-dashboard:
-	cd frontend/dashboard && vercel --prod --build-env NEXT_PUBLIC_API_URL=https://aiexpense-996531141309.us-central1.run.app --env NEXT_PUBLIC_API_URL=https://aiexpense-996531141309.us-central1.run.app
+deploy-dashboard:
+	cd frontend/dashboard && vercel --prod --build-env NEXT_PUBLIC_API_URL=https://api.aiexpense.net --env NEXT_PUBLIC_API_URL=https://api.aiexpense.net
 
 deploy-landing:
 	cd frontend/landing && vercel --prod

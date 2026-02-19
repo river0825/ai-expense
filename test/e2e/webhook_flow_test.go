@@ -90,6 +90,12 @@ func (r *E2EExpenseRepository) ReassignExpenses(ctx context.Context, fromCategor
 	return 0, nil
 }
 
+func (r *E2EExpenseRepository) GetBySourceMessageID(ctx context.Context, messageID string) ([]*domain.Expense, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return []*domain.Expense{}, nil
+}
+
 type E2EUserRepository struct {
 	users map[string]*domain.User
 	mu    sync.RWMutex

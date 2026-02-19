@@ -2,13 +2,11 @@ package http
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
-	"os"
 	"time"
 
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/riverlin/aiexpense/internal/domain"
+	"github.com/riverlin/aiexpense/internal/pkg/jwtutil"
 	"github.com/riverlin/aiexpense/internal/usecase"
 )
 
@@ -32,13 +30,14 @@ type Handler struct {
 	getPolicyUC           *usecase.GetPolicyUseCase
 	getUserAggregateUC    *usecase.GetUserAggregateUseCase
 	updateUserAggregateUC *usecase.UpdateUserAggregateUseCase
+	adminVerifyTokenUC    *usecase.AdminVerifyTokenUseCase
 	exchangeRateSvc       domain.ExchangeRateService
 	userRepo              domain.UserRepository
 	categoryRepo          domain.CategoryRepository
 	expenseRepo           domain.ExpenseRepository
 	metricsRepo           domain.MetricsRepository
 	adminAPIKey           string
-	jwtSecret             []byte
+	tokenManager          *jwtutil.TokenManager
 	isDev                 bool
 }
 
@@ -62,12 +61,14 @@ func NewHandler(
 	getPolicyUC *usecase.GetPolicyUseCase,
 	getUserAggregateUC *usecase.GetUserAggregateUseCase,
 	updateUserAggregateUC *usecase.UpdateUserAggregateUseCase,
+	adminVerifyTokenUC *usecase.AdminVerifyTokenUseCase,
 	exchangeRateSvc domain.ExchangeRateService,
 	userRepo domain.UserRepository,
 	categoryRepo domain.CategoryRepository,
 	expenseRepo domain.ExpenseRepository,
 	metricsRepo domain.MetricsRepository,
 	adminAPIKey string,
+	tokenManager *jwtutil.TokenManager,
 	isDev bool,
 ) *Handler {
 	h := &Handler{
@@ -89,17 +90,15 @@ func NewHandler(
 		getPolicyUC:           getPolicyUC,
 		getUserAggregateUC:    getUserAggregateUC,
 		updateUserAggregateUC: updateUserAggregateUC,
+		adminVerifyTokenUC:    adminVerifyTokenUC,
 		exchangeRateSvc:       exchangeRateSvc,
 		userRepo:              userRepo,
 		categoryRepo:          categoryRepo,
 		expenseRepo:           expenseRepo,
 		metricsRepo:           metricsRepo,
 		adminAPIKey:           adminAPIKey,
-		jwtSecret:             []byte(os.Getenv("JWT_SECRET")),
+		tokenManager:          tokenManager,
 		isDev:                 isDev,
-	}
-	if len(h.jwtSecret) == 0 {
-		h.jwtSecret = []byte("default-secret-do-not-use-in-prod")
 	}
 	return h
 }
@@ -165,10 +164,14 @@ func (h *Handler) AutoSignup(w http.ResponseWriter, r *http.Request) {
 // ParseExpenses godoc
 func (h *Handler) ParseExpenses(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	userID, ok := ctx.Value("user_id").(string)
+	if !ok || userID == "" {
+		h.WriteJSON(w, http.StatusUnauthorized, &Response{Status: "error", Error: "Unauthorized"})
+		return
+	}
 
 	type ParseRequest struct {
-		UserID string `json:"user_id"`
-		Text   string `json:"text"`
+		Text string `json:"text"`
 	}
 
 	var req ParseRequest
@@ -177,7 +180,7 @@ func (h *Handler) ParseExpenses(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	expenses, err := h.parseConversationUC.Execute(ctx, req.Text, req.UserID)
+	expenses, err := h.parseConversationUC.Execute(ctx, req.Text, userID)
 	if err != nil {
 		h.WriteJSON(w, http.StatusInternalServerError, &Response{Status: "error", Error: err.Error()})
 		return
@@ -189,9 +192,13 @@ func (h *Handler) ParseExpenses(w http.ResponseWriter, r *http.Request) {
 // CreateExpense godoc
 func (h *Handler) CreateExpense(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	userID, ok := ctx.Value("user_id").(string)
+	if !ok || userID == "" {
+		h.WriteJSON(w, http.StatusUnauthorized, &Response{Status: "error", Error: "Unauthorized"})
+		return
+	}
 
 	type CreateRequest struct {
-		UserID           string     `json:"user_id"`
 		Description      string     `json:"description"`
 		Amount           float64    `json:"amount"`
 		Currency         string     `json:"currency,omitempty"`
@@ -217,7 +224,7 @@ func (h *Handler) CreateExpense(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ucReq := &usecase.CreateRequest{
-		UserID:           req.UserID,
+		UserID:           userID,
 		Description:      req.Description,
 		Amount:           req.Amount,
 		Currency:         req.Currency,
@@ -242,10 +249,9 @@ func (h *Handler) CreateExpense(w http.ResponseWriter, r *http.Request) {
 // GetExpenses godoc
 func (h *Handler) GetExpenses(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	userID := r.URL.Query().Get("user_id")
-
-	if userID == "" {
-		h.WriteJSON(w, http.StatusBadRequest, &Response{Status: "error", Error: "user_id is required"})
+	userID, ok := ctx.Value("user_id").(string)
+	if !ok || userID == "" {
+		h.WriteJSON(w, http.StatusUnauthorized, &Response{Status: "error", Error: "Unauthorized"})
 		return
 	}
 
@@ -262,10 +268,9 @@ func (h *Handler) GetExpenses(w http.ResponseWriter, r *http.Request) {
 // GetCategories retrieves all categories for a user
 func (h *Handler) GetCategories(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	userID := r.URL.Query().Get("user_id")
-
-	if userID == "" {
-		h.WriteJSON(w, http.StatusBadRequest, &Response{Status: "error", Error: "user_id is required"})
+	userID, ok := ctx.Value("user_id").(string)
+	if !ok || userID == "" {
+		h.WriteJSON(w, http.StatusUnauthorized, &Response{Status: "error", Error: "Unauthorized"})
 		return
 	}
 
@@ -280,12 +285,7 @@ func (h *Handler) GetCategories(w http.ResponseWriter, r *http.Request) {
 
 // GetMetricsDAU retrieves daily active users
 func (h *Handler) GetMetricsDAU(w http.ResponseWriter, r *http.Request) {
-	// Check authentication
-	if !h.authenticateAdmin(r) {
-		h.WriteJSON(w, http.StatusUnauthorized, &Response{Status: "error", Error: "Unauthorized"})
-		return
-	}
-
+	// Authentication is handled by AdminMiddleware
 	ctx := r.Context()
 
 	resp, err := h.metricsUC.GetDailyActiveUsers(ctx, &usecase.DailyActiveUsersRequest{Days: 30})
@@ -299,11 +299,7 @@ func (h *Handler) GetMetricsDAU(w http.ResponseWriter, r *http.Request) {
 
 // GetMetricsExpenses retrieves expense summary
 func (h *Handler) GetMetricsExpenses(w http.ResponseWriter, r *http.Request) {
-	if !h.authenticateAdmin(r) {
-		h.WriteJSON(w, http.StatusUnauthorized, &Response{Status: "error", Error: "Unauthorized"})
-		return
-	}
-
+	// Authentication is handled by AdminMiddleware
 	ctx := r.Context()
 
 	resp, err := h.metricsUC.GetExpensesSummary(ctx, &usecase.ExpensesSummaryRequest{Days: 30})
@@ -317,11 +313,7 @@ func (h *Handler) GetMetricsExpenses(w http.ResponseWriter, r *http.Request) {
 
 // GetMetricsGrowth retrieves growth metrics
 func (h *Handler) GetMetricsGrowth(w http.ResponseWriter, r *http.Request) {
-	if !h.authenticateAdmin(r) {
-		h.WriteJSON(w, http.StatusUnauthorized, &Response{Status: "error", Error: "Unauthorized"})
-		return
-	}
-
+	// Authentication is handled by AdminMiddleware
 	ctx := r.Context()
 
 	resp, err := h.metricsUC.GetGrowthMetrics(ctx, &usecase.GrowthMetricsRequest{Days: 30})
@@ -335,10 +327,7 @@ func (h *Handler) GetMetricsGrowth(w http.ResponseWriter, r *http.Request) {
 
 // RefreshExchangeRates triggers a manual exchange rate refresh
 func (h *Handler) RefreshExchangeRates(w http.ResponseWriter, r *http.Request) {
-	if !h.authenticateAdmin(r) {
-		h.WriteJSON(w, http.StatusUnauthorized, &Response{Status: "error", Error: "Unauthorized"})
-		return
-	}
+	// Authentication is handled by AdminMiddleware
 
 	if h.exchangeRateSvc == nil {
 		h.WriteJSON(w, http.StatusServiceUnavailable, &Response{Status: "error", Error: "Exchange rate service not configured"})
@@ -367,10 +356,14 @@ func (h *Handler) authenticateAdmin(r *http.Request) bool {
 // UpdateExpense godoc
 func (h *Handler) UpdateExpense(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	userID, ok := ctx.Value("user_id").(string)
+	if !ok || userID == "" {
+		h.WriteJSON(w, http.StatusUnauthorized, &Response{Status: "error", Error: "Unauthorized"})
+		return
+	}
 
 	type UpdateExpenseRequest struct {
 		ID             string     `json:"id"`
-		UserID         string     `json:"user_id"`
 		Description    *string    `json:"description,omitempty"`
 		Amount         *float64   `json:"amount,omitempty"`
 		OriginalAmount *float64   `json:"original_amount,omitempty"`
@@ -386,8 +379,8 @@ func (h *Handler) UpdateExpense(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.ID == "" || req.UserID == "" {
-		h.WriteJSON(w, http.StatusBadRequest, &Response{Status: "error", Error: "id and user_id are required"})
+	if req.ID == "" {
+		h.WriteJSON(w, http.StatusBadRequest, &Response{Status: "error", Error: "id is required"})
 		return
 	}
 
@@ -398,7 +391,7 @@ func (h *Handler) UpdateExpense(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := h.updateExpenseUC.Execute(ctx, &usecase.UpdateRequest{
 		ID:             req.ID,
-		UserID:         req.UserID,
+		UserID:         userID,
 		Description:    req.Description,
 		OriginalAmount: originalAmount,
 		Currency:       req.Currency,
@@ -418,10 +411,14 @@ func (h *Handler) UpdateExpense(w http.ResponseWriter, r *http.Request) {
 // DeleteExpense godoc
 func (h *Handler) DeleteExpense(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	userID, ok := ctx.Value("user_id").(string)
+	if !ok || userID == "" {
+		h.WriteJSON(w, http.StatusUnauthorized, &Response{Status: "error", Error: "Unauthorized"})
+		return
+	}
 
 	type DeleteExpenseRequest struct {
-		ID     string `json:"id"`
-		UserID string `json:"user_id"`
+		ID string `json:"id"`
 	}
 
 	var req DeleteExpenseRequest
@@ -430,14 +427,14 @@ func (h *Handler) DeleteExpense(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.ID == "" || req.UserID == "" {
-		h.WriteJSON(w, http.StatusBadRequest, &Response{Status: "error", Error: "id and user_id are required"})
+	if req.ID == "" {
+		h.WriteJSON(w, http.StatusBadRequest, &Response{Status: "error", Error: "id is required"})
 		return
 	}
 
 	resp, err := h.deleteExpenseUC.Execute(ctx, &usecase.DeleteRequest{
 		ID:     req.ID,
-		UserID: req.UserID,
+		UserID: userID,
 	})
 
 	if err != nil {
@@ -451,10 +448,13 @@ func (h *Handler) DeleteExpense(w http.ResponseWriter, r *http.Request) {
 // CreateCategory godoc
 func (h *Handler) CreateCategory(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	userID, ok := ctx.Value("user_id").(string)
+	if !ok || userID == "" {
+		h.WriteJSON(w, http.StatusUnauthorized, &Response{Status: "error", Error: "Unauthorized"})
+		return
+	}
 
 	type CreateCategoryRequest struct {
-		UserID      string   `json:"user_id"`
-		Token       string   `json:"token"`
 		Name        string   `json:"name"`
 		Description string   `json:"description,omitempty"`
 		Keywords    []string `json:"keywords,omitempty"`
@@ -466,22 +466,13 @@ func (h *Handler) CreateCategory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.UserID == "" && req.Token != "" {
-		var err error
-		req.UserID, err = h.validateToken(req.Token)
-		if err != nil {
-			h.WriteJSON(w, http.StatusUnauthorized, &Response{Status: "error", Error: "Invalid token: " + err.Error()})
-			return
-		}
-	}
-
-	if req.UserID == "" || req.Name == "" {
-		h.WriteJSON(w, http.StatusBadRequest, &Response{Status: "error", Error: "user_id and name are required"})
+	if req.Name == "" {
+		h.WriteJSON(w, http.StatusBadRequest, &Response{Status: "error", Error: "name is required"})
 		return
 	}
 
 	resp, err := h.manageCategoryUC.CreateCategory(ctx, &usecase.CreateCategoryRequest{
-		UserID:      req.UserID,
+		UserID:      userID,
 		Name:        req.Name,
 		Description: req.Description,
 		Keywords:    req.Keywords,
@@ -498,11 +489,14 @@ func (h *Handler) CreateCategory(w http.ResponseWriter, r *http.Request) {
 // UpdateCategory godoc
 func (h *Handler) UpdateCategory(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	userID, ok := ctx.Value("user_id").(string)
+	if !ok || userID == "" {
+		h.WriteJSON(w, http.StatusUnauthorized, &Response{Status: "error", Error: "Unauthorized"})
+		return
+	}
 
 	type UpdateCategoryRequest struct {
 		ID          string   `json:"id"`
-		UserID      string   `json:"user_id"`
-		Token       string   `json:"token"`
 		Name        *string  `json:"name,omitempty"`
 		Description *string  `json:"description,omitempty"`
 		Keywords    []string `json:"keywords,omitempty"`
@@ -514,22 +508,13 @@ func (h *Handler) UpdateCategory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.UserID == "" && req.Token != "" {
-		var err error
-		req.UserID, err = h.validateToken(req.Token)
-		if err != nil {
-			h.WriteJSON(w, http.StatusUnauthorized, &Response{Status: "error", Error: "Invalid token: " + err.Error()})
-			return
-		}
-	}
-
-	if req.ID == "" || req.UserID == "" {
-		h.WriteJSON(w, http.StatusBadRequest, &Response{Status: "error", Error: "id and user_id are required"})
+	if req.ID == "" {
+		h.WriteJSON(w, http.StatusBadRequest, &Response{Status: "error", Error: "id is required"})
 		return
 	}
 
 	resp, err := h.manageCategoryUC.UpdateCategory(ctx, &usecase.UpdateCategoryRequest{
-		UserID:      req.UserID,
+		UserID:      userID,
 		ID:          req.ID,
 		Name:        req.Name,
 		Description: req.Description,
@@ -547,11 +532,14 @@ func (h *Handler) UpdateCategory(w http.ResponseWriter, r *http.Request) {
 // DeleteCategory godoc
 func (h *Handler) DeleteCategory(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	userID, ok := ctx.Value("user_id").(string)
+	if !ok || userID == "" {
+		h.WriteJSON(w, http.StatusUnauthorized, &Response{Status: "error", Error: "Unauthorized"})
+		return
+	}
 
 	type DeleteCategoryRequest struct {
-		ID     string `json:"id"`
-		UserID string `json:"user_id"`
-		Token  string `json:"token"`
+		ID string `json:"id"`
 	}
 
 	var req DeleteCategoryRequest
@@ -560,22 +548,13 @@ func (h *Handler) DeleteCategory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.UserID == "" && req.Token != "" {
-		var err error
-		req.UserID, err = h.validateToken(req.Token)
-		if err != nil {
-			h.WriteJSON(w, http.StatusUnauthorized, &Response{Status: "error", Error: "Invalid token: " + err.Error()})
-			return
-		}
-	}
-
-	if req.ID == "" || req.UserID == "" {
-		h.WriteJSON(w, http.StatusBadRequest, &Response{Status: "error", Error: "id and user_id are required"})
+	if req.ID == "" {
+		h.WriteJSON(w, http.StatusBadRequest, &Response{Status: "error", Error: "id is required"})
 		return
 	}
 
 	resp, err := h.manageCategoryUC.DeleteCategory(ctx, &usecase.DeleteCategoryRequest{
-		UserID: req.UserID,
+		UserID: userID,
 		ID:     req.ID,
 	})
 
@@ -590,20 +569,9 @@ func (h *Handler) DeleteCategory(w http.ResponseWriter, r *http.Request) {
 // ListCategories godoc
 func (h *Handler) ListCategories(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	userID := r.URL.Query().Get("user_id")
-	token := r.URL.Query().Get("token")
-
-	if userID == "" && token != "" {
-		var err error
-		userID, err = h.validateToken(token)
-		if err != nil {
-			h.WriteJSON(w, http.StatusUnauthorized, &Response{Status: "error", Error: "Invalid token: " + err.Error()})
-			return
-		}
-	}
-
-	if userID == "" {
-		h.WriteJSON(w, http.StatusBadRequest, &Response{Status: "error", Error: "user_id or token is required"})
+	userID, ok := ctx.Value("user_id").(string)
+	if !ok || userID == "" {
+		h.WriteJSON(w, http.StatusUnauthorized, &Response{Status: "error", Error: "Unauthorized"})
 		return
 	}
 
@@ -622,10 +590,13 @@ func (h *Handler) ListCategories(w http.ResponseWriter, r *http.Request) {
 // MergeCategories godoc
 func (h *Handler) MergeCategories(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	userID, ok := ctx.Value("user_id").(string)
+	if !ok || userID == "" {
+		h.WriteJSON(w, http.StatusUnauthorized, &Response{Status: "error", Error: "Unauthorized"})
+		return
+	}
 
 	type MergeCategoriesRequest struct {
-		UserID   string `json:"user_id"`
-		Token    string `json:"token"`
 		SourceID string `json:"source_id"`
 		TargetID string `json:"target_id"`
 	}
@@ -636,22 +607,13 @@ func (h *Handler) MergeCategories(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.UserID == "" && req.Token != "" {
-		var err error
-		req.UserID, err = h.validateToken(req.Token)
-		if err != nil {
-			h.WriteJSON(w, http.StatusUnauthorized, &Response{Status: "error", Error: "Invalid token: " + err.Error()})
-			return
-		}
-	}
-
-	if req.UserID == "" || req.SourceID == "" || req.TargetID == "" {
-		h.WriteJSON(w, http.StatusBadRequest, &Response{Status: "error", Error: "user_id, source_id, and target_id are required"})
+	if req.SourceID == "" || req.TargetID == "" {
+		h.WriteJSON(w, http.StatusBadRequest, &Response{Status: "error", Error: "source_id and target_id are required"})
 		return
 	}
 
 	resp, err := h.manageCategoryUC.MergeCategories(ctx, &usecase.MergeCategoriesRequest{
-		UserID:   req.UserID,
+		UserID:   userID,
 		SourceID: req.SourceID,
 		TargetID: req.TargetID,
 	})
@@ -667,9 +629,13 @@ func (h *Handler) MergeCategories(w http.ResponseWriter, r *http.Request) {
 // GenerateReport godoc
 func (h *Handler) GenerateReport(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	userID, ok := ctx.Value("user_id").(string)
+	if !ok || userID == "" {
+		h.WriteJSON(w, http.StatusUnauthorized, &Response{Status: "error", Error: "Unauthorized"})
+		return
+	}
 
 	type GenerateReportRequest struct {
-		UserID     string    `json:"user_id"`
 		ReportType string    `json:"report_type"`
 		StartDate  time.Time `json:"start_date"`
 		EndDate    time.Time `json:"end_date"`
@@ -678,11 +644,6 @@ func (h *Handler) GenerateReport(w http.ResponseWriter, r *http.Request) {
 	var req GenerateReportRequest
 	if err := h.ReadJSON(r, &req); err != nil {
 		h.WriteJSON(w, http.StatusBadRequest, &Response{Status: "error", Error: "Invalid request"})
-		return
-	}
-
-	if req.UserID == "" {
-		h.WriteJSON(w, http.StatusBadRequest, &Response{Status: "error", Error: "user_id is required"})
 		return
 	}
 
@@ -699,7 +660,7 @@ func (h *Handler) GenerateReport(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp, err := h.generateReportUC.Execute(ctx, &usecase.ReportRequest{
-		UserID:     req.UserID,
+		UserID:     userID,
 		ReportType: req.ReportType,
 		StartDate:  req.StartDate,
 		EndDate:    req.EndDate,
@@ -714,12 +675,12 @@ func (h *Handler) GenerateReport(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetBudgetStatus godoc
+// GetBudgetStatus godoc
 func (h *Handler) GetBudgetStatus(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	userID := r.URL.Query().Get("user_id")
-
-	if userID == "" {
-		h.WriteJSON(w, http.StatusBadRequest, &Response{Status: "error", Error: "user_id is required"})
+	userID, ok := ctx.Value("user_id").(string)
+	if !ok || userID == "" {
+		h.WriteJSON(w, http.StatusUnauthorized, &Response{Status: "error", Error: "Unauthorized"})
 		return
 	}
 
@@ -738,14 +699,14 @@ func (h *Handler) GetBudgetStatus(w http.ResponseWriter, r *http.Request) {
 // CompareToBudget godoc
 func (h *Handler) CompareToBudget(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	userID := r.URL.Query().Get("user_id")
-	categoryID := r.URL.Query().Get("category_id")
-	period := r.URL.Query().Get("period")
-
-	if userID == "" {
-		h.WriteJSON(w, http.StatusBadRequest, &Response{Status: "error", Error: "user_id is required"})
+	userID, ok := ctx.Value("user_id").(string)
+	if !ok || userID == "" {
+		h.WriteJSON(w, http.StatusUnauthorized, &Response{Status: "error", Error: "Unauthorized"})
 		return
 	}
+
+	categoryID := r.URL.Query().Get("category_id")
+	period := r.URL.Query().Get("period")
 
 	var category *string
 	if categoryID != "" {
@@ -769,15 +730,15 @@ func (h *Handler) CompareToBudget(w http.ResponseWriter, r *http.Request) {
 // ExportExpenses godoc
 func (h *Handler) ExportExpenses(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	userID := r.URL.Query().Get("user_id")
+	userID, ok := ctx.Value("user_id").(string)
+	if !ok || userID == "" {
+		h.WriteJSON(w, http.StatusUnauthorized, &Response{Status: "error", Error: "Unauthorized"})
+		return
+	}
+
 	format := r.URL.Query().Get("format")
 	startDate := r.URL.Query().Get("start_date")
 	endDate := r.URL.Query().Get("end_date")
-
-	if userID == "" {
-		h.WriteJSON(w, http.StatusBadRequest, &Response{Status: "error", Error: "user_id is required"})
-		return
-	}
 
 	if format == "" {
 		format = "json"
@@ -832,14 +793,14 @@ func (h *Handler) ExportExpenses(w http.ResponseWriter, r *http.Request) {
 // ExportSummary godoc
 func (h *Handler) ExportSummary(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	userID := r.URL.Query().Get("user_id")
-	startDate := r.URL.Query().Get("start_date")
-	endDate := r.URL.Query().Get("end_date")
-
-	if userID == "" {
-		h.WriteJSON(w, http.StatusBadRequest, &Response{Status: "error", Error: "user_id is required"})
+	userID, ok := ctx.Value("user_id").(string)
+	if !ok || userID == "" {
+		h.WriteJSON(w, http.StatusUnauthorized, &Response{Status: "error", Error: "Unauthorized"})
 		return
 	}
+
+	startDate := r.URL.Query().Get("start_date")
+	endDate := r.URL.Query().Get("end_date")
 
 	// Parse dates
 	var start, end time.Time
@@ -872,16 +833,16 @@ func (h *Handler) ExportSummary(w http.ResponseWriter, r *http.Request) {
 // SearchExpenses godoc
 func (h *Handler) SearchExpenses(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	userID := r.URL.Query().Get("user_id")
+	userID, ok := ctx.Value("user_id").(string)
+	if !ok || userID == "" {
+		h.WriteJSON(w, http.StatusUnauthorized, &Response{Status: "error", Error: "Unauthorized"})
+		return
+	}
+
 	query := r.URL.Query().Get("q")
 	categoryID := r.URL.Query().Get("category_id")
 	sortBy := r.URL.Query().Get("sort_by")
 	limit := 20
-
-	if userID == "" {
-		h.WriteJSON(w, http.StatusBadRequest, &Response{Status: "error", Error: "user_id is required"})
-		return
-	}
 
 	var category *string
 	if categoryID != "" {
@@ -908,14 +869,14 @@ func (h *Handler) SearchExpenses(w http.ResponseWriter, r *http.Request) {
 // FilterExpenses godoc
 func (h *Handler) FilterExpenses(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	userID := r.URL.Query().Get("user_id")
-	period := r.URL.Query().Get("period")
-	categoryID := r.URL.Query().Get("category_id")
-
-	if userID == "" {
-		h.WriteJSON(w, http.StatusBadRequest, &Response{Status: "error", Error: "user_id is required"})
+	userID, ok := ctx.Value("user_id").(string)
+	if !ok || userID == "" {
+		h.WriteJSON(w, http.StatusUnauthorized, &Response{Status: "error", Error: "Unauthorized"})
 		return
 	}
+
+	period := r.URL.Query().Get("period")
+	categoryID := r.URL.Query().Get("category_id")
 
 	resp, err := h.searchExpenseUC.Filter(ctx, &usecase.FilterRequest{
 		UserID:     userID,
@@ -934,9 +895,13 @@ func (h *Handler) FilterExpenses(w http.ResponseWriter, r *http.Request) {
 // CreateRecurring godoc
 func (h *Handler) CreateRecurring(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	userID, ok := ctx.Value("user_id").(string)
+	if !ok || userID == "" {
+		h.WriteJSON(w, http.StatusUnauthorized, &Response{Status: "error", Error: "Unauthorized"})
+		return
+	}
 
 	type CreateRecurringRequest struct {
-		UserID      string    `json:"user_id"`
 		Description string    `json:"description"`
 		Amount      float64   `json:"amount"`
 		CategoryID  *string   `json:"category_id,omitempty"`
@@ -951,7 +916,7 @@ func (h *Handler) CreateRecurring(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp, err := h.recurringExpenseUC.CreateRecurring(ctx, &usecase.CreateRecurringRequest{
-		UserID:      req.UserID,
+		UserID:      userID,
 		Description: req.Description,
 		Amount:      req.Amount,
 		CategoryID:  req.CategoryID,
@@ -970,10 +935,9 @@ func (h *Handler) CreateRecurring(w http.ResponseWriter, r *http.Request) {
 // ListRecurring godoc
 func (h *Handler) ListRecurring(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	userID := r.URL.Query().Get("user_id")
-
-	if userID == "" {
-		h.WriteJSON(w, http.StatusBadRequest, &Response{Status: "error", Error: "user_id is required"})
+	userID, ok := ctx.Value("user_id").(string)
+	if !ok || userID == "" {
+		h.WriteJSON(w, http.StatusUnauthorized, &Response{Status: "error", Error: "Unauthorized"})
 		return
 	}
 
@@ -992,9 +956,13 @@ func (h *Handler) ListRecurring(w http.ResponseWriter, r *http.Request) {
 // UpdateRecurring godoc
 func (h *Handler) UpdateRecurring(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	userID, ok := ctx.Value("user_id").(string)
+	if !ok || userID == "" {
+		h.WriteJSON(w, http.StatusUnauthorized, &Response{Status: "error", Error: "Unauthorized"})
+		return
+	}
 
 	type UpdateRecurringRequest struct {
-		UserID      string   `json:"user_id"`
 		ID          string   `json:"id"`
 		Description *string  `json:"description,omitempty"`
 		Amount      *float64 `json:"amount,omitempty"`
@@ -1008,7 +976,7 @@ func (h *Handler) UpdateRecurring(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp, err := h.recurringExpenseUC.UpdateRecurring(ctx, &usecase.UpdateRecurringRequest{
-		UserID:      req.UserID,
+		UserID:      userID,
 		ID:          req.ID,
 		Description: req.Description,
 		Amount:      req.Amount,
@@ -1026,11 +994,15 @@ func (h *Handler) UpdateRecurring(w http.ResponseWriter, r *http.Request) {
 // DeleteRecurring godoc
 func (h *Handler) DeleteRecurring(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	userID := r.URL.Query().Get("user_id")
+	userID, ok := ctx.Value("user_id").(string)
+	if !ok || userID == "" {
+		h.WriteJSON(w, http.StatusUnauthorized, &Response{Status: "error", Error: "Unauthorized"})
+		return
+	}
 	id := r.URL.Query().Get("id")
 
-	if userID == "" || id == "" {
-		h.WriteJSON(w, http.StatusBadRequest, &Response{Status: "error", Error: "user_id and id are required"})
+	if id == "" {
+		h.WriteJSON(w, http.StatusBadRequest, &Response{Status: "error", Error: "id is required"})
 		return
 	}
 
@@ -1050,10 +1022,9 @@ func (h *Handler) DeleteRecurring(w http.ResponseWriter, r *http.Request) {
 // GetUpcomingRecurring godoc
 func (h *Handler) GetUpcomingRecurring(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	userID := r.URL.Query().Get("user_id")
-
-	if userID == "" {
-		h.WriteJSON(w, http.StatusBadRequest, &Response{Status: "error", Error: "user_id is required"})
+	userID, ok := ctx.Value("user_id").(string)
+	if !ok || userID == "" {
+		h.WriteJSON(w, http.StatusUnauthorized, &Response{Status: "error", Error: "Unauthorized"})
 		return
 	}
 
@@ -1073,10 +1044,14 @@ func (h *Handler) GetUpcomingRecurring(w http.ResponseWriter, r *http.Request) {
 // ProcessRecurring godoc
 func (h *Handler) ProcessRecurring(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	userID, ok := ctx.Value("user_id").(string)
+	if !ok || userID == "" {
+		h.WriteJSON(w, http.StatusUnauthorized, &Response{Status: "error", Error: "Unauthorized"})
+		return
+	}
 
 	type ProcessRecurringRequest struct {
-		UserID string    `json:"user_id"`
-		Date   time.Time `json:"date"`
+		Date time.Time `json:"date"`
 	}
 
 	var req ProcessRecurringRequest
@@ -1086,7 +1061,7 @@ func (h *Handler) ProcessRecurring(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp, err := h.recurringExpenseUC.ProcessRecurring(ctx, &usecase.ProcessRecurringRequest{
-		UserID: req.UserID,
+		UserID: userID,
 		Date:   req.Date,
 	})
 
@@ -1101,9 +1076,13 @@ func (h *Handler) ProcessRecurring(w http.ResponseWriter, r *http.Request) {
 // CreateNotification godoc
 func (h *Handler) CreateNotification(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	userID, ok := ctx.Value("user_id").(string)
+	if !ok || userID == "" {
+		h.WriteJSON(w, http.StatusUnauthorized, &Response{Status: "error", Error: "Unauthorized"})
+		return
+	}
 
 	type CreateNotificationRequest struct {
-		UserID  string                 `json:"user_id"`
 		Type    string                 `json:"type"`
 		Title   string                 `json:"title"`
 		Message string                 `json:"message"`
@@ -1117,7 +1096,7 @@ func (h *Handler) CreateNotification(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp, err := h.notificationUC.CreateNotification(ctx, &usecase.CreateNotificationRequest{
-		UserID:  req.UserID,
+		UserID:  userID,
 		Type:    req.Type,
 		Title:   req.Title,
 		Message: req.Message,
@@ -1135,10 +1114,9 @@ func (h *Handler) CreateNotification(w http.ResponseWriter, r *http.Request) {
 // ListNotifications godoc
 func (h *Handler) ListNotifications(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	userID := r.URL.Query().Get("user_id")
-
-	if userID == "" {
-		h.WriteJSON(w, http.StatusBadRequest, &Response{Status: "error", Error: "user_id is required"})
+	userID, ok := ctx.Value("user_id").(string)
+	if !ok || userID == "" {
+		h.WriteJSON(w, http.StatusUnauthorized, &Response{Status: "error", Error: "Unauthorized"})
 		return
 	}
 
@@ -1158,9 +1136,13 @@ func (h *Handler) ListNotifications(w http.ResponseWriter, r *http.Request) {
 // MarkNotificationAsRead godoc
 func (h *Handler) MarkNotificationAsRead(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	userID, ok := ctx.Value("user_id").(string)
+	if !ok || userID == "" {
+		h.WriteJSON(w, http.StatusUnauthorized, &Response{Status: "error", Error: "Unauthorized"})
+		return
+	}
 
 	type MarkAsReadRequest struct {
-		UserID         string `json:"user_id"`
 		NotificationID string `json:"notification_id"`
 	}
 
@@ -1171,7 +1153,7 @@ func (h *Handler) MarkNotificationAsRead(w http.ResponseWriter, r *http.Request)
 	}
 
 	resp, err := h.notificationUC.MarkAsRead(ctx, &usecase.MarkAsReadRequest{
-		UserID:         req.UserID,
+		UserID:         userID,
 		NotificationID: req.NotificationID,
 	})
 
@@ -1186,19 +1168,14 @@ func (h *Handler) MarkNotificationAsRead(w http.ResponseWriter, r *http.Request)
 // MarkAllNotificationsAsRead godoc
 func (h *Handler) MarkAllNotificationsAsRead(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-
-	type MarkAllAsReadRequest struct {
-		UserID string `json:"user_id"`
-	}
-
-	var req MarkAllAsReadRequest
-	if err := h.ReadJSON(r, &req); err != nil {
-		h.WriteJSON(w, http.StatusBadRequest, &Response{Status: "error", Error: "Invalid request"})
+	userID, ok := ctx.Value("user_id").(string)
+	if !ok || userID == "" {
+		h.WriteJSON(w, http.StatusUnauthorized, &Response{Status: "error", Error: "Unauthorized"})
 		return
 	}
 
 	resp, err := h.notificationUC.MarkAllAsRead(ctx, &usecase.MarkAllAsReadRequest{
-		UserID: req.UserID,
+		UserID: userID,
 	})
 
 	if err != nil {
@@ -1212,11 +1189,15 @@ func (h *Handler) MarkAllNotificationsAsRead(w http.ResponseWriter, r *http.Requ
 // DeleteNotification godoc
 func (h *Handler) DeleteNotification(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	userID := r.URL.Query().Get("user_id")
+	userID, ok := ctx.Value("user_id").(string)
+	if !ok || userID == "" {
+		h.WriteJSON(w, http.StatusUnauthorized, &Response{Status: "error", Error: "Unauthorized"})
+		return
+	}
 	notificationID := r.URL.Query().Get("id")
 
-	if userID == "" || notificationID == "" {
-		h.WriteJSON(w, http.StatusBadRequest, &Response{Status: "error", Error: "user_id and id are required"})
+	if notificationID == "" {
+		h.WriteJSON(w, http.StatusBadRequest, &Response{Status: "error", Error: "id is required"})
 		return
 	}
 
@@ -1236,10 +1217,9 @@ func (h *Handler) DeleteNotification(w http.ResponseWriter, r *http.Request) {
 // GetNotificationPreferences godoc
 func (h *Handler) GetNotificationPreferences(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	userID := r.URL.Query().Get("user_id")
-
-	if userID == "" {
-		h.WriteJSON(w, http.StatusBadRequest, &Response{Status: "error", Error: "user_id is required"})
+	userID, ok := ctx.Value("user_id").(string)
+	if !ok || userID == "" {
+		h.WriteJSON(w, http.StatusUnauthorized, &Response{Status: "error", Error: "Unauthorized"})
 		return
 	}
 
@@ -1258,15 +1238,19 @@ func (h *Handler) GetNotificationPreferences(w http.ResponseWriter, r *http.Requ
 // UpdateNotificationPreferences godoc
 func (h *Handler) UpdateNotificationPreferences(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	userID, ok := ctx.Value("user_id").(string)
+	if !ok || userID == "" {
+		h.WriteJSON(w, http.StatusUnauthorized, &Response{Status: "error", Error: "Unauthorized"})
+		return
+	}
 
 	type UpdatePreferencesRequest struct {
-		UserID              string `json:"user_id"`
-		BudgetAlerts        *bool  `json:"budget_alerts,omitempty"`
-		RecurringReminders  *bool  `json:"recurring_reminders,omitempty"`
-		ReportNotifications *bool  `json:"report_notifications,omitempty"`
-		ExpenseReminders    *bool  `json:"expense_reminders,omitempty"`
-		DailyDigest         *bool  `json:"daily_digest,omitempty"`
-		WeeklyReport        *bool  `json:"weekly_report,omitempty"`
+		BudgetAlerts        *bool `json:"budget_alerts,omitempty"`
+		RecurringReminders  *bool `json:"recurring_reminders,omitempty"`
+		ReportNotifications *bool `json:"report_notifications,omitempty"`
+		ExpenseReminders    *bool `json:"expense_reminders,omitempty"`
+		DailyDigest         *bool `json:"daily_digest,omitempty"`
+		WeeklyReport        *bool `json:"weekly_report,omitempty"`
 	}
 
 	var req UpdatePreferencesRequest
@@ -1276,7 +1260,7 @@ func (h *Handler) UpdateNotificationPreferences(w http.ResponseWriter, r *http.R
 	}
 
 	resp, err := h.notificationUC.UpdatePreferences(ctx, &usecase.UpdatePreferencesRequest{
-		UserID:              req.UserID,
+		UserID:              userID,
 		BudgetAlerts:        req.BudgetAlerts,
 		RecurringReminders:  req.RecurringReminders,
 		ReportNotifications: req.ReportNotifications,
@@ -1296,9 +1280,13 @@ func (h *Handler) UpdateNotificationPreferences(w http.ResponseWriter, r *http.R
 // CreateArchive godoc
 func (h *Handler) CreateArchive(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	userID, ok := ctx.Value("user_id").(string)
+	if !ok || userID == "" {
+		h.WriteJSON(w, http.StatusUnauthorized, &Response{Status: "error", Error: "Unauthorized"})
+		return
+	}
 
 	type CreateArchiveRequest struct {
-		UserID        string    `json:"user_id"`
 		Period        string    `json:"period"`
 		StartDate     time.Time `json:"start_date"`
 		EndDate       time.Time `json:"end_date"`
@@ -1312,7 +1300,7 @@ func (h *Handler) CreateArchive(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp, err := h.archiveUC.CreateArchive(ctx, &usecase.CreateArchiveRequest{
-		UserID:        req.UserID,
+		UserID:        userID,
 		Period:        req.Period,
 		StartDate:     req.StartDate,
 		EndDate:       req.EndDate,
@@ -1330,10 +1318,9 @@ func (h *Handler) CreateArchive(w http.ResponseWriter, r *http.Request) {
 // ListArchives godoc
 func (h *Handler) ListArchives(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	userID := r.URL.Query().Get("user_id")
-
-	if userID == "" {
-		h.WriteJSON(w, http.StatusBadRequest, &Response{Status: "error", Error: "user_id is required"})
+	userID, ok := ctx.Value("user_id").(string)
+	if !ok || userID == "" {
+		h.WriteJSON(w, http.StatusUnauthorized, &Response{Status: "error", Error: "Unauthorized"})
 		return
 	}
 
@@ -1352,10 +1339,9 @@ func (h *Handler) ListArchives(w http.ResponseWriter, r *http.Request) {
 // GetArchiveStats godoc
 func (h *Handler) GetArchiveStats(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	userID := r.URL.Query().Get("user_id")
-
-	if userID == "" {
-		h.WriteJSON(w, http.StatusBadRequest, &Response{Status: "error", Error: "user_id is required"})
+	userID, ok := ctx.Value("user_id").(string)
+	if !ok || userID == "" {
+		h.WriteJSON(w, http.StatusUnauthorized, &Response{Status: "error", Error: "Unauthorized"})
 		return
 	}
 
@@ -1374,11 +1360,15 @@ func (h *Handler) GetArchiveStats(w http.ResponseWriter, r *http.Request) {
 // GetArchiveDetails godoc
 func (h *Handler) GetArchiveDetails(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	userID := r.URL.Query().Get("user_id")
+	userID, ok := ctx.Value("user_id").(string)
+	if !ok || userID == "" {
+		h.WriteJSON(w, http.StatusUnauthorized, &Response{Status: "error", Error: "Unauthorized"})
+		return
+	}
 	archiveID := r.URL.Query().Get("archive_id")
 
-	if userID == "" || archiveID == "" {
-		h.WriteJSON(w, http.StatusBadRequest, &Response{Status: "error", Error: "user_id and archive_id are required"})
+	if archiveID == "" {
+		h.WriteJSON(w, http.StatusBadRequest, &Response{Status: "error", Error: "archive_id is required"})
 		return
 	}
 
@@ -1398,9 +1388,13 @@ func (h *Handler) GetArchiveDetails(w http.ResponseWriter, r *http.Request) {
 // RestoreArchive godoc
 func (h *Handler) RestoreArchive(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	userID, ok := ctx.Value("user_id").(string)
+	if !ok || userID == "" {
+		h.WriteJSON(w, http.StatusUnauthorized, &Response{Status: "error", Error: "Unauthorized"})
+		return
+	}
 
 	type RestoreArchiveRequest struct {
-		UserID    string `json:"user_id"`
 		ArchiveID string `json:"archive_id"`
 		Strategy  string `json:"strategy,omitempty"`
 	}
@@ -1412,7 +1406,7 @@ func (h *Handler) RestoreArchive(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp, err := h.archiveUC.RestoreArchive(ctx, &usecase.RestoreArchiveRequest{
-		UserID:    req.UserID,
+		UserID:    userID,
 		ArchiveID: req.ArchiveID,
 		Strategy:  req.Strategy,
 	})
@@ -1488,23 +1482,9 @@ func (h *Handler) ExportArchive(w http.ResponseWriter, r *http.Request) {
 // GetUser godoc
 func (h *Handler) GetUser(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	// In a real app, we get userID from auth context.
-	// For this demo/MVP, we accept it as query param or header, or assume a default test user if we are in dev mode.
-	// However, the dashboard sends ?token=... which we treat as user_id for now.
-	userID := r.URL.Query().Get("user_id")
-	token := r.URL.Query().Get("token")
-
-	if userID == "" && token != "" {
-		var err error
-		userID, err = h.validateToken(token)
-		if err != nil {
-			h.WriteJSON(w, http.StatusUnauthorized, &Response{Status: "error", Error: "Invalid token: " + err.Error()})
-			return
-		}
-	}
-
-	if userID == "" {
-		h.WriteJSON(w, http.StatusBadRequest, &Response{Status: "error", Error: "user_id or token is required"})
+	userID, ok := ctx.Value("user_id").(string)
+	if !ok || userID == "" {
+		h.WriteJSON(w, http.StatusUnauthorized, &Response{Status: "error", Error: "Unauthorized"})
 		return
 	}
 
@@ -1524,20 +1504,9 @@ func (h *Handler) GetUser(w http.ResponseWriter, r *http.Request) {
 // UpdateUserSettings godoc
 func (h *Handler) UpdateUserSettings(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	userID := r.URL.Query().Get("user_id")
-	token := r.URL.Query().Get("token")
-
-	if userID == "" && token != "" {
-		var err error
-		userID, err = h.validateToken(token)
-		if err != nil {
-			h.WriteJSON(w, http.StatusUnauthorized, &Response{Status: "error", Error: "Invalid token: " + err.Error()})
-			return
-		}
-	}
-
-	if userID == "" {
-		h.WriteJSON(w, http.StatusBadRequest, &Response{Status: "error", Error: "user_id or token is required"})
+	userID, ok := ctx.Value("user_id").(string)
+	if !ok || userID == "" {
+		h.WriteJSON(w, http.StatusUnauthorized, &Response{Status: "error", Error: "Unauthorized"})
 		return
 	}
 
@@ -1612,60 +1581,16 @@ func (h *Handler) Health(w http.ResponseWriter, r *http.Request) {
 	h.WriteJSON(w, http.StatusOK, &Response{Status: "ok"})
 }
 
-func (h *Handler) validateToken(tokenString string) (string, error) {
-	// Dev mode bypass: allow test-user without JWT validation
-	if h.isDev && tokenString == "test-user" {
-		return "test-user", nil
-	}
-
-	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-		}
-		return h.jwtSecret, nil
-	})
-
-	if err != nil {
-		return "", err
-	}
-
-	if !token.Valid {
-		return "", fmt.Errorf("invalid token")
-	}
-
-	claims, ok := token.Claims.(jwt.MapClaims)
-	if !ok {
-		return "", fmt.Errorf("invalid token claims")
-	}
-
-	userID, ok := claims["sub"].(string)
-	if !ok || userID == "" {
-		return "", fmt.Errorf("invalid user ID in token")
-	}
-
-	return userID, nil
-}
-
 // HandleGetUserAggregate returns all user settings in one response
 func (h *Handler) HandleGetUserAggregate(w http.ResponseWriter, r *http.Request) {
-	userID := r.URL.Query().Get("user_id")
-	token := r.URL.Query().Get("token")
-
-	if userID == "" && token != "" {
-		var err error
-		userID, err = h.validateToken(token)
-		if err != nil {
-			h.WriteJSON(w, http.StatusUnauthorized, &Response{Status: "error", Error: "Invalid token: " + err.Error()})
-			return
-		}
-	}
-
-	if userID == "" {
-		h.WriteJSON(w, http.StatusBadRequest, &Response{Status: "error", Error: "user_id or token is required"})
+	ctx := r.Context()
+	userID, ok := ctx.Value("user_id").(string)
+	if !ok || userID == "" {
+		h.WriteJSON(w, http.StatusUnauthorized, &Response{Status: "error", Error: "Unauthorized"})
 		return
 	}
 
-	settings, err := h.getUserAggregateUC.Execute(userID)
+	settings, err := h.getUserAggregateUC.Execute(ctx, userID)
 	if err != nil {
 		h.WriteJSON(w, http.StatusInternalServerError, &Response{Status: "error", Error: err.Error()})
 		return
@@ -1676,20 +1601,10 @@ func (h *Handler) HandleGetUserAggregate(w http.ResponseWriter, r *http.Request)
 
 // HandleUpdateUserAggregate updates all user settings
 func (h *Handler) HandleUpdateUserAggregate(w http.ResponseWriter, r *http.Request) {
-	userID := r.URL.Query().Get("user_id")
-	token := r.URL.Query().Get("token")
-
-	if userID == "" && token != "" {
-		var err error
-		userID, err = h.validateToken(token)
-		if err != nil {
-			h.WriteJSON(w, http.StatusUnauthorized, &Response{Status: "error", Error: "Invalid token: " + err.Error()})
-			return
-		}
-	}
-
-	if userID == "" {
-		h.WriteJSON(w, http.StatusBadRequest, &Response{Status: "error", Error: "user_id or token is required"})
+	ctx := r.Context()
+	userID, ok := ctx.Value("user_id").(string)
+	if !ok || userID == "" {
+		h.WriteJSON(w, http.StatusUnauthorized, &Response{Status: "error", Error: "Unauthorized"})
 		return
 	}
 
@@ -1715,112 +1630,147 @@ func RegisterRoutes(
 	pricingHandler *PricingHandler,
 	reportHandler *ReportHandler,
 	shortLinkHandler *ShortLinkHandler,
+	adminAuthHandler *AdminAuthHandler,
+	adminAnalyticsHandler *AdminAnalyticsHandler,
 ) {
-	// User endpoints
+	// --- Public Endpoints ---
+	mux.HandleFunc("GET /health", handler.Health)
 	mux.HandleFunc("POST /api/users/auto-signup", handler.AutoSignup)
-	mux.HandleFunc("GET /api/user", handler.GetUser)
-	mux.HandleFunc("GET /api/user/aggregate", handler.HandleGetUserAggregate)
-	mux.HandleFunc("PUT /api/user/aggregate", handler.HandleUpdateUserAggregate)
-	mux.HandleFunc("PUT /api/user/settings", handler.UpdateUserSettings)
-
-	// Currency endpoints
 	mux.HandleFunc("GET /api/currencies", handler.GetCurrencies)
 
-	// Expense endpoints
-	mux.HandleFunc("POST /api/expenses/parse", handler.ParseExpenses)
-	mux.HandleFunc("POST /api/expenses", handler.CreateExpense)
-	mux.HandleFunc("PUT /api/expenses", handler.UpdateExpense)
-	mux.HandleFunc("DELETE /api/expenses", handler.DeleteExpense)
-	mux.HandleFunc("GET /api/expenses", handler.GetExpenses)
-	mux.HandleFunc("GET /api/expenses/search", handler.SearchExpenses)
-	mux.HandleFunc("GET /api/expenses/filter", handler.FilterExpenses)
-
-	// Category endpoints
-	mux.HandleFunc("POST /api/categories", handler.CreateCategory)
-	mux.HandleFunc("PUT /api/categories", handler.UpdateCategory)
-	mux.HandleFunc("DELETE /api/categories", handler.DeleteCategory)
-	mux.HandleFunc("GET /api/categories", handler.GetCategories)
-	mux.HandleFunc("GET /api/categories/list", handler.ListCategories)
-
-	// User category endpoints
-	mux.HandleFunc("GET /api/user/categories", handler.ListCategories)
-	mux.HandleFunc("POST /api/user/categories", handler.CreateCategory)
-	mux.HandleFunc("PUT /api/user/categories", handler.UpdateCategory)
-	mux.HandleFunc("DELETE /api/user/categories", handler.DeleteCategory)
-	mux.HandleFunc("POST /api/user/categories/merge", handler.MergeCategories)
-
-	// Recurring expense endpoints
-	mux.HandleFunc("POST /api/recurring", handler.CreateRecurring)
-	mux.HandleFunc("GET /api/recurring", handler.ListRecurring)
-	mux.HandleFunc("PUT /api/recurring", handler.UpdateRecurring)
-	mux.HandleFunc("DELETE /api/recurring", handler.DeleteRecurring)
-	mux.HandleFunc("GET /api/recurring/upcoming", handler.GetUpcomingRecurring)
-	mux.HandleFunc("POST /api/recurring/process", handler.ProcessRecurring)
-
-	// Notification endpoints
-	mux.HandleFunc("POST /api/notifications", handler.CreateNotification)
-	mux.HandleFunc("GET /api/notifications", handler.ListNotifications)
-	mux.HandleFunc("PUT /api/notifications", handler.MarkNotificationAsRead)
-	mux.HandleFunc("PUT /api/notifications/mark-all", handler.MarkAllNotificationsAsRead)
-	mux.HandleFunc("DELETE /api/notifications", handler.DeleteNotification)
-	mux.HandleFunc("GET /api/notifications/preferences", handler.GetNotificationPreferences)
-	mux.HandleFunc("PUT /api/notifications/preferences", handler.UpdateNotificationPreferences)
-
-	// Archive endpoints
-	mux.HandleFunc("POST /api/archives", handler.CreateArchive)
-	mux.HandleFunc("GET /api/archives", handler.ListArchives)
-	mux.HandleFunc("GET /api/archives/stats", handler.GetArchiveStats)
-	mux.HandleFunc("GET /api/archives/details", handler.GetArchiveDetails)
-	mux.HandleFunc("POST /api/archives/restore", handler.RestoreArchive)
-	mux.HandleFunc("POST /api/archives/purge", handler.PurgeArchive)
-	mux.HandleFunc("POST /api/archives/export", handler.ExportArchive)
-
-	// Report endpoints
-	mux.HandleFunc("POST /api/reports/generate", handler.GenerateReport)
-	if reportHandler != nil {
-		mux.HandleFunc("GET /api/reports/summary", reportHandler.GetReportSummary)
-	}
-
-	// Short link endpoint
 	if shortLinkHandler != nil {
 		mux.HandleFunc("GET /r/{id}", shortLinkHandler.HandleRedirect)
 	}
 
-	// Budget endpoints
-	mux.HandleFunc("GET /api/budgets/status", handler.GetBudgetStatus)
-	mux.HandleFunc("GET /api/budgets/compare", handler.CompareToBudget)
-
-	// Export endpoints
-	mux.HandleFunc("GET /api/export/expenses", handler.ExportExpenses)
-	mux.HandleFunc("GET /api/export/summary", handler.ExportSummary)
-
-	// Metrics endpoints
-	mux.HandleFunc("GET /api/metrics/dau", handler.GetMetricsDAU)
-	mux.HandleFunc("GET /api/metrics/expenses-summary", handler.GetMetricsExpenses)
-	mux.HandleFunc("GET /api/metrics/growth", handler.GetMetricsGrowth)
-	mux.HandleFunc("POST /api/exchange-rates/refresh", handler.RefreshExchangeRates)
-
-	// AI Cost endpoints
-	if aiCostHandler != nil {
-		mux.HandleFunc("GET /api/metrics/ai-costs", aiCostHandler.GetAICostMetrics)
-		mux.HandleFunc("GET /api/metrics/ai-costs/summary", aiCostHandler.GetAICostSummary)
-		mux.HandleFunc("GET /api/metrics/ai-costs/daily", aiCostHandler.GetAICostDaily)
-		mux.HandleFunc("GET /api/metrics/ai-costs/by-operation", aiCostHandler.GetAICostByOperation)
-		mux.HandleFunc("GET /api/metrics/ai-costs/top-users", aiCostHandler.GetAICostTopUsers)
+	// --- Middleware Helpers ---
+	withAuth := func(h http.HandlerFunc) http.Handler {
+		return handler.AuthMiddleware(h)
+	}
+	withAdmin := func(h http.HandlerFunc) http.Handler {
+		return handler.AdminMiddleware(h)
 	}
 
-	// Pricing endpoints
-	if pricingHandler != nil {
-		mux.HandleFunc("POST /api/pricing/sync", pricingHandler.SyncPricing)
-		mux.HandleFunc("GET /api/pricing", pricingHandler.ListPricing)
-		mux.HandleFunc("POST /api/pricing", pricingHandler.CreatePricing)
-		mux.HandleFunc("PUT /api/pricing/{id}", pricingHandler.UpdatePricing)
-		mux.HandleFunc("DELETE /api/pricing/{id}", pricingHandler.DeletePricing)
+	withAdminSession := func(h http.HandlerFunc) http.Handler {
+		return handler.AdminSessionMiddleware(h)
 	}
 
-	// Legal endpoints
+	// --- Admin Auth Endpoints (Bearer Token for UI) ---
+	if adminAuthHandler != nil {
+		mux.HandleFunc("POST /api/admin/auth/login", adminAuthHandler.Login)
+		mux.HandleFunc("GET /api/admin/auth/verify", adminAuthHandler.Verify)
+		mux.HandleFunc("POST /api/admin/auth/logout", adminAuthHandler.Logout)
+
+		if adminAnalyticsHandler != nil {
+			mux.Handle("GET /api/admin/analytics/overview", withAdminSession(adminAnalyticsHandler.Overview))
+		}
+	}
+
+	// --- User Endpoints (Authenticated) ---
+	// User
+	mux.Handle("GET /api/user", withAuth(handler.GetUser))
+	mux.Handle("GET /api/user/aggregate", withAuth(handler.HandleGetUserAggregate))
+	mux.Handle("PUT /api/user/aggregate", withAuth(handler.HandleUpdateUserAggregate))
+	mux.Handle("PUT /api/user/settings", withAuth(handler.UpdateUserSettings))
+
+	// Categories
+	mux.Handle("GET /api/categories", withAuth(handler.GetCategories))
+	mux.Handle("POST /api/categories", withAuth(handler.CreateCategory))
+	mux.Handle("PUT /api/categories", withAuth(handler.UpdateCategory))
+	mux.Handle("DELETE /api/categories", withAuth(handler.DeleteCategory))
+	mux.Handle("GET /api/categories/list", withAuth(handler.ListCategories))
+
+	// User Categories (Legacy/Duplicate paths?)
+	mux.Handle("GET /api/user/categories", withAuth(handler.ListCategories))
+	mux.Handle("POST /api/user/categories", withAuth(handler.CreateCategory))
+	mux.Handle("PUT /api/user/categories", withAuth(handler.UpdateCategory))
+	mux.Handle("DELETE /api/user/categories", withAuth(handler.DeleteCategory))
+	mux.Handle("POST /api/user/categories/merge", withAuth(handler.MergeCategories))
+
+	// Expenses
+	mux.Handle("GET /api/expenses", withAuth(handler.GetExpenses))
+	mux.Handle("POST /api/expenses", withAuth(handler.CreateExpense))
+	mux.Handle("PUT /api/expenses", withAuth(handler.UpdateExpense))
+	mux.Handle("DELETE /api/expenses", withAuth(handler.DeleteExpense))
+	mux.Handle("POST /api/expenses/parse", withAuth(handler.ParseExpenses))
+	mux.Handle("GET /api/expenses/search", withAuth(handler.SearchExpenses))
+	mux.Handle("GET /api/expenses/filter", withAuth(handler.FilterExpenses))
+
+	// Recurring
+	mux.Handle("GET /api/recurring", withAuth(handler.ListRecurring))
+	mux.Handle("POST /api/recurring", withAuth(handler.CreateRecurring))
+	mux.Handle("PUT /api/recurring", withAuth(handler.UpdateRecurring))
+	mux.Handle("DELETE /api/recurring", withAuth(handler.DeleteRecurring))
+	mux.Handle("GET /api/recurring/upcoming", withAuth(handler.GetUpcomingRecurring))
+	mux.Handle("POST /api/recurring/process", withAuth(handler.ProcessRecurring))
+
+	// Notifications
+	mux.Handle("GET /api/notifications", withAuth(handler.ListNotifications))
+	mux.Handle("POST /api/notifications", withAuth(handler.CreateNotification))
+	mux.Handle("PUT /api/notifications", withAuth(handler.MarkNotificationAsRead))
+	mux.Handle("PUT /api/notifications/mark-all", withAuth(handler.MarkAllNotificationsAsRead))
+	mux.Handle("DELETE /api/notifications", withAuth(handler.DeleteNotification))
+	mux.Handle("GET /api/notifications/preferences", withAuth(handler.GetNotificationPreferences))
+	mux.Handle("PUT /api/notifications/preferences", withAuth(handler.UpdateNotificationPreferences))
+
+	// Archives
+	mux.Handle("POST /api/archives", withAuth(handler.CreateArchive))
+	mux.Handle("GET /api/archives", withAuth(handler.ListArchives))
+	mux.Handle("GET /api/archives/stats", withAuth(handler.GetArchiveStats))
+	mux.Handle("GET /api/archives/details", withAuth(handler.GetArchiveDetails))
+	mux.Handle("POST /api/archives/restore", withAuth(handler.RestoreArchive))
+	mux.Handle("POST /api/archives/purge", withAuth(handler.PurgeArchive))
+	mux.Handle("POST /api/archives/export", withAuth(handler.ExportArchive))
+
+	// Budgets
+	mux.Handle("GET /api/budgets/status", withAuth(handler.GetBudgetStatus))
+	mux.Handle("GET /api/budgets/compare", withAuth(handler.CompareToBudget))
+
+	// Export
+	mux.Handle("GET /api/export/expenses", withAuth(handler.ExportExpenses))
+	mux.Handle("GET /api/export/summary", withAuth(handler.ExportSummary))
+
+	// Reports
+	mux.Handle("POST /api/reports/generate", withAuth(handler.GenerateReport))
+
+	// Currencies (Public)
+	// mux.HandleFunc("GET /api/currencies", handler.GetCurrencies) - moved to Public group above
+
+
+	// Legal/Polices - usually public
 	mux.HandleFunc("GET /api/policies/{key}", handler.GetPolicy)
 
-	// Health endpoint
-	mux.HandleFunc("/health", handler.Health)
+	// --- Admin Endpoints (Protected by API Key) ---
+	mux.Handle("GET /api/metrics/dau", withAdmin(handler.GetMetricsDAU))
+	mux.Handle("GET /api/metrics/expenses-summary", withAdmin(handler.GetMetricsExpenses))
+	mux.Handle("GET /api/metrics/growth", withAdmin(handler.GetMetricsGrowth))
+	mux.Handle("POST /api/exchange-rates/refresh", withAdmin(handler.RefreshExchangeRates))
+
+	// AI Cost
+	if aiCostHandler != nil {
+		mux.Handle("GET /api/metrics/ai-costs", withAdmin(aiCostHandler.GetAICostMetrics))
+		mux.Handle("GET /api/metrics/ai-costs/summary", withAdmin(aiCostHandler.GetAICostSummary))
+		mux.Handle("GET /api/metrics/ai-costs/daily", withAdmin(aiCostHandler.GetAICostDaily))
+		mux.Handle("GET /api/metrics/ai-costs/by-operation", withAdmin(aiCostHandler.GetAICostByOperation))
+		mux.Handle("GET /api/metrics/ai-costs/top-users", withAdmin(aiCostHandler.GetAICostTopUsers))
+	}
+
+	// Pricing
+	if pricingHandler != nil {
+		mux.Handle("POST /api/pricing/sync", withAdmin(pricingHandler.SyncPricing))
+		mux.Handle("GET /api/pricing", withAdmin(pricingHandler.ListPricing))
+		mux.Handle("POST /api/pricing", withAdmin(pricingHandler.CreatePricing))
+		mux.Handle("PUT /api/pricing/{id}", withAdmin(pricingHandler.UpdatePricing))
+		mux.Handle("DELETE /api/pricing/{id}", withAdmin(pricingHandler.DeletePricing))
+	}
+
+	// Reports (Secure Link)
+	if reportHandler != nil {
+		// Used for viewing the report via shared link?
+		// "GET /api/reports/summary": reportHandler.GetReportSummary
+		// This likely corresponds to the short link redirect target?
+		// If it's for the public view of the report, it shouldn't be auth-protected by user token.
+		// It might be protected by a signed URL token (handled inside).
+		// So I'll leave it Public/Ungrouped (no middleware).
+		mux.HandleFunc("GET /api/reports/summary", reportHandler.GetReportSummary)
+	}
 }

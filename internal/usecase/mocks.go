@@ -190,6 +190,16 @@ func (m *MockExpenseRepository) ReassignExpenses(ctx context.Context, fromCatego
 	return count, nil
 }
 
+func (m *MockExpenseRepository) GetBySourceMessageID(ctx context.Context, messageID string) ([]*domain.Expense, error) {
+	var result []*domain.Expense
+	for _, exp := range m.expenses {
+		if exp.SourceMessageID != nil && strings.HasPrefix(*exp.SourceMessageID, messageID+"_") {
+			result = append(result, exp)
+		}
+	}
+	return result, nil
+}
+
 // MockAIService is a mock implementation for testing
 type MockAIService struct {
 	shouldFail bool

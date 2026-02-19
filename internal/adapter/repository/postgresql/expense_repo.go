@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/riverlin/aiexpense/internal/domain"
@@ -304,4 +305,49 @@ func (r *ExpenseRepository) ReassignExpenses(ctx context.Context, fromCategoryID
 		return 0, err
 	}
 	return int(affected), nil
+}
+
+func (r *ExpenseRepository) GetBySourceMessageID(ctx context.Context, messageID string) ([]*domain.Expense, error) {
+	const query = `
+		SELECT id, user_id, description, original_amount, currency, home_amount, home_currency, exchange_rate, category_id, account, expense_date, created_at, updated_at
+		FROM expenses
+		WHERE source_message_id LIKE $1
+		ORDER BY created_at ASC
+	`
+
+	// Look for expenses with source_message_id starting with messageID + "_"
+	// Escape wildcards in messageID
+	escapedMessageID := strings.ReplaceAll(messageID, "_", "\\_")
+	escapedMessageID = strings.ReplaceAll(escapedMessageID, "%", "\\%")
+	pattern := escapedMessageID + "_%"
+	rows, err := r.db.QueryContext(ctx, query, pattern)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var expenses []*domain.Expense
+	for rows.Next() {
+		expense := &domain.Expense{}
+		if err := rows.Scan(
+			&expense.ID,
+			&expense.UserID,
+			&expense.Description,
+			&expense.OriginalAmount,
+			&expense.Currency,
+			&expense.HomeAmount,
+			&expense.HomeCurrency,
+			&expense.ExchangeRate,
+			&expense.CategoryID,
+			&expense.Account,
+			&expense.ExpenseDate,
+			&expense.CreatedAt,
+			&expense.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		hydrateExpenseAmounts(expense)
+		expenses = append(expenses, expense)
+	}
+	return expenses, rows.Err()
 }

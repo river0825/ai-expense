@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/riverlin/aiexpense/internal/domain"
+	"github.com/riverlin/aiexpense/internal/pkg/jwtutil"
 )
 
 var (
@@ -18,16 +18,16 @@ var (
 )
 
 type AdminLoginUseCase struct {
-	repo      domain.AdminAuthRepository
-	jwtSecret []byte
-	ttl       time.Duration
-	now       func() time.Time
+	repo         domain.AdminAuthRepository
+	tokenManager *jwtutil.TokenManager
+	ttl          time.Duration
+	now          func() time.Time
 }
 
 type AdminVerifyTokenUseCase struct {
-	repo      domain.AdminAuthRepository
-	jwtSecret []byte
-	now       func() time.Time
+	repo         domain.AdminAuthRepository
+	tokenManager *jwtutil.TokenManager
+	now          func() time.Time
 }
 
 type AdminLogoutUseCase struct {
@@ -44,20 +44,20 @@ type AdminTokenClaims struct {
 	ExpiresAt time.Time
 }
 
-func NewAdminLoginUseCase(repo domain.AdminAuthRepository, jwtSecret string) *AdminLoginUseCase {
+func NewAdminLoginUseCase(repo domain.AdminAuthRepository, tokenManager *jwtutil.TokenManager) *AdminLoginUseCase {
 	return &AdminLoginUseCase{
-		repo:      repo,
-		jwtSecret: []byte(jwtSecret),
-		ttl:       24 * time.Hour,
-		now:       time.Now,
+		repo:         repo,
+		tokenManager: tokenManager,
+		ttl:          24 * time.Hour,
+		now:          time.Now,
 	}
 }
 
-func NewAdminVerifyTokenUseCase(repo domain.AdminAuthRepository, jwtSecret string) *AdminVerifyTokenUseCase {
+func NewAdminVerifyTokenUseCase(repo domain.AdminAuthRepository, tokenManager *jwtutil.TokenManager) *AdminVerifyTokenUseCase {
 	return &AdminVerifyTokenUseCase{
-		repo:      repo,
-		jwtSecret: []byte(jwtSecret),
-		now:       time.Now,
+		repo:         repo,
+		tokenManager: tokenManager,
+		now:          time.Now,
 	}
 }
 
@@ -73,14 +73,7 @@ func (u *AdminLoginUseCase) Execute(ctx context.Context, username, password stri
 	now := u.now().UTC()
 	expiresAt := now.Add(u.ttl)
 
-	claims := jwt.RegisteredClaims{
-		Subject:   username,
-		ExpiresAt: jwt.NewNumericDate(expiresAt),
-		IssuedAt:  jwt.NewNumericDate(now),
-	}
-
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenString, err := token.SignedString(u.jwtSecret)
+	tokenString, err := u.tokenManager.GenerateUserToken(username, u.ttl)
 	if err != nil {
 		return nil, fmt.Errorf("sign token: %w", err)
 	}
@@ -98,25 +91,21 @@ func (u *AdminLoginUseCase) Execute(ctx context.Context, username, password stri
 }
 
 func (u *AdminVerifyTokenUseCase) Execute(ctx context.Context, tokenString string) (*AdminTokenClaims, error) {
-	claims := &jwt.RegisteredClaims{}
-	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, ErrInvalidAdminToken
-		}
-		return u.jwtSecret, nil
-	})
-	if err != nil || !token.Valid {
+	claims, err := u.tokenManager.ValidateToken(tokenString)
+	if err != nil {
 		return nil, ErrInvalidAdminToken
 	}
 
-	if claims.Subject == "" || claims.ExpiresAt == nil {
+	// Verify structure but we rely on session lookup
+	username, err := u.tokenManager.GetUserIDFromClaims(claims)
+	if err != nil {
 		return nil, ErrInvalidAdminToken
 	}
+	_ = username // Suppress unused error, or we could validating against session later
 
+
+	// ValidateToken checks expiration, but we need to check session in DB
 	now := u.now().UTC()
-	if claims.ExpiresAt.Time.Before(now) {
-		return nil, ErrInvalidAdminToken
-	}
 
 	session, err := u.repo.GetSessionByTokenHash(ctx, hashToken(tokenString))
 	if err != nil {

@@ -3,6 +3,8 @@ package usecase
 import (
 	"context"
 	"fmt"
+	"io"
+	"log/slog"
 	"testing"
 	"time"
 
@@ -54,7 +56,10 @@ func TestProcessMessageUseCase_Execute(t *testing.T) {
 		creator := new(mockCreateExpense)
 		reportLink := new(mockGenerateReportLink)
 
-		uc := NewProcessMessageUseCase(autoSignup, parser, creator, nil, reportLink, nil)
+		expenseRepo := NewMockExpenseRepository()
+
+		logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+		uc := NewProcessMessageUseCase(autoSignup, parser, creator, nil, reportLink, nil, expenseRepo, logger)
 
 		// Expectations
 		autoSignup.On("Execute", mock.Anything, "user1", "terminal").Return(nil)
@@ -109,7 +114,10 @@ func TestProcessMessageUseCase_Execute(t *testing.T) {
 		creator := new(mockCreateExpense)
 		reportLink := new(mockGenerateReportLink)
 
-		uc := NewProcessMessageUseCase(autoSignup, parser, creator, nil, reportLink, nil)
+		expenseRepo := NewMockExpenseRepository()
+
+		logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+		uc := NewProcessMessageUseCase(autoSignup, parser, creator, nil, reportLink, nil, expenseRepo, logger)
 
 		// Expectations
 		autoSignup.On("Execute", mock.Anything, "user1", "terminal").Return(nil)
@@ -123,5 +131,57 @@ func TestProcessMessageUseCase_Execute(t *testing.T) {
 		assert.NoError(t, err) // Should not return error to caller, but handle it in response
 		assert.Equal(t, domain.ResponseTypeError, resp.Type)
 		assert.Contains(t, resp.Text, "Failed to parse message")
+	})
+
+	t.Run("Success - Idempotency (Duplicate Message)", func(t *testing.T) {
+		// Setup
+		autoSignup := new(mockAutoSignup)
+		parser := new(mockParseConversation)
+		creator := new(mockCreateExpense)
+		reportLink := new(mockGenerateReportLink)
+		expenseRepo := NewMockExpenseRepository()
+
+		// Helper to create string pointer
+		strPtr := func(s string) *string { return &s }
+
+		// Pre-populate duplicate expense
+		existingExpense := &domain.Expense{
+			ID:              "exp_1",
+			UserID:          "user1",
+			Description:     "Lunch",
+			OriginalAmount:  100,
+			Currency:        "TWD",
+			HomeAmount:      100,
+			HomeCurrency:    "TWD",
+			SourceMessageID: strPtr("msg_123_0"),
+			Account:         "Taishin",
+			ExpenseDate:     time.Now(),
+		}
+		expenseRepo.Create(context.Background(), existingExpense)
+
+		logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+		uc := NewProcessMessageUseCase(autoSignup, parser, creator, nil, reportLink, nil, expenseRepo, logger)
+
+		// Expectations
+		autoSignup.On("Execute", mock.Anything, "user1", "terminal").Return(nil)
+		// Parser and creator should NOT be called
+
+		// Execute
+		msg := &domain.UserMessage{
+			UserID:    "user1",
+			MessageID: "msg_123",
+			Content:   "Lunch 100 Taishin",
+			Source:    "terminal",
+		}
+		resp, err := uc.Execute(context.Background(), msg)
+
+		// Verify
+		assert.NoError(t, err)
+		assert.Equal(t, domain.ResponseTypeExpense, resp.Type)
+		assert.Contains(t, resp.Text, "Recorded 1 expense")
+		assert.Contains(t, resp.Text, "Lunch")
+		// Verify no extra calls
+		parser.AssertNotCalled(t, "Execute", mock.Anything, mock.Anything, mock.Anything)
+		creator.AssertNotCalled(t, "Execute", mock.Anything, mock.Anything)
 	})
 }

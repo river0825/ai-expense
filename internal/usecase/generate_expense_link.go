@@ -5,36 +5,31 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/riverlin/aiexpense/internal/domain"
+	"github.com/riverlin/aiexpense/internal/pkg/jwtutil"
 )
 
 type GenerateExpenseLinkUseCase struct {
 	shortLinkRepo domain.ShortLinkRepository
-	jwtSecret     string
+	tokenManager  *jwtutil.TokenManager
 	baseURL       string
 }
 
 func NewGenerateExpenseLinkUseCase(
 	shortLinkRepo domain.ShortLinkRepository,
-	jwtSecret string,
+	tokenManager *jwtutil.TokenManager,
 	baseURL string,
 ) *GenerateExpenseLinkUseCase {
 	return &GenerateExpenseLinkUseCase{
 		shortLinkRepo: shortLinkRepo,
-		jwtSecret:     jwtSecret,
+		tokenManager:  tokenManager,
 		baseURL:       baseURL,
 	}
 }
 
 func (u *GenerateExpenseLinkUseCase) Execute(ctx context.Context, userID, expenseID string) (string, error) {
 	// Generate JWT token for the user
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"user_id": userID,
-		"exp":     time.Now().Add(7 * 24 * time.Hour).Unix(), // 7 days expiration
-	})
-
-	tokenString, err := token.SignedString([]byte(u.jwtSecret))
+	tokenString, err := u.tokenManager.GenerateUserToken(userID, 7*24*time.Hour)
 	if err != nil {
 		return "", fmt.Errorf("failed to sign token: %w", err)
 	}

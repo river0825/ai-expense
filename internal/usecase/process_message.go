@@ -3,7 +3,7 @@ package usecase
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -18,6 +18,8 @@ type ProcessMessageUseCase struct {
 	getExpenses        GetExpenses
 	generateReportLink domain.GenerateReportLinkUseCase
 	interactionRepo    domain.InteractionLogRepository
+	expenseRepo        domain.ExpenseRepository
+	logger             *slog.Logger
 }
 
 // Interfaces to break dependency cycles (if needed) or mock easier
@@ -45,6 +47,8 @@ func NewProcessMessageUseCase(
 	getExpenses GetExpenses,
 	generateReportLink domain.GenerateReportLinkUseCase,
 	interactionRepo domain.InteractionLogRepository,
+	expenseRepo domain.ExpenseRepository,
+	logger *slog.Logger,
 ) *ProcessMessageUseCase {
 	return &ProcessMessageUseCase{
 		autoSignup:         autoSignup,
@@ -53,6 +57,8 @@ func NewProcessMessageUseCase(
 		getExpenses:        getExpenses,
 		generateReportLink: generateReportLink,
 		interactionRepo:    interactionRepo,
+		expenseRepo:        expenseRepo,
+		logger:             logger,
 	}
 }
 
@@ -123,6 +129,45 @@ func (u *ProcessMessageUseCase) Execute(ctx context.Context, msg *domain.UserMes
 		}, nil
 	}
 
+	// 1.8 Check for duplicate message (Idempotency)
+	if msg.MessageID != "" && u.expenseRepo != nil {
+		existingExpenses, err := u.expenseRepo.GetBySourceMessageID(ctx, msg.MessageID)
+		if err != nil {
+			u.logger.Warn("Failed to check for duplicate message", "error", err)
+		} else if len(existingExpenses) > 0 {
+			u.logger.Info("Duplicate message detected", "message_id", msg.MessageID, "count", len(existingExpenses))
+			systemPrompt = "IDEMPOTENCY_CHECK"
+			rawResponse = fmt.Sprintf("Skipped AI processing due to duplicate message (found %d existing expenses)", len(existingExpenses))
+
+			// Construct response from existing expenses
+			createdExpenses := []map[string]interface{}{}
+			totalAmount := 0.0
+
+			for _, exp := range existingExpenses {
+				totalAmount += exp.HomeAmount
+				createdExpenses = append(createdExpenses, map[string]interface{}{
+					"id":              exp.ID,
+					"description":     exp.Description,
+					"original_amount": exp.OriginalAmount,
+					"currency":        exp.Currency,
+					"home_amount":     exp.HomeAmount,
+					"home_currency":   exp.HomeCurrency,
+					"category":        "", // Category name not readily available, skipping
+					"date":            exp.ExpenseDate,
+					"account":         exp.Account,
+				})
+			}
+
+			// Format response (similar to step 4)
+			botReply = u.formatExpenseResponse(createdExpenses, totalAmount)
+			return &domain.MessageResponse{
+				Type: domain.ResponseTypeExpense,
+				Text: botReply,
+				Data: createdExpenses,
+			}, nil
+		}
+	}
+
 	// 2. Parse Message
 	var parseResult *domain.ParseResult
 	parseResult, err = u.parseConversation.Execute(ctx, msg.Content, msg.UserID)
@@ -170,7 +215,7 @@ func (u *ProcessMessageUseCase) Execute(ctx context.Context, msg *domain.UserMes
 
 		resp, err := u.createExpense.Execute(ctx, req)
 		if err != nil {
-			log.Printf("ERROR: Failed to create expense for user %s: %v", msg.UserID, err)
+			u.logger.Error("Failed to create expense", "user_id", msg.UserID, "error", err)
 			continue
 		}
 
@@ -193,10 +238,20 @@ func (u *ProcessMessageUseCase) Execute(ctx context.Context, msg *domain.UserMes
 	}
 
 	// 4. Format Response
+	botReply = u.formatExpenseResponse(createdExpenses, totalAmount)
+
+	return &domain.MessageResponse{
+		Type: domain.ResponseTypeExpense,
+		Text: botReply,
+		Data: createdExpenses,
+	}, nil
+}
+
+func (u *ProcessMessageUseCase) formatExpenseResponse(expenses []map[string]interface{}, totalAmount float64) string {
 	var sb strings.Builder
-	primaryCurrency := getPrimaryCurrency(createdExpenses)
-	sb.WriteString(fmt.Sprintf("✓ Recorded %d expense(s), total: %s %s", len(createdExpenses), formatAmount(totalAmount), primaryCurrency))
-	for _, exp := range createdExpenses {
+	primaryCurrency := getPrimaryCurrency(expenses)
+	sb.WriteString(fmt.Sprintf("✓ Recorded %d expense(s), total: %s %s", len(expenses), formatAmount(totalAmount), primaryCurrency))
+	for _, exp := range expenses {
 		dateStr := ""
 		if d, ok := exp["date"].(time.Time); ok {
 			dateStr = d.Format("2006-01-02")
@@ -210,7 +265,13 @@ func (u *ProcessMessageUseCase) Execute(ctx context.Context, msg *domain.UserMes
 		if homeAmount == 0 {
 			homeAmount = asFloat(exp["original_amount"])
 		}
-		line := fmt.Sprintf("\n• [%s] %s (%s)", dateStr, exp["description"], exp["category"])
+		description, _ := exp["description"].(string)
+		category, _ := exp["category"].(string)
+
+		line := fmt.Sprintf("\n• [%s] %s", dateStr, description)
+		if category != "" {
+			line = fmt.Sprintf("%s (%s)", line, category)
+		}
 		if account != "" {
 			line = fmt.Sprintf("%s [%s]", line, account)
 		}
@@ -222,14 +283,7 @@ func (u *ProcessMessageUseCase) Execute(ctx context.Context, msg *domain.UserMes
 		}
 		sb.WriteString(line)
 	}
-
-	botReply = sb.String()
-
-	return &domain.MessageResponse{
-		Type: domain.ResponseTypeExpense,
-		Text: botReply,
-		Data: createdExpenses,
-	}, nil
+	return sb.String()
 }
 
 func (u *ProcessMessageUseCase) isReportIntent(text string) bool {

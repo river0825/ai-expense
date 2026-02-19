@@ -162,18 +162,12 @@
 
       <button
         id="submitBtn"
-        class="mt-4 w-full rounded-xl bg-primary hover:bg-amber-600 text-white font-semibold py-3 transition-colors"
+        class="w-full rounded-xl bg-primary hover:bg-amber-600 text-white font-semibold py-3 transition-colors"
         data-i18n="cta"
       >
         記帳
       </button>
-      <button
-        id="reportBtn"
-        class="secondary-btn mt-3 w-full rounded-xl font-semibold py-3 transition-colors"
-        data-i18n="reportCta"
-      >
-        查看帳務總覽
-      </button>
+      
       <label for="autoOpenChatbot" class="mt-4 flex items-start gap-3 rounded-xl border border-[var(--line)] p-3">
         <input
           id="autoOpenChatbot"
@@ -208,6 +202,7 @@
   </main>
 
   <script>
+    console.log("start")
     const lineMessageBase = 'https://line.me/R/oaMessage/@979okton/?';
     const lineDesktopJoinUrl = 'https://line.me/R/ti/p/@979okton';
     const input = document.getElementById('expenseInput');
@@ -231,6 +226,7 @@
         subtitle: '直接送到 AI Chat bot',
         label: '記帳內容',
         cta: '記帳',
+        autoOpenBtn: '自動開啟 記帳',
         reportCta: '查看帳務總覽',
         'autoOpen.label': '每次進入都直接開啟聊天',
         'autoOpen.hint': '勾選後，下次開啟此頁會直接前往 AI Chat bot。',
@@ -247,6 +243,7 @@
         subtitle: 'Send directly to AI Chat bot',
         label: 'Expense Message',
         cta: 'Record',
+        autoOpenBtn: 'Auto Open Bot',
         reportCta: 'View Expense Overview',
         'autoOpen.label': 'Open chatbot immediately on every visit',
         'autoOpen.hint': 'When enabled, opening this page will immediately bring you to the AI chatbot.',
@@ -263,6 +260,7 @@
         subtitle: 'AI チャットボットへ直接送信',
         label: '記帳メッセージ',
         cta: '記帳する',
+        autoOpenBtn: '自動で開く',
         reportCta: '支出ダッシュボードを見る',
         'autoOpen.label': '毎回アクセス時にチャットをすぐ開く',
         'autoOpen.hint': '有効にすると、このページを開くたびに AI チャットボットへ移動します。',
@@ -279,6 +277,7 @@
         subtitle: 'Enviar directo al bot de AI',
         label: 'Mensaje de gasto',
         cta: 'Registrar',
+        autoOpenBtn: 'Abrir Auto',
         reportCta: 'Ver Resumen de Gastos',
         'autoOpen.label': 'Abrir el chatbot automáticamente en cada visita',
         'autoOpen.hint': 'Si está activado, al abrir esta página irás directo al chatbot de AI.',
@@ -332,6 +331,8 @@
         return;
       }
       input.value = '';
+      autoOpenChatbot.checked = true;
+      localStorage.setItem(autoOpenChatbotStorageKey, '1');
       openLineChat(message);
     });
 
@@ -371,7 +372,6 @@
     const stayOnQuickAdd = pageParams.get('stay') === '1';
     if (autoOpenEnabled && !stayOnQuickAdd) {
       openLineChat('');
-      return;
     }
 
     // Focus input on page entry for fastest capture flow.

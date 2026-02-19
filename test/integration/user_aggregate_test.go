@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -101,14 +102,15 @@ func TestGetUserAggregate(t *testing.T) {
 		nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
 		getUserAggregateUC,
 		nil,
-		nil, nil, nil, nil, nil, "", true, // isDev=true for test-user bypass
+		nil, // AdminVerifyTokenUseCase
+		nil, nil, nil, nil, nil, "", nil, true, // isDev=true for test-user bypass
 	)
 
 	// Make request
 	req := httptest.NewRequest("GET", "/api/user/aggregate?token=test-user", nil)
 	rr := httptest.NewRecorder()
 
-	handler.HandleGetUserAggregate(rr, req)
+	handler.AuthMiddleware(http.HandlerFunc(handler.HandleGetUserAggregate)).ServeHTTP(rr, req)
 
 	// Verify response
 	if rr.Code != http.StatusOK {
@@ -195,14 +197,16 @@ func TestUpdateUserAggregate(t *testing.T) {
 		nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
 		nil,
 		updateUserAggregateUC,
-		nil, nil, nil, nil, nil, "", true, // isDev=true for test-user bypass
+		nil, // AdminVerifyTokenUseCase
+		nil, nil, nil, nil, nil, "", nil, true, // isDev=true for test-user bypass
 	)
 
 	// Make request (simplified - just verify endpoint responds)
-	req := httptest.NewRequest("PUT", "/api/user/aggregate?token=test-user", nil)
+	body := strings.NewReader(`{"profile":{"locale":"en-US"}}`)
+	req := httptest.NewRequest("PUT", "/api/user/aggregate?token=test-user", body)
 	rr := httptest.NewRecorder()
 
-	handler.HandleUpdateUserAggregate(rr, req)
+	handler.AuthMiddleware(http.HandlerFunc(handler.HandleUpdateUserAggregate)).ServeHTTP(rr, req)
 
 	// For now, just verify the endpoint responds (implementation is TODO in usecase)
 	if rr.Code != http.StatusOK && rr.Code != http.StatusInternalServerError {

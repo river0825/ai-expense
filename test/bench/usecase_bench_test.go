@@ -71,6 +71,10 @@ func (r *BenchExpenseRepository) ReassignExpenses(ctx context.Context, fromCateg
 	return 0, nil
 }
 
+func (r *BenchExpenseRepository) GetBySourceMessageID(ctx context.Context, messageID string) ([]*domain.Expense, error) {
+	return []*domain.Expense{}, nil
+}
+
 type BenchUserRepository struct {
 	users map[string]*domain.User
 }

@@ -1,6 +1,8 @@
 package usecase
 
 import (
+	"context"
+
 	"github.com/riverlin/aiexpense/internal/domain"
 )
 
@@ -25,7 +27,28 @@ func NewGetUserAggregateUseCase(
 }
 
 // Execute fetches aggregated user data
-func (uc *GetUserAggregateUseCase) Execute(userID string) (*domain.AggregateSettings, error) {
-	// TODO: Implement fetching logic
-	return nil, nil
+func (uc *GetUserAggregateUseCase) Execute(ctx context.Context, userID string) (*domain.AggregateSettings, error) {
+	// Fetch user profile
+	user, err := uc.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Fetch categories
+	categories, err := uc.categoryRepo.GetByUserID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Fetch accounts
+	accounts, err := uc.accountRepo.GetByUserID(userID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &domain.AggregateSettings{
+		Profile:    user,
+		Categories: categories,
+		Accounts:   accounts,
+	}, nil
 }
