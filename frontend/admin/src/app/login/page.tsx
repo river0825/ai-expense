@@ -1,10 +1,19 @@
 'use client';
 
-import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import { setToken } from '../../lib/auth';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/admin';
+const getApiBaseUrl = () => {
+  const url = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/admin';
+  // Ensure the URL ends with /api/admin if not present
+  if (!url.endsWith('/api/admin')) {
+    return `${url.replace(/\/$/, '')}/api/admin`;
+  }
+  return url;
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 export default function LoginPage() {
   const router = useRouter();

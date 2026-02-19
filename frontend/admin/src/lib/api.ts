@@ -1,7 +1,18 @@
-import { AnalyticsResponse, AtRiskResponse, Metric, Period } from './types';
 import { getToken } from './auth';
+import { AnalyticsResponse, AtRiskResponse, Metric, Period } from './types';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/admin';
+
+const getTypeSafeApiBaseUrl = () => {
+  const url = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/admin';
+  // Ensure the URL ends with /api/admin if not present
+  if (!url.endsWith('/api/admin')) {
+    return `${url.replace(/\/$/, '')}/api/admin`;
+  }
+  return url;
+};
+
+const API_BASE_URL = getTypeSafeApiBaseUrl();
+
 
 class ApiError extends Error {
   constructor(public status: number, message: string) {
