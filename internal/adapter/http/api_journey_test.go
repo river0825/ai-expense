@@ -60,10 +60,12 @@ func Test_UserJourney_RecordExpenseAndEdit(t *testing.T) {
 		parseConversationUC,
 		createExpenseUC,
 		getExpensesUC,
+		nil,
 		generateReportLinkUC,
 		interactionRepo,
 		expenseRepo,
 		slog.Default(),
+		nil,
 	)
 
 	// Setup Handlers

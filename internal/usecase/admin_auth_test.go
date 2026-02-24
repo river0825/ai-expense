@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/riverlin/aiexpense/internal/domain"
+	"github.com/riverlin/aiexpense/internal/pkg/jwtutil"
 )
 
 type MockAdminAuthRepository struct {
@@ -15,37 +16,30 @@ func NewMockAdminAuthRepository() *MockAdminAuthRepository {
 	return &MockAdminAuthRepository{sessions: make(map[string]*domain.AdminSession)}
 }
 
-func (m *MockAdminAuthRepository) GetAdminByUsername(ctx context.Context, username string) (*domain.AdminCredentials, error) {
-	if username == "admin" {
-		return &domain.AdminCredentials{Username: "admin"}, nil
-	}
-	return nil, nil
-}
-
 func (m *MockAdminAuthRepository) CreateSession(ctx context.Context, session *domain.AdminSession) error {
-	m.sessions[session.ID] = session
+	m.sessions[session.TokenHash] = session
 	return nil
 }
 
-func (m *MockAdminAuthRepository) GetSessionByToken(ctx context.Context, token string) (*domain.AdminSession, error) {
-	for _, s := range m.sessions {
-		if s.Token == token {
-			return s, nil
-		}
+func (m *MockAdminAuthRepository) GetSessionByTokenHash(ctx context.Context, tokenHash string) (*domain.AdminSession, error) {
+	s, ok := m.sessions[tokenHash]
+	if !ok {
+		return nil, nil
 	}
-	return nil, nil
+	return s, nil
 }
 
-func (m *MockAdminAuthRepository) DeleteSession(ctx context.Context, sessionID string) error {
-	delete(m.sessions, sessionID)
+func (m *MockAdminAuthRepository) DeleteSessionByTokenHash(ctx context.Context, tokenHash string) error {
+	delete(m.sessions, tokenHash)
 	return nil
 }
 
 func TestLoginSuccess(t *testing.T) {
 	repo := NewMockAdminAuthRepository()
-	uc := NewLoginUseCase(repo, "test-secret")
+	tm := jwtutil.NewTokenManager("test-secret")
+	uc := NewAdminLoginUseCase(repo, tm)
 
-	resp, err := uc.Execute(context.Background(), LoginRequest{Username: "admin", Password: "admin123"})
+	resp, err := uc.Execute(context.Background(), "admin", "admin123")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -56,9 +50,10 @@ func TestLoginSuccess(t *testing.T) {
 
 func TestLoginInvalidCredentials(t *testing.T) {
 	repo := NewMockAdminAuthRepository()
-	uc := NewLoginUseCase(repo, "test-secret")
+	tm := jwtutil.NewTokenManager("test-secret")
+	uc := NewAdminLoginUseCase(repo, tm)
 
-	_, err := uc.Execute(context.Background(), LoginRequest{Username: "admin", Password: "wrong"})
+	_, err := uc.Execute(context.Background(), "admin", "wrong")
 	if err == nil {
 		t.Error("expected error")
 	}
@@ -66,10 +61,11 @@ func TestLoginInvalidCredentials(t *testing.T) {
 
 func TestVerifyValidToken(t *testing.T) {
 	repo := NewMockAdminAuthRepository()
-	loginUC := NewLoginUseCase(repo, "test-secret")
-	loginResp, _ := loginUC.Execute(context.Background(), LoginRequest{Username: "admin", Password: "admin123"})
+	tm := jwtutil.NewTokenManager("test-secret")
+	loginUC := NewAdminLoginUseCase(repo, tm)
+	loginResp, _ := loginUC.Execute(context.Background(), "admin", "admin123")
 
-	verifyUC := NewVerifyTokenUseCase(repo, "test-secret")
+	verifyUC := NewAdminVerifyTokenUseCase(repo, tm)
 	_, err := verifyUC.Execute(context.Background(), loginResp.Token)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -78,7 +74,8 @@ func TestVerifyValidToken(t *testing.T) {
 
 func TestVerifyInvalidToken(t *testing.T) {
 	repo := NewMockAdminAuthRepository()
-	verifyUC := NewVerifyTokenUseCase(repo, "test-secret")
+	tm := jwtutil.NewTokenManager("test-secret")
+	verifyUC := NewAdminVerifyTokenUseCase(repo, tm)
 
 	_, err := verifyUC.Execute(context.Background(), "invalid-token")
 	if err == nil {

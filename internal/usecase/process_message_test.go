@@ -104,8 +104,7 @@ func TestProcessMessageUseCase_Execute(t *testing.T) {
 		expenseRepo := NewMockExpenseRepository()
 
 		logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-		uc := NewProcessMessageUseCase(autoSignup, parser, creator, nil, reportLink, nil, expenseRepo, logger)
-		uc := NewProcessMessageUseCase(autoSignup, parser, creator, nil, nil, reportLink, nil, nil)
+		uc := NewProcessMessageUseCase(autoSignup, parser, creator, nil, nil, reportLink, nil, expenseRepo, logger, nil)
 
 		// Expectations
 		autoSignup.On("Execute", mock.Anything, "user1", "terminal").Return(nil)
@@ -163,8 +162,7 @@ func TestProcessMessageUseCase_Execute(t *testing.T) {
 		expenseRepo := NewMockExpenseRepository()
 
 		logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-		uc := NewProcessMessageUseCase(autoSignup, parser, creator, nil, reportLink, nil, expenseRepo, logger)
-		uc := NewProcessMessageUseCase(autoSignup, parser, creator, nil, nil, reportLink, nil, nil)
+		uc := NewProcessMessageUseCase(autoSignup, parser, creator, nil, nil, reportLink, nil, expenseRepo, logger, nil)
 
 		// Expectations
 		autoSignup.On("Execute", mock.Anything, "user1", "terminal").Return(nil)
@@ -181,18 +179,13 @@ func TestProcessMessageUseCase_Execute(t *testing.T) {
 	})
 
 	t.Run("Success - Idempotency (Duplicate Message)", func(t *testing.T) {
-		// Setup
-	t.Run("Currency intent asks clarification and stores pending state", func(t *testing.T) {
 		autoSignup := new(mockAutoSignup)
 		parser := new(mockParseConversation)
 		creator := new(mockCreateExpense)
 		reportLink := new(mockGenerateReportLink)
 		expenseRepo := NewMockExpenseRepository()
 
-		// Helper to create string pointer
 		strPtr := func(s string) *string { return &s }
-
-		// Pre-populate duplicate expense
 		existingExpense := &domain.Expense{
 			ID:              "exp_1",
 			UserID:          "user1",
@@ -208,13 +201,10 @@ func TestProcessMessageUseCase_Execute(t *testing.T) {
 		expenseRepo.Create(context.Background(), existingExpense)
 
 		logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-		uc := NewProcessMessageUseCase(autoSignup, parser, creator, nil, reportLink, nil, expenseRepo, logger)
+		uc := NewProcessMessageUseCase(autoSignup, parser, creator, nil, nil, reportLink, nil, expenseRepo, logger, nil)
 
-		// Expectations
 		autoSignup.On("Execute", mock.Anything, "user1", "terminal").Return(nil)
-		// Parser and creator should NOT be called
 
-		// Execute
 		msg := &domain.UserMessage{
 			UserID:    "user1",
 			MessageID: "msg_123",
@@ -223,18 +213,23 @@ func TestProcessMessageUseCase_Execute(t *testing.T) {
 		}
 		resp, err := uc.Execute(context.Background(), msg)
 
-		// Verify
 		assert.NoError(t, err)
 		assert.Equal(t, domain.ResponseTypeExpense, resp.Type)
 		assert.Contains(t, resp.Text, "Recorded 1 expense")
 		assert.Contains(t, resp.Text, "Lunch")
-		// Verify no extra calls
 		parser.AssertNotCalled(t, "Execute", mock.Anything, mock.Anything, mock.Anything)
 		creator.AssertNotCalled(t, "Execute", mock.Anything, mock.Anything)
+	})
+
+	t.Run("Currency intent asks clarification and stores pending state", func(t *testing.T) {
+		autoSignup := new(mockAutoSignup)
+		parser := new(mockParseConversation)
+		creator := new(mockCreateExpense)
+		reportLink := new(mockGenerateReportLink)
 		userRepo := new(mockUserRepoForProcess)
 		stateRepo := new(mockConversationStateRepo)
 
-		uc := NewProcessMessageUseCase(autoSignup, parser, creator, nil, userRepo, reportLink, nil, stateRepo)
+		uc := NewProcessMessageUseCase(autoSignup, parser, creator, nil, userRepo, reportLink, nil, nil, nil, stateRepo)
 
 		autoSignup.On("Execute", mock.Anything, "user1", "terminal").Return(nil)
 		stateRepo.On("GetByUserID", mock.Anything, "user1").Return(nil, nil)
@@ -259,7 +254,7 @@ func TestProcessMessageUseCase_Execute(t *testing.T) {
 		userRepo := new(mockUserRepoForProcess)
 		stateRepo := new(mockConversationStateRepo)
 
-		uc := NewProcessMessageUseCase(autoSignup, parser, creator, nil, userRepo, reportLink, nil, stateRepo)
+		uc := NewProcessMessageUseCase(autoSignup, parser, creator, nil, userRepo, reportLink, nil, nil, nil, stateRepo)
 
 		autoSignup.On("Execute", mock.Anything, "user1", "terminal").Return(nil)
 		stateRepo.On("GetByUserID", mock.Anything, "user1").Return(&domain.ConversationState{
@@ -291,7 +286,7 @@ func TestProcessMessageUseCase_Execute(t *testing.T) {
 		userRepo := new(mockUserRepoForProcess)
 		stateRepo := new(mockConversationStateRepo)
 
-		uc := NewProcessMessageUseCase(autoSignup, parser, creator, nil, userRepo, reportLink, nil, stateRepo)
+		uc := NewProcessMessageUseCase(autoSignup, parser, creator, nil, userRepo, reportLink, nil, nil, nil, stateRepo)
 
 		autoSignup.On("Execute", mock.Anything, "user1", "terminal").Return(nil)
 		stateRepo.On("GetByUserID", mock.Anything, "user1").Return(&domain.ConversationState{
