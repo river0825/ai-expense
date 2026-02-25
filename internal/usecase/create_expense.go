@@ -81,18 +81,19 @@ func NewCreateExpenseUseCaseWithAIConfig(
 
 // CreateRequest represents a request to create an expense
 type CreateRequest struct {
-	UserID           string
-	Description      string
-	Amount           float64
-	Currency         string
-	CurrencyOriginal string
-	ConvertedAmount  float64
-	HomeCurrency     string
-	ExchangeRate     float64
-	CategoryID       *string
-	Account          string
-	SourceMessageID  *string
-	Date             time.Time
+	UserID            string
+	Description       string
+	Amount            float64
+	Currency          string
+	CurrencyOriginal  string
+	ConvertedAmount   float64
+	HomeCurrency      string
+	ExchangeRate      float64
+	CategoryID        *string
+	SuggestedCategory string
+	Account           string
+	SourceMessageID   *string
+	Date              time.Time
 }
 
 // CreateResponse represents the response after creating an expense
@@ -123,14 +124,18 @@ func (u *CreateExpenseUseCase) Execute(ctx context.Context, req *CreateRequest) 
 			log.Printf("Expense created with manual category: %s (ID: %s)", categoryName, *req.CategoryID)
 		}
 	} else {
+		categories := []*domain.Category{}
+		if u.categoryRepo != nil {
+			cats, _ := u.categoryRepo.GetByUserID(ctx, req.UserID)
+			if cats != nil {
+				categories = cats
+			}
+		}
+
 		var userCtx *domain.UserContext
-		if u.userRepo != nil && u.categoryRepo != nil {
+		if u.userRepo != nil {
 			user, _ := u.userRepo.GetByID(ctx, req.UserID)
 			if user != nil {
-				categories, _ := u.categoryRepo.GetByUserID(ctx, req.UserID)
-				if categories == nil {
-					categories = []*domain.Category{}
-				}
 				userCtx = &domain.UserContext{
 					User:       user,
 					Categories: categories,
@@ -138,57 +143,55 @@ func (u *CreateExpenseUseCase) Execute(ctx context.Context, req *CreateRequest) 
 			}
 		}
 
-		resp, err := u.aiService.SuggestCategory(ctx, req.Description, userCtx)
-		if err == nil && resp != nil {
-			log.Printf("AI suggested category: %s for description: %s", resp.Category, req.Description)
+		if req.SuggestedCategory != "" {
+			categoryID, categoryName = matchCategoryByName(categories, req.SuggestedCategory)
+		}
 
-			// Log AI cost
-			if resp.Tokens != nil {
-				go func() {
-					// Create background context for logging to not block response
-					logCtx := context.Background()
-					cost := 0.0
-					provider := u.provider
-					model := u.model
+		if categoryID == nil && u.aiService != nil {
+			resp, err := u.aiService.SuggestCategory(ctx, req.Description, userCtx)
+			if err == nil && resp != nil {
+				log.Printf("AI suggested category: %s for description: %s", resp.Category, req.Description)
 
-					// Calculate cost if pricing is available
-					if u.pricingRepo != nil {
-						pricing, err := u.pricingRepo.GetByProviderAndModel(logCtx, provider, model)
-						if err == nil && pricing != nil {
-							cost = pricing.GetCost(resp.Tokens.InputTokens, resp.Tokens.OutputTokens)
+				// Log AI cost
+				if resp.Tokens != nil {
+					go func() {
+						// Create background context for logging to not block response
+						logCtx := context.Background()
+						cost := 0.0
+						provider := u.provider
+						model := u.model
+
+						// Calculate cost if pricing is available
+						if u.pricingRepo != nil {
+							pricing, err := u.pricingRepo.GetByProviderAndModel(logCtx, provider, model)
+							if err == nil && pricing != nil {
+								cost = pricing.GetCost(resp.Tokens.InputTokens, resp.Tokens.OutputTokens)
+							}
 						}
-					}
 
-					costLog := &domain.AICostLog{
-						ID:           uuid.New().String(),
-						UserID:       req.UserID,
-						Operation:    "suggest_category",
-						Provider:     provider,
-						Model:        model,
-						InputTokens:  resp.Tokens.InputTokens,
-						OutputTokens: resp.Tokens.OutputTokens,
-						TotalTokens:  resp.Tokens.TotalTokens,
-						Cost:         cost,
-						Currency:     "USD",
-						CreatedAt:    time.Now(),
-					}
-
-					if u.aiCostRepo != nil {
-						if err := u.aiCostRepo.Create(logCtx, costLog); err != nil {
-							log.Printf("Failed to log AI cost: %v", err)
+						costLog := &domain.AICostLog{
+							ID:           uuid.New().String(),
+							UserID:       req.UserID,
+							Operation:    "suggest_category",
+							Provider:     provider,
+							Model:        model,
+							InputTokens:  resp.Tokens.InputTokens,
+							OutputTokens: resp.Tokens.OutputTokens,
+							TotalTokens:  resp.Tokens.TotalTokens,
+							Cost:         cost,
+							Currency:     "USD",
+							CreatedAt:    time.Now(),
 						}
-					}
-				}()
-			}
 
-			// Find category by name
-			categories, _ := u.categoryRepo.GetByUserID(ctx, req.UserID)
-			for _, cat := range categories {
-				if cat.Name == resp.Category {
-					categoryID = &cat.ID
-					categoryName = cat.Name
-					break
+						if u.aiCostRepo != nil {
+							if err := u.aiCostRepo.Create(logCtx, costLog); err != nil {
+								log.Printf("Failed to log AI cost: %v", err)
+							}
+						}
+					}()
 				}
+
+				categoryID, categoryName = matchCategoryByName(categories, resp.Category)
 			}
 		}
 	}
@@ -349,4 +352,27 @@ func buildCreateMessage(description string, originalAmount float64, currency str
 		message = fmt.Sprintf("%s [%s]", message, categoryName)
 	}
 	return message + "，已儲存"
+}
+
+func matchCategoryByName(categories []*domain.Category, name string) (*string, string) {
+	normalizedName := normalizeCategoryName(name)
+	if normalizedName == "" {
+		return nil, ""
+	}
+
+	for _, cat := range categories {
+		if normalizeCategoryName(cat.Name) == normalizedName {
+			return &cat.ID, cat.Name
+		}
+	}
+
+	return nil, ""
+}
+
+func normalizeCategoryName(name string) string {
+	trimmed := strings.TrimSpace(strings.ToLower(name))
+	if trimmed == "" {
+		return ""
+	}
+	return strings.Join(strings.Fields(trimmed), " ")
 }

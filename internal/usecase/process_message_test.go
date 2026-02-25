@@ -110,7 +110,7 @@ func TestProcessMessageUseCase_Execute(t *testing.T) {
 		autoSignup.On("Execute", mock.Anything, "user1", "terminal").Return(nil)
 
 		parsedExpenses := []*domain.ParsedExpense{
-			{Description: "Lunch", Amount: 100, Date: time.Now(), Account: "Taishin"},
+			{Description: "Lunch", Amount: 100, SuggestedCategory: "Food", Date: time.Now(), Account: "Taishin"},
 		}
 		parseResult := &domain.ParseResult{
 			Expenses:     parsedExpenses,
@@ -130,7 +130,7 @@ func TestProcessMessageUseCase_Execute(t *testing.T) {
 			ExchangeRate:   1,
 		}
 		creator.On("Execute", mock.Anything, mock.MatchedBy(func(req *CreateRequest) bool {
-			return req.UserID == "user1" && req.Amount == 100
+			return req.UserID == "user1" && req.Amount == 100 && req.SuggestedCategory == "Food"
 		})).Return(createResp, nil)
 
 		// Execute

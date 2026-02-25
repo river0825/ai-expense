@@ -5,8 +5,31 @@ import (
 	"testing"
 	"time"
 
+	"github.com/riverlin/aiexpense/internal/ai"
 	"github.com/riverlin/aiexpense/internal/domain"
 )
+
+type trackingSuggestAIService struct {
+	suggestCalls int
+}
+
+var _ ai.Service = (*trackingSuggestAIService)(nil)
+
+func (s *trackingSuggestAIService) ParseExpense(ctx context.Context, text string, userCtx *domain.UserContext) (*ai.ParseExpenseResponse, error) {
+	return nil, nil
+}
+
+func (s *trackingSuggestAIService) SuggestCategory(ctx context.Context, description string, userCtx *domain.UserContext) (*ai.SuggestCategoryResponse, error) {
+	s.suggestCalls++
+	return &ai.SuggestCategoryResponse{
+		Category: "Other",
+		Tokens: &ai.TokenMetadata{
+			InputTokens:  1,
+			OutputTokens: 1,
+			TotalTokens:  2,
+		},
+	}, nil
+}
 
 func TestCreateExpenseSuccess(t *testing.T) {
 	expenseRepo := NewMockExpenseRepository()
@@ -183,6 +206,55 @@ func TestCreateExpenseDecimalAmount(t *testing.T) {
 	// Check message contains decimal amount
 	if !contains(resp.Message, "3.5") && !contains(resp.Message, "3.50") {
 		t.Errorf("expected message to contain amount 3.50, got %s", resp.Message)
+	}
+}
+
+func TestCreateExpenseUsesParsedSuggestedCategory(t *testing.T) {
+	expenseRepo := NewMockExpenseRepository()
+	categoryRepo := NewMockCategoryRepository()
+	aiService := &trackingSuggestAIService{}
+
+	userID := "test_user"
+	transportCategory := &domain.Category{
+		ID:        "cat_transport",
+		UserID:    userID,
+		Name:      "Transport",
+		IsDefault: true,
+		CreatedAt: time.Now(),
+	}
+	if err := categoryRepo.Create(context.Background(), transportCategory); err != nil {
+		t.Fatalf("failed to seed category: %v", err)
+	}
+
+	uc := NewCreateExpenseUseCase(expenseRepo, categoryRepo, nil, nil, nil, nil, aiService)
+
+	req := &CreateRequest{
+		UserID:            userID,
+		Description:       "Uber ride",
+		Amount:            250,
+		SuggestedCategory: "Transport",
+		Date:              time.Now(),
+	}
+
+	resp, err := uc.Execute(context.Background(), req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if aiService.suggestCalls != 0 {
+		t.Fatalf("expected no AI suggest calls, got %d", aiService.suggestCalls)
+	}
+
+	if resp.Category != "Transport" {
+		t.Fatalf("expected category Transport, got %s", resp.Category)
+	}
+
+	expense, err := expenseRepo.GetByID(context.Background(), resp.ID)
+	if err != nil {
+		t.Fatalf("failed to load expense: %v", err)
+	}
+	if expense == nil || expense.CategoryID == nil || *expense.CategoryID != transportCategory.ID {
+		t.Fatalf("expected stored category id %s, got %#v", transportCategory.ID, expense)
 	}
 }
 

@@ -250,14 +250,15 @@ func (u *ProcessMessageUseCase) Execute(ctx context.Context, msg *domain.UserMes
 		}
 
 		req := &CreateRequest{
-			UserID:           msg.UserID,
-			Description:      parsedExp.Description,
-			Amount:           parsedExp.Amount,
-			Currency:         parsedExp.Currency,
-			CurrencyOriginal: parsedExp.CurrencyOriginal,
-			Account:          parsedExp.Account,
-			SourceMessageID:  sourceMessageID,
-			Date:             parsedExp.Date,
+			UserID:            msg.UserID,
+			Description:       parsedExp.Description,
+			Amount:            parsedExp.Amount,
+			Currency:          parsedExp.Currency,
+			CurrencyOriginal:  parsedExp.CurrencyOriginal,
+			SuggestedCategory: parsedExp.SuggestedCategory,
+			Account:           parsedExp.Account,
+			SourceMessageID:   sourceMessageID,
+			Date:              parsedExp.Date,
 		}
 
 		resp, err := u.createExpense.Execute(ctx, req)
