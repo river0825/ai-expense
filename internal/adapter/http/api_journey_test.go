@@ -46,6 +46,10 @@ func (s *smokeJourneyAIService) SuggestCategory(ctx context.Context, description
 	}, nil
 }
 
+func (s *smokeJourneyAIService) ClassifyIntent(ctx context.Context, text string, userCtx *domain.UserContext) (*ai.ClassifyIntentResponse, error) {
+	return &ai.ClassifyIntentResponse{Intent: &domain.ClassifiedIntent{Type: domain.IntentUnknown}}, nil
+}
+
 // Test_UserJourney_RecordExpenseAndEdit performs an end-to-end integration test
 // Scenario:
 // 1. User sends a message via "Terminal Chat" to record an expense.
@@ -94,6 +98,7 @@ func Test_UserJourney_RecordExpenseAndEdit(t *testing.T) {
 		interactionRepo,
 		expenseRepo,
 		slog.Default(),
+		nil,
 		nil,
 	)
 
@@ -411,6 +416,7 @@ func Test_UserJourney_Smoke_ExpenseCaptureParsedFields(t *testing.T) {
 		expenseRepo,
 		slog.Default(),
 		nil,
+		nil,
 	)
 
 	terminalHandler := terminal.NewHandler(processMessageUC)
@@ -519,6 +525,7 @@ func Test_UserJourney_Smoke_NewUserAutoSignupViaHTTPChat(t *testing.T) {
 		interactionRepo,
 		expenseRepo,
 		slog.Default(),
+		nil,
 		nil,
 	)
 

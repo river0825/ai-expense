@@ -266,6 +266,10 @@ func (s *BenchAIService) SuggestCategory(ctx context.Context, description string
 	}, nil
 }
 
+func (s *BenchAIService) ClassifyIntent(ctx context.Context, text string, userCtx *domain.UserContext) (*ai.ClassifyIntentResponse, error) {
+	return &ai.ClassifyIntentResponse{Intent: &domain.ClassifiedIntent{Type: domain.IntentUnknown}}, nil
+}
+
 // BenchmarkAutoSignup benchmarks the auto-signup use case
 func BenchmarkAutoSignup(b *testing.B) {
 	userRepo := &BenchUserRepository{users: make(map[string]*domain.User)}

@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/riverlin/aiexpense/internal/ai"
 	"github.com/riverlin/aiexpense/internal/domain"
 )
 
@@ -22,6 +23,7 @@ type ProcessMessageUseCase struct {
 	expenseRepo        domain.ExpenseRepository
 	logger             *slog.Logger
 	conversationRepo   domain.ConversationStateRepository
+	aiService          IntentClassifier
 }
 
 // Interfaces to break dependency cycles (if needed) or mock easier
@@ -41,6 +43,11 @@ type GetExpenses interface {
 	ExecuteGetAll(ctx context.Context, req *GetAllRequest) (*GetAllResponse, error)
 }
 
+// IntentClassifier classifies user intent using AI (local interface for dependency injection)
+type IntentClassifier interface {
+	ClassifyIntent(ctx context.Context, text string, userCtx *domain.UserContext) (*ai.ClassifyIntentResponse, error)
+}
+
 // NewProcessMessageUseCase creates a new use case
 func NewProcessMessageUseCase(
 	autoSignup AutoSignup,
@@ -53,6 +60,7 @@ func NewProcessMessageUseCase(
 	expenseRepo domain.ExpenseRepository,
 	logger *slog.Logger,
 	conversationRepo domain.ConversationStateRepository,
+	aiService IntentClassifier,
 ) *ProcessMessageUseCase {
 	return &ProcessMessageUseCase{
 		autoSignup:         autoSignup,
@@ -65,6 +73,7 @@ func NewProcessMessageUseCase(
 		expenseRepo:        expenseRepo,
 		logger:             logger,
 		conversationRepo:   conversationRepo,
+		aiService:          aiService,
 	}
 }
 
@@ -174,6 +183,12 @@ func (u *ProcessMessageUseCase) Execute(ctx context.Context, msg *domain.UserMes
 			Text: botReply,
 			Data: map[string]string{"link": link},
 		}, nil
+	}
+
+	// 1.7 AI-powered intent detection (LLM fallback after keyword checks)
+	if resp, handled := u.handleAIIntentDetection(ctx, msg, msgLower); handled {
+		botReply = resp.Text
+		return resp, nil
 	}
 
 	// 1.8 Check for duplicate message (Idempotency)
@@ -392,6 +407,39 @@ func (u *ProcessMessageUseCase) handlePendingConversation(ctx context.Context, m
 		return &domain.MessageResponse{Type: domain.ResponseTypeInfo, Text: u.pendingStateCancelledReply(locale)}, true
 	}
 
+	if state.ActiveIntent == "suggestion.currency.change" {
+		// Handle confirmation for AI-suggested currency change
+		confirmKeywords := []string{"ok", "好", "yes", "對", "嗯", "好的", "是", "y", "sure", "yep", "yeah"}
+		denyKeywords := []string{"no", "不", "不要", "n", "nope", "nah"}
+
+		for _, k := range denyKeywords {
+			if msgLower == k {
+				_ = u.conversationRepo.DeleteByUserID(ctx, msg.UserID)
+				return &domain.MessageResponse{Type: domain.ResponseTypeInfo, Text: u.pendingStateCancelledReply(locale)}, true
+			}
+		}
+
+		for _, k := range confirmKeywords {
+			if msgLower == k {
+				targetCurrency := state.PendingSlots["target_currency"]
+				if targetCurrency == "" {
+					_ = u.conversationRepo.DeleteByUserID(ctx, msg.UserID)
+					return &domain.MessageResponse{Type: domain.ResponseTypeInfo, Text: u.pendingStateCancelledReply(locale)}, true
+				}
+				if err := u.updateUserDefaultInputCurrency(ctx, msg.UserID, targetCurrency); err != nil {
+					return &domain.MessageResponse{Type: domain.ResponseTypeError, Text: "Sorry, I couldn't update your currency. Please try again later."}, true
+				}
+				_ = u.conversationRepo.DeleteByUserID(ctx, msg.UserID)
+				return &domain.MessageResponse{Type: domain.ResponseTypeInfo, Text: u.currencyChangedByAIReply(locale, targetCurrency)}, true
+			}
+		}
+
+		// Message doesn't match confirm/deny — fall through to normal processing
+		// This allows the user to ignore the suggestion and continue adding expenses
+		_ = u.conversationRepo.DeleteByUserID(ctx, msg.UserID)
+		return nil, false
+	}
+
 	if state.ActiveIntent != "settings.currency.set" {
 		return nil, false
 	}
@@ -521,4 +569,116 @@ func asFloat(v interface{}) float64 {
 	default:
 		return 0
 	}
+}
+
+func (u *ProcessMessageUseCase) currencyChangedByAIReply(locale, currency string) string {
+	if strings.HasPrefix(strings.ToLower(locale), "en") {
+		return fmt.Sprintf("Done. Your default input currency is now %s. All new expenses will be recorded in %s.", currency, currency)
+	}
+	return fmt.Sprintf("已切換，接下來的記帳都會預設為 %s。", currency)
+}
+
+func (u *ProcessMessageUseCase) handleAIIntentDetection(ctx context.Context, msg *domain.UserMessage, msgLower string) (*domain.MessageResponse, bool) {
+	if u.aiService == nil {
+		return nil, false
+	}
+
+	// Build user context for AI classification
+	var userCtx *domain.UserContext
+	if u.userRepo != nil {
+		user, err := u.userRepo.GetByID(ctx, msg.UserID)
+		if err == nil && user != nil {
+			userCtx = &domain.UserContext{
+				User: user,
+			}
+		}
+	}
+
+	result, err := u.aiService.ClassifyIntent(ctx, msg.Content, userCtx)
+	if err != nil {
+		if u.logger != nil {
+			u.logger.Warn("AI intent classification failed, falling through to expense parser", "error", err)
+		}
+		return nil, false
+	}
+
+	if result == nil || result.Intent == nil {
+		return nil, false
+	}
+
+	intent := result.Intent
+
+	switch intent.Type {
+	case domain.IntentTravelContext:
+		return u.handleTravelContextIntent(ctx, msg, intent)
+	case domain.IntentCurrencyChange:
+		// AI detected a currency change intent that keywords missed
+		currency := intent.Parameters["currency"]
+		if currency == "" {
+			return nil, false
+		}
+		locale := u.getUserLocale(ctx, msg.UserID)
+		if err := u.updateUserDefaultInputCurrency(ctx, msg.UserID, currency); err != nil {
+			return &domain.MessageResponse{Type: domain.ResponseTypeError, Text: "Sorry, I couldn't update your currency. Please try again later."}, true
+		}
+		return &domain.MessageResponse{Type: domain.ResponseTypeInfo, Text: u.currencyUpdatedReply(locale, currency)}, true
+	case domain.IntentReport:
+		// AI detected a report intent that keywords missed
+		link, err := u.generateReportLink.Execute(msg.UserID)
+		if err != nil {
+			return &domain.MessageResponse{Type: domain.ResponseTypeError, Text: "Sorry, I couldn't generate the report link. Please try again later."}, true
+		}
+		botReply := fmt.Sprintf("Here is your expense report:\n%s\n(Link valid for 5 minutes)", link)
+		return &domain.MessageResponse{Type: domain.ResponseTypeReport, Text: botReply, Data: map[string]string{"link": link}}, true
+	case domain.IntentAddExpense, domain.IntentUnknown:
+		// Fall through to existing expense parser
+		return nil, false
+	default:
+		return nil, false
+	}
+}
+
+func (u *ProcessMessageUseCase) handleTravelContextIntent(ctx context.Context, msg *domain.UserMessage, intent *domain.ClassifiedIntent) (*domain.MessageResponse, bool) {
+	currency := intent.Parameters["currency"]
+	if currency == "" {
+		// No currency detected in travel context, fall through
+		return nil, false
+	}
+
+	locale := u.getUserLocale(ctx, msg.UserID)
+
+	// Save pending state for confirmation flow
+	if u.conversationRepo != nil {
+		now := time.Now()
+		err := u.conversationRepo.Upsert(ctx, &domain.ConversationState{
+			UserID:       msg.UserID,
+			ActiveIntent: "suggestion.currency.change",
+			PendingSlots: map[string]string{"target_currency": currency},
+			Status:       "pending",
+			ExpiresAt:    now.Add(10 * time.Minute),
+			CreatedAt:    now,
+			UpdatedAt:    now,
+		})
+		if err != nil {
+			if u.logger != nil {
+				u.logger.Warn("Failed to save travel context pending state", "error", err)
+			}
+			return nil, false
+		}
+	}
+
+	// Return the suggestion message
+	confirmationMsg := intent.ConfirmationMessage
+	if confirmationMsg == "" {
+		confirmationMsg = u.travelCurrencySuggestionReply(locale, currency)
+	}
+
+	return &domain.MessageResponse{Type: domain.ResponseTypeInfo, Text: confirmationMsg}, true
+}
+
+func (u *ProcessMessageUseCase) travelCurrencySuggestionReply(locale, currency string) string {
+	if strings.HasPrefix(strings.ToLower(locale), "en") {
+		return fmt.Sprintf("It sounds like you're traveling! Would you like to switch your default input currency to %s? (yes/no)", currency)
+	}
+	return fmt.Sprintf("聽起來你在旅行！要切換預設記帳幣別為 %s 嗎？（好/不要）", currency)
 }

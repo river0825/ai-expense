@@ -245,6 +245,10 @@ func (s *TestAIService) SuggestCategory(ctx context.Context, description string,
 	}, nil
 }
 
+func (s *TestAIService) ClassifyIntent(ctx context.Context, text string, userCtx *domain.UserContext) (*ai.ClassifyIntentResponse, error) {
+	return &ai.ClassifyIntentResponse{Intent: &domain.ClassifiedIntent{Type: domain.IntentUnknown}}, nil
+}
+
 // Test Metrics Repository
 type TestMetricsRepository struct{}
 

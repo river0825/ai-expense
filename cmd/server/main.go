@@ -162,6 +162,7 @@ func main() {
 		expenseRepo,
 		slog.Default(),
 		conversationStateRepo,
+		aiService,
 	)
 
 	// Determine if running in development mode
