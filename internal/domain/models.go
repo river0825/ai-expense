@@ -11,6 +11,7 @@ type User struct {
 	MessengerType string    `db:"messenger_type" json:"messenger_type"`
 	CreatedAt     time.Time `db:"created_at" json:"created_at"`
 	HomeCurrency  string    `db:"home_currency" json:"home_currency"`
+	DefaultInputCurrency string    `db:"default_input_currency" json:"default_input_currency"`
 	Locale        string    `db:"locale" json:"locale"`
 }
 

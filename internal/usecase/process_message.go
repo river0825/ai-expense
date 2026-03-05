@@ -141,7 +141,7 @@ func (u *ProcessMessageUseCase) Execute(ctx context.Context, msg *domain.UserMes
 		}
 
 		locale := u.getUserLocale(ctx, msg.UserID)
-		if err := u.updateUserHomeCurrency(ctx, msg.UserID, currency); err != nil {
+		if err := u.updateUserDefaultInputCurrency(ctx, msg.UserID, currency); err != nil {
 			botReply = "Sorry, I couldn't update your currency. Please try again later."
 			return &domain.MessageResponse{
 				Type: domain.ResponseTypeError,
@@ -401,7 +401,7 @@ func (u *ProcessMessageUseCase) handlePendingConversation(ctx context.Context, m
 		return &domain.MessageResponse{Type: domain.ResponseTypeInfo, Text: u.currencyClarificationPrompt(locale)}, true
 	}
 
-	if err := u.updateUserHomeCurrency(ctx, msg.UserID, targetCurrency); err != nil {
+	if err := u.updateUserDefaultInputCurrency(ctx, msg.UserID, targetCurrency); err != nil {
 		return &domain.MessageResponse{Type: domain.ResponseTypeError, Text: "Sorry, I couldn't update your currency. Please try again later."}, true
 	}
 	_ = u.conversationRepo.DeleteByUserID(ctx, msg.UserID)
@@ -425,7 +425,7 @@ func (u *ProcessMessageUseCase) savePendingCurrencyClarification(ctx context.Con
 	})
 }
 
-func (u *ProcessMessageUseCase) updateUserHomeCurrency(ctx context.Context, userID, currency string) error {
+func (u *ProcessMessageUseCase) updateUserDefaultInputCurrency(ctx context.Context, userID, currency string) error {
 	if u.userRepo == nil {
 		return fmt.Errorf("user repository is not configured")
 	}
@@ -436,7 +436,7 @@ func (u *ProcessMessageUseCase) updateUserHomeCurrency(ctx context.Context, user
 	if user == nil {
 		return fmt.Errorf("user not found")
 	}
-	user.HomeCurrency = currency
+	user.DefaultInputCurrency = currency
 	return u.userRepo.Update(ctx, user)
 }
 

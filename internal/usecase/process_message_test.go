@@ -266,7 +266,7 @@ func TestProcessMessageUseCase_Execute(t *testing.T) {
 		}, nil)
 		userRepo.On("GetByID", mock.Anything, "user1").Return(&domain.User{UserID: "user1", Locale: "zh-TW", HomeCurrency: "TWD"}, nil).Twice()
 		userRepo.On("Update", mock.Anything, mock.MatchedBy(func(user *domain.User) bool {
-			return user.UserID == "user1" && user.HomeCurrency == "JPY"
+			return user.UserID == "user1" && user.DefaultInputCurrency == "JPY"
 		})).Return(nil)
 		stateRepo.On("DeleteByUserID", mock.Anything, "user1").Return(nil)
 

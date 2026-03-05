@@ -197,11 +197,15 @@ func (g *GeminiAI) sendGeminiRequest(ctx context.Context, prompt string) (*gemin
 }
 
 func (g *GeminiAI) callGeminiAPI(ctx context.Context, text string, userCtx *domain.UserContext) (*ParseExpenseResponse, error) {
-	homeCurrency := "TWD"
+	inputCurrency := "TWD"
 	categoryList := "Food, Transport, Shopping, Entertainment, Other"
 
-	if userCtx != nil && userCtx.User != nil && userCtx.User.HomeCurrency != "" {
-		homeCurrency = userCtx.User.HomeCurrency
+	if userCtx != nil && userCtx.User != nil {
+		if userCtx.User.DefaultInputCurrency != "" {
+			inputCurrency = userCtx.User.DefaultInputCurrency
+		} else if userCtx.User.HomeCurrency != "" {
+			inputCurrency = userCtx.User.HomeCurrency
+		}
 	}
 
 	if userCtx != nil && len(userCtx.Categories) > 0 {
@@ -229,7 +233,7 @@ If the currency is not specified, assume %s for calculations but still set curre
 If no expenses are found, return an empty array [].
 
 Text: %s
-`, time.Now().Format("2006-01-02"), categoryList, homeCurrency, homeCurrency, text)
+`, time.Now().Format("2006-01-02"), categoryList, inputCurrency, inputCurrency, text)
 
 	log.Printf("DEBUG: Gemini AI Parse Prompt: %s", prompt)
 	geminiResp, rawResp, err := g.sendGeminiRequest(ctx, prompt)
