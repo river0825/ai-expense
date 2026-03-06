@@ -177,7 +177,7 @@ func (u *ProcessMessageUseCase) Execute(ctx context.Context, msg *domain.UserMes
 			}, nil
 		}
 
-		botReply = fmt.Sprintf("Here is your expense report:\n%s\n(Link valid for 5 minutes)", link)
+		botReply = fmt.Sprintf("Here is your expense report:\n%s\n(Link valid for 7 days)", link)
 		return &domain.MessageResponse{
 			Type: domain.ResponseTypeReport,
 			Text: botReply,
@@ -628,7 +628,7 @@ func (u *ProcessMessageUseCase) handleAIIntentDetection(ctx context.Context, msg
 		if err != nil {
 			return &domain.MessageResponse{Type: domain.ResponseTypeError, Text: "Sorry, I couldn't generate the report link. Please try again later."}, true
 		}
-		botReply := fmt.Sprintf("Here is your expense report:\n%s\n(Link valid for 5 minutes)", link)
+		botReply := fmt.Sprintf("Here is your expense report:\n%s\n(Link valid for 7 days)", link)
 		return &domain.MessageResponse{Type: domain.ResponseTypeReport, Text: botReply, Data: map[string]string{"link": link}}, true
 	case domain.IntentAddExpense, domain.IntentUnknown:
 		// Fall through to existing expense parser
