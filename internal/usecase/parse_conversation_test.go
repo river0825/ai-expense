@@ -50,6 +50,10 @@ func (m *TestMockAIService) SuggestCategory(ctx context.Context, description str
 	}, nil
 }
 
+func (m *TestMockAIService) ClassifyIntent(ctx context.Context, text string, userCtx *domain.UserContext) (*ai.ClassifyIntentResponse, error) {
+	return &ai.ClassifyIntentResponse{Intent: &domain.ClassifiedIntent{Type: domain.IntentUnknown}}, nil
+}
+
 func TestParseDateLogic(t *testing.T) {
 	tests := []struct {
 		name string

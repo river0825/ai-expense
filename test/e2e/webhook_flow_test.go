@@ -345,6 +345,10 @@ func (s *E2EAIService) SuggestCategory(ctx context.Context, description string, 
 	}, nil
 }
 
+func (s *E2EAIService) ClassifyIntent(ctx context.Context, text string, userCtx *domain.UserContext) (*ai.ClassifyIntentResponse, error) {
+	return &ai.ClassifyIntentResponse{Intent: &domain.ClassifiedIntent{Type: domain.IntentUnknown}}, nil
+}
+
 func (s *E2EAIService) SetParseResponse(text string, expenses []*domain.ParsedExpense) {
 	s.mu.Lock()
 	defer s.mu.Unlock()

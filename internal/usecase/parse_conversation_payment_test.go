@@ -22,6 +22,10 @@ func (m *MockAIForPayment) SuggestCategory(ctx context.Context, description stri
 	return nil, nil // Not used in this test
 }
 
+func (m *MockAIForPayment) ClassifyIntent(ctx context.Context, text string, userCtx *domain.UserContext) (*ai.ClassifyIntentResponse, error) {
+	return &ai.ClassifyIntentResponse{Intent: &domain.ClassifiedIntent{Type: domain.IntentUnknown}}, nil
+}
+
 func TestParseConversation_DefaultAccount(t *testing.T) {
 	mockAI := &MockAIForPayment{
 		Response: &ai.ParseExpenseResponse{

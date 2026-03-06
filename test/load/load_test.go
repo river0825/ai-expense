@@ -327,6 +327,13 @@ func (s *LoadTestAIService) SuggestCategory(ctx context.Context, description str
 	}, nil
 }
 
+func (s *LoadTestAIService) ClassifyIntent(ctx context.Context, text string, userCtx *domain.UserContext) (*ai.ClassifyIntentResponse, error) {
+	return &ai.ClassifyIntentResponse{
+		Intent: &domain.ClassifiedIntent{Type: domain.IntentUnknown, Confidence: 0},
+		Tokens: &ai.TokenMetadata{},
+	}, nil
+}
+
 // LoadTestMetrics tracks performance metrics during load tests
 type LoadTestMetrics struct {
 	totalRequests   int64

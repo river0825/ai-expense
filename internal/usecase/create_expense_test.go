@@ -31,6 +31,10 @@ func (s *trackingSuggestAIService) SuggestCategory(ctx context.Context, descript
 	}, nil
 }
 
+func (s *trackingSuggestAIService) ClassifyIntent(ctx context.Context, text string, userCtx *domain.UserContext) (*ai.ClassifyIntentResponse, error) {
+	return &ai.ClassifyIntentResponse{Intent: &domain.ClassifiedIntent{Type: domain.IntentUnknown}}, nil
+}
+
 func TestCreateExpenseSuccess(t *testing.T) {
 	expenseRepo := NewMockExpenseRepository()
 	categoryRepo := NewMockCategoryRepository()

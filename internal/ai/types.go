@@ -24,3 +24,10 @@ type SuggestCategoryResponse struct {
 	SystemPrompt string
 	RawResponse  string
 }
+
+// ClassifyIntentResponse wraps classified intent with token metadata
+type ClassifyIntentResponse struct {
+	Intent      *domain.ClassifiedIntent
+	Tokens      *TokenMetadata
+	RawResponse string
+}

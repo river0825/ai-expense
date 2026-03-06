@@ -197,11 +197,15 @@ func (g *GeminiAI) sendGeminiRequest(ctx context.Context, prompt string) (*gemin
 }
 
 func (g *GeminiAI) callGeminiAPI(ctx context.Context, text string, userCtx *domain.UserContext) (*ParseExpenseResponse, error) {
-	homeCurrency := "TWD"
+	inputCurrency := "TWD"
 	categoryList := "Food, Transport, Shopping, Entertainment, Other"
 
-	if userCtx != nil && userCtx.User != nil && userCtx.User.HomeCurrency != "" {
-		homeCurrency = userCtx.User.HomeCurrency
+	if userCtx != nil && userCtx.User != nil {
+		if userCtx.User.DefaultInputCurrency != "" {
+			inputCurrency = userCtx.User.DefaultInputCurrency
+		} else if userCtx.User.HomeCurrency != "" {
+			inputCurrency = userCtx.User.HomeCurrency
+		}
 	}
 
 	if userCtx != nil && len(userCtx.Categories) > 0 {
@@ -229,7 +233,7 @@ If the currency is not specified, assume %s for calculations but still set curre
 If no expenses are found, return an empty array [].
 
 Text: %s
-`, time.Now().Format("2006-01-02"), categoryList, homeCurrency, homeCurrency, text)
+`, time.Now().Format("2006-01-02"), categoryList, inputCurrency, inputCurrency, text)
 
 	log.Printf("DEBUG: Gemini AI Parse Prompt: %s", prompt)
 	geminiResp, rawResp, err := g.sendGeminiRequest(ctx, prompt)
@@ -506,4 +510,126 @@ func (g *GeminiAI) suggestCategoryKeywords(description string) string {
 	}
 
 	return "Other"
+}
+
+func (g *GeminiAI) ClassifyIntent(ctx context.Context, text string, userCtx *domain.UserContext) (*ClassifyIntentResponse, error) {
+	locale := "zh-TW"
+	homeCurrency := ""
+	defaultInputCurrency := ""
+	if userCtx != nil && userCtx.User != nil {
+		if userCtx.User.Locale != "" {
+			locale = userCtx.User.Locale
+		}
+		homeCurrency = userCtx.User.HomeCurrency
+		defaultInputCurrency = userCtx.User.DefaultInputCurrency
+	}
+
+	prompt := fmt.Sprintf(`
+You are an intent classifier for an expense tracking assistant.
+
+Classify the user's message into exactly one intent from this enum:
+- ADD_EXPENSE
+- TRAVEL_CONTEXT
+- CURRENCY_CHANGE
+- REPORT
+- UNKNOWN
+
+Decision rules:
+1. TRAVEL_CONTEXT: user indicates traveling / in another country or city (e.g., "I am in Tokyo", "我在日本旅行").
+2. CURRENCY_CHANGE: user asks to change default input currency (explicit or implicit command).
+3. REPORT: user requests report, summary, stats, or analytics.
+4. ADD_EXPENSE: user is logging expense(s), purchase amounts, or spending details.
+5. UNKNOWN: none of the above.
+
+Output strictly as JSON object with this schema:
+{
+  "intent": "ADD_EXPENSE|TRAVEL_CONTEXT|CURRENCY_CHANGE|REPORT|UNKNOWN",
+  "confidence": 0.0,
+  "parameters": {
+    "currency": "optional ISO4217 code like JPY/USD/TWD",
+    "destination": "optional travel destination"
+  },
+  "needs_confirmation": false,
+  "confirmation_message": "optional natural language confirmation prompt"
+}
+
+Rules for parameters:
+- If travel context clearly implies destination currency, set parameters.currency (e.g., Japan -> JPY, USA -> USD, Taiwan -> TWD, Eurozone -> EUR).
+- If intent is CURRENCY_CHANGE and a target currency is present, set parameters.currency.
+- If unknown, return empty parameters object.
+
+Rules for confirmation:
+- For TRAVEL_CONTEXT with high confidence, set needs_confirmation=true and provide confirmation_message.
+- Otherwise needs_confirmation=false and confirmation_message="".
+
+User context:
+- locale: %s
+- home_currency: %s
+- default_input_currency: %s
+
+User message:
+%s
+`, locale, homeCurrency, defaultInputCurrency, text)
+
+	geminiResp, rawResp, err := g.sendGeminiRequest(ctx, prompt)
+	if err != nil {
+		return nil, err
+	}
+	if len(geminiResp.Candidates) == 0 || len(geminiResp.Candidates[0].Content.Parts) == 0 {
+		return nil, fmt.Errorf("no content in response")
+	}
+
+	responseText := cleanJSON(geminiResp.Candidates[0].Content.Parts[0].Text)
+
+	var payload struct {
+		Intent              string            `json:"intent"`
+		Confidence          float64           `json:"confidence"`
+		Parameters          map[string]string `json:"parameters"`
+		NeedsConfirmation   bool              `json:"needs_confirmation"`
+		ConfirmationMessage string            `json:"confirmation_message"`
+	}
+	if err := json.Unmarshal([]byte(responseText), &payload); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal classify intent response: %w", err)
+	}
+
+	if payload.Parameters == nil {
+		payload.Parameters = map[string]string{}
+	}
+	if currency, ok := payload.Parameters["currency"]; ok {
+		payload.Parameters["currency"] = strings.ToUpper(strings.TrimSpace(currency))
+	}
+
+	intent := normalizeIntentType(payload.Intent)
+	tokens := &TokenMetadata{
+		InputTokens:  geminiResp.UsageMetadata.PromptTokenCount,
+		OutputTokens: geminiResp.UsageMetadata.CandidatesTokenCount,
+		TotalTokens:  geminiResp.UsageMetadata.PromptTokenCount + geminiResp.UsageMetadata.CandidatesTokenCount,
+	}
+
+	return &ClassifyIntentResponse{
+		Intent: &domain.ClassifiedIntent{
+			Type:                intent,
+			Confidence:          payload.Confidence,
+			Parameters:          payload.Parameters,
+			NeedsConfirmation:   payload.NeedsConfirmation,
+			ConfirmationMessage: payload.ConfirmationMessage,
+		},
+		Tokens:      tokens,
+		RawResponse: rawResp,
+	}, nil
+}
+
+func normalizeIntentType(intent string) domain.IntentType {
+	switch strings.ToUpper(strings.TrimSpace(intent)) {
+	case string(domain.IntentAddExpense):
+		return domain.IntentAddExpense
+	case string(domain.IntentTravelContext):
+		return domain.IntentTravelContext
+	case string(domain.IntentCurrencyChange):
+		return domain.IntentCurrencyChange
+	case string(domain.IntentReport):
+		return domain.IntentReport
+	default:
+		return domain.IntentUnknown
+	}
 }

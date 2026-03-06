@@ -11,6 +11,7 @@ type User struct {
 	MessengerType string    `db:"messenger_type" json:"messenger_type"`
 	CreatedAt     time.Time `db:"created_at" json:"created_at"`
 	HomeCurrency  string    `db:"home_currency" json:"home_currency"`
+	DefaultInputCurrency string    `db:"default_input_currency" json:"default_input_currency"`
 	Locale        string    `db:"locale" json:"locale"`
 }
 
@@ -270,5 +271,24 @@ type RevenueRetentionReport struct {
 	GRRDelta         float64   `json:"grr_delta,omitempty"`
 }
 
+// IntentType represents the classified intent of a user message
+type IntentType string
+
+const (
+	IntentAddExpense     IntentType = "ADD_EXPENSE"
+	IntentTravelContext  IntentType = "TRAVEL_CONTEXT"
+	IntentCurrencyChange IntentType = "CURRENCY_CHANGE"
+	IntentReport         IntentType = "REPORT"
+	IntentUnknown        IntentType = "UNKNOWN"
+)
+
+// ClassifiedIntent represents the result of AI intent classification
+type ClassifiedIntent struct {
+	Type                IntentType
+	Confidence          float64
+	Parameters          map[string]string // e.g., {"destination": "Japan", "currency": "JPY"}
+	NeedsConfirmation   bool
+	ConfirmationMessage string
+}
 
 

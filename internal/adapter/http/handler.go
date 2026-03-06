@@ -1511,8 +1511,9 @@ func (h *Handler) UpdateUserSettings(w http.ResponseWriter, r *http.Request) {
 	}
 
 	type UpdateSettingsRequest struct {
-		HomeCurrency string `json:"home_currency"`
-		Locale       string `json:"locale"`
+		HomeCurrency         string `json:"home_currency"`
+		DefaultInputCurrency string `json:"default_input_currency"`
+		Locale               string `json:"locale"`
 	}
 
 	var req UpdateSettingsRequest
@@ -1533,6 +1534,9 @@ func (h *Handler) UpdateUserSettings(w http.ResponseWriter, r *http.Request) {
 
 	if req.HomeCurrency != "" {
 		user.HomeCurrency = req.HomeCurrency
+	}
+	if req.DefaultInputCurrency != "" {
+		user.DefaultInputCurrency = req.DefaultInputCurrency
 	}
 	if req.Locale != "" {
 		user.Locale = req.Locale

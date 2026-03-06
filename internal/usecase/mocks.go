@@ -202,7 +202,9 @@ func (m *MockExpenseRepository) GetBySourceMessageID(ctx context.Context, messag
 
 // MockAIService is a mock implementation for testing
 type MockAIService struct {
-	shouldFail bool
+	shouldFail      bool
+	intentResponse  *ai.ClassifyIntentResponse
+	intentError     error
 }
 
 var _ ai.Service = (*MockAIService)(nil)
@@ -309,6 +311,27 @@ func (m *MockAIService) SuggestCategory(ctx context.Context, description string,
 
 	return &ai.SuggestCategoryResponse{
 		Category: category,
+		Tokens: &ai.TokenMetadata{
+			InputTokens:  5,
+			OutputTokens: 5,
+			TotalTokens:  10,
+		},
+	}, nil
+}
+
+func (m *MockAIService) ClassifyIntent(ctx context.Context, text string, userCtx *domain.UserContext) (*ai.ClassifyIntentResponse, error) {
+	if m.intentError != nil {
+		return nil, m.intentError
+	}
+	if m.intentResponse != nil {
+		return m.intentResponse, nil
+	}
+	// Default: return UNKNOWN intent
+	return &ai.ClassifyIntentResponse{
+		Intent: &domain.ClassifiedIntent{
+			Type:       domain.IntentUnknown,
+			Confidence: 0.5,
+		},
 		Tokens: &ai.TokenMetadata{
 			InputTokens:  5,
 			OutputTokens: 5,

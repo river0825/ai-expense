@@ -17,6 +17,11 @@ type Service interface {
 	// Returns suggested category with actual token usage from API response
 	// userCtx provides user preferences for personalized suggestions
 	SuggestCategory(ctx context.Context, description string, userCtx *domain.UserContext) (*SuggestCategoryResponse, error)
+
+	// ClassifyIntent classifies the intent of a user message
+	// Returns classified intent with actual token usage from API response
+	// userCtx provides user preferences for personalized classification
+	ClassifyIntent(ctx context.Context, text string, userCtx *domain.UserContext) (*ClassifyIntentResponse, error)
 }
 
 // Factory creates an AI service based on the provider type
